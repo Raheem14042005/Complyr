@@ -1,22 +1,32 @@
-# main.py — Raheem AI (PDF-first, multimodal + auto page selection)
+# main.py — Raheem AI (Persistent PDFs + Smart Vision + Streaming)
 #
-# What this fixes:
-# - Automatically selects the most relevant PDF pages based on the question
-#   (so it can answer things from deep pages e.g. 340 etc.)
-# - Still supports manual pages override: ?pages=340,341
-# - Keeps frontend compatibility endpoints: /, /health, /docs, /pdfs, /ask
+# What you get:
+# 1) Persistent PDFs on Render:
+#    - Requires Render Disk mounted at /var/data
+#    - Stores PDFs in /var/data/pdfs so they survive restarts/redeploys
 #
-# How it works:
-# - On startup (and on upload), builds an in-memory text index for ALL pages of each PDF.
-# - For each question, scores every page text vs the question, selects top pages,
-#   adds neighbour pages (window), and renders only those pages as images for GPT-4o.
+# 2) Lower cost per question:
+#    - Default mode: TEXT excerpts (cheap)
+#    - Automatically switches to VISION (images) only when needed (tables/diagrams)
+#    - Uses fewer pages by default + caps output tokens
+#    - Uses gpt-4o-mini by default (cheap), configurable via env var MODEL_NAME
 #
-# CRITICAL FIX:
-# - Do NOT include "metadata" inside input_image objects for OpenAI Responses API.
-#   It causes: Unknown parameter '...metadata'
+# 3) Typing effect:
+#    - Adds /ask_stream (Server-Sent Events) so the frontend can show gradual output
+#    - Your current /ask still works (non-stream)
+#
+# Endpoints:
+# - GET  /                (status)
+# - GET  /health          (health)
+# - GET  /docs            (frontend check)
+# - GET  /pdfs            (list PDFs)
+# - POST /upload-pdf      (upload PDFs)
+# - GET  /ask             (non-stream answer)
+# - GET  /ask_stream      (stream answer for "typing")
 
 from fastapi import FastAPI, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -38,23 +48,39 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     raise RuntimeError("OPENAI_API_KEY missing")
 
+# Default cheaper model. Override on Render with env var MODEL_NAME=gpt-4o if desired.
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 app = FastAPI(docs_url="/swagger", redoc_url=None)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # demo-safe; tighten later
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 BASE_DIR = Path(__file__).resolve().parent
-PDF_DIR = BASE_DIR / "pdfs"
-PDF_DIR.mkdir(exist_ok=True)
 
 # ----------------------------
-# In-memory page text index
+# Persistent PDFs on Render
+# ----------------------------
+# IMPORTANT:
+# Render -> Service -> Settings -> Disks -> Add Disk
+# Mount path: /var/data
+#
+# PDFs will live in /var/data/pdfs on Render (persistent).
+if os.getenv("RENDER"):
+    PDF_DIR = Path("/var/data/pdfs")
+else:
+    PDF_DIR = BASE_DIR / "pdfs"
+
+PDF_DIR.mkdir(parents=True, exist_ok=True)
+
+# ----------------------------
+# In-memory page text index (for fast page selection)
 # ----------------------------
 
 # pdf_name -> list[str] (page_texts, index 0 = page 1)
@@ -77,7 +103,6 @@ def index_pdf(pdf_path: Path) -> None:
             page_texts.append(_clean_text(txt).lower())
     finally:
         doc.close()
-
     PDF_TEXT_INDEX[name] = page_texts
 
 def index_all_pdfs() -> None:
@@ -85,14 +110,12 @@ def index_all_pdfs() -> None:
         try:
             index_pdf(p)
         except Exception:
-            # Don't crash startup if one PDF is odd/corrupt
             continue
 
-# Build index at startup
 index_all_pdfs()
 
 # ----------------------------
-# Root + Health + Docs (frontend compatibility)
+# Root + Health + Docs
 # ----------------------------
 
 @app.get("/")
@@ -102,13 +125,13 @@ def root():
         "service": "Raheem AI API",
         "pdf_dir": str(PDF_DIR),
         "indexed_pdfs": len(PDF_TEXT_INDEX),
+        "model": MODEL_NAME,
     }
 
 @app.get("/health")
 def health():
     return {"ok": True, "status": "Raheem AI backend running"}
 
-# frontend hard-checks this path in your UI
 @app.get("/docs")
 def docs_compat():
     return {"ok": True}
@@ -125,26 +148,12 @@ STOPWORDS = {
 
 def tokenize(q: str) -> List[str]:
     q = q.lower()
-    # keep numbers/units useful for regs queries
     tokens = re.findall(r"[a-z0-9][a-z0-9\-/\.]*", q)
-    out = []
-    for t in tokens:
-        if len(t) < 2:
-            continue
-        if t in STOPWORDS:
-            continue
-        out.append(t)
-    return out
+    return [t for t in tokens if len(t) >= 2 and t not in STOPWORDS]
 
 def score_page(page_text: str, tokens: List[str], full_q: str) -> int:
-    """
-    Simple scoring:
-    - token frequency hits
-    - bonus for exact phrase fragments (2-4 words)
-    """
     if not page_text:
         return 0
-
     score = 0
     for t in tokens:
         score += page_text.count(t) * 3
@@ -157,19 +166,15 @@ def score_page(page_text: str, tokens: List[str], full_q: str) -> int:
                 continue
             if phrase in page_text:
                 score += 25
-
     return score
 
 def auto_select_pages(
     pdf_name: str,
     question: str,
-    top_k: int = 8,
-    window: int = 1,
+    top_k: int = 4,  # cheaper default
+    window: int = 1
 ) -> List[int]:
-    """
-    Returns 0-based page indexes.
-    Picks top_k pages by score across ALL pages, then adds +/- window neighbours.
-    """
+    """Returns 0-based page indexes."""
     page_texts = PDF_TEXT_INDEX.get(pdf_name)
     if not page_texts:
         pdf_path = PDF_DIR / pdf_name
@@ -177,11 +182,11 @@ def auto_select_pages(
             index_pdf(pdf_path)
             page_texts = PDF_TEXT_INDEX.get(pdf_name, [])
         else:
-            return list(range(0, 8))
+            return list(range(0, 6))
 
     tokens = tokenize(question)
     if not tokens:
-        return list(range(min(8, len(page_texts))))
+        return list(range(min(6, len(page_texts))))
 
     scored: List[Tuple[int, int]] = []
     for i, txt in enumerate(page_texts):
@@ -190,7 +195,7 @@ def auto_select_pages(
             scored.append((i, s))
 
     if not scored:
-        return list(range(min(10, len(page_texts))))
+        return list(range(min(6, len(page_texts))))
 
     scored.sort(key=lambda x: x[1], reverse=True)
     top_pages = [i for i, _ in scored[:top_k]]
@@ -206,18 +211,30 @@ def auto_select_pages(
     return sorted(selected)
 
 # ----------------------------
-# PDF -> images (vision input)
+# TEXT extraction (cheap mode)
 # ----------------------------
 
-def pdf_pages_to_images(
-    pdf_path: Path,
-    page_indexes: List[int],
-    dpi: int = 180,
-):
-    """
-    Render specified pages (0-based) into data-url images for GPT-4o.
-    IMPORTANT: DO NOT include 'metadata' inside input_image objects (OpenAI rejects it).
-    """
+def extract_pages_text(pdf_path: Path, page_indexes: List[int], max_chars_per_page: int = 4500) -> str:
+    doc = fitz.open(pdf_path)
+    try:
+        chunks = []
+        for idx in page_indexes:
+            page = doc.load_page(idx)
+            txt = page.get_text("text") or ""
+            txt = _clean_text(txt)
+            if len(txt) > max_chars_per_page:
+                txt = txt[:max_chars_per_page] + " …"
+            chunks.append(f"[Page {idx+1}]\n{txt}")
+        return "\n\n".join(chunks)
+    finally:
+        doc.close()
+
+# ----------------------------
+# VISION images (expensive mode, use sparingly)
+# ----------------------------
+
+def pdf_pages_to_images(pdf_path: Path, page_indexes: List[int], dpi: int = 120):
+    """Render specified pages to data-url images for vision."""
     images = []
     doc = fitz.open(pdf_path)
     try:
@@ -235,7 +252,54 @@ def pdf_pages_to_images(
     return images
 
 # ----------------------------
-# Upload PDF (optional)
+# Smart Vision decision
+# ----------------------------
+
+def needs_vision_from_question(q: str) -> bool:
+    ql = q.lower()
+    triggers = [
+        "table","tab.","diagram","figure","fig.","drawing","detail",
+        "chart","graph","schedule","matrix","appendix",
+        "caption","footnote","note under",
+        "read the","see the","what does this show","interpret",
+        "plan","elevation","section"
+    ]
+    return any(t in ql for t in triggers)
+
+def needs_vision_from_text_excerpt(excerpt: str) -> bool:
+    if not excerpt:
+        return True
+    lines = excerpt.splitlines()
+    if len(lines) <= 4:
+        return True
+
+    long_space_lines = sum(1 for ln in lines if "    " in ln)
+    pipe_lines = sum(1 for ln in lines if "|" in ln)
+    dot_leader = sum(1 for ln in lines if "...." in ln)
+    very_short = sum(1 for ln in lines if len(ln.strip()) <= 2)
+
+    if long_space_lines > 10 or pipe_lines > 3 or dot_leader > 4:
+        return True
+    if very_short > (len(lines) * 0.25):
+        return True
+
+    if len(excerpt) < 900:
+        return True
+
+    return False
+
+def requires_exact_numeric_answer(q: str) -> bool:
+    ql = q.lower()
+    numeric_words = [
+        "mm","m","metre","meter","distance","width","height",
+        "slope","gradient","ratio","minutes","min","max",
+        "minimum","maximum","capacity","people","occupancy",
+        "travel distance"
+    ]
+    return any(w in ql for w in numeric_words)
+
+# ----------------------------
+# Upload PDF
 # ----------------------------
 
 @app.post("/upload-pdf")
@@ -247,58 +311,82 @@ async def upload_pdf(file: UploadFile = File(...)):
     content = await file.read()
     path.write_bytes(content)
 
-    # index immediately so /ask can find deep pages
     try:
         index_pdf(path)
     except Exception:
         pass
 
-    return {"ok": True, "pdf": file.filename}
+    return {"ok": True, "pdf": file.filename, "stored_in": str(PDF_DIR)}
 
 # ----------------------------
-# Prompt (balanced: accurate, but doesn't "die" on uncertainty)
+# Prompt
 # ----------------------------
 
 SYSTEM_RULES = """
 You are Raheem AI, a specialist assistant for Irish Building Regulations Technical Guidance Documents (TGDs).
 
-Rules:
-- Prioritise correctness. Do not invent numbers or clauses.
-- Prefer citing the relevant SECTION / TABLE / DIAGRAM name if visible, rather than page numbers.
-- If the exact number is not clearly visible in the provided pages, do NOT guess:
-  - explain what you can confidently see,
-  - suggest what section/table/diagram to check next,
-  - and ask the user to widen the search (or allow the system to widen pages).
-- Still be helpful: give best-practice guidance while you explain what you could not confirm.
+Communication style (mandatory):
+- Do NOT use markdown of any kind.
+- Do NOT use bullet points, numbered lists, asterisks (*), hashes (#), headings, or symbols.
+- Write in natural, flowing sentences only.
+- Respond as if explaining verbally to a professional colleague.
+- Sound calm, confident, and approachable.
+- Avoid robotic or overly formal language.
+- Do not say things like “thinking”, “analyzing”, or describe internal processes.
+
+Answer rules:
+- Prioritise correctness. Do not invent numbers, limits, or clauses.
+- Where possible, mention the relevant section, table, or diagram name in sentence form.
+- If an exact value is not clearly visible in the provided material, say so plainly and explain what can be verified instead.
+- Keep answers clear, helpful, and naturally structured in short paragraphs.
 """
 
-def build_user_prompt(question: str, pdf_name: str, pages_used: List[int]) -> str:
-    shown = [p + 1 for p in pages_used]  # 1-based for readability
+
+def build_user_header(question: str, pdf_name: str, pages_used: List[int], mode: str) -> str:
+    shown = [p + 1 for p in pages_used]
     return (
-        f"You are answering using ONLY the PDF pages shown as images.\n"
         f"PDF filename: {pdf_name}\n"
-        f"Pages shown (1-based): {shown}\n\n"
+        f"Pages provided (1-based): {shown}\n"
+        f"Mode: {mode}\n\n"
         f"User question:\n{question}\n"
     )
 
 # ----------------------------
-# Ask PDF (core logic)
+# Core answer (shared by /ask and /ask_stream)
 # ----------------------------
 
-@app.post("/ask-pdf")
-def ask_pdf(
+def build_openai_input(
     question: str,
     pdf_name: str,
-    pages: Optional[str] = None,          # manual override e.g. "340,341"
-    top_k: int = 8,                       # how many strong pages to fetch
-    window: int = 1,                      # neighbours around each strong page
-    dpi: int = 180,                       # lower dpi = faster
+    pdf_path: Path,
+    page_indexes: List[int],
+    dpi: int,
+    force_vision: bool
 ):
-    pdf_path = PDF_DIR / pdf_name
-    if not pdf_path.exists():
-        return {"ok": False, "error": f"PDF not found in {PDF_DIR}"}
+    excerpt = extract_pages_text(pdf_path, page_indexes, max_chars_per_page=4500)
 
-    # Manual page override
+    q_triggers_vision = needs_vision_from_question(question)
+    excerpt_suggests_vision = needs_vision_from_text_excerpt(excerpt)
+    wants_numbers = requires_exact_numeric_answer(question)
+
+    use_vision = force_vision or q_triggers_vision or (wants_numbers and excerpt_suggests_vision)
+
+    mode = "vision" if use_vision else "text"
+    header = build_user_header(question, pdf_name, page_indexes, mode)
+
+    user_blocks = [
+        {"type": "input_text", "text": SYSTEM_RULES},
+        {"type": "input_text", "text": header + "\n\n---\n\nEXCERPT:\n" + excerpt}
+    ]
+
+    if use_vision:
+        MAX_IMAGE_PAGES = 3
+        vision_pages = page_indexes[:MAX_IMAGE_PAGES]
+        user_blocks.extend(pdf_pages_to_images(pdf_path, vision_pages, dpi=dpi))
+
+    return user_blocks, use_vision
+
+def resolve_page_indexes(pdf_name: str, question: str, pages: Optional[str], top_k: int, window: int, pdf_path: Path):
     page_indexes: Optional[List[int]] = None
     if pages:
         try:
@@ -317,56 +405,130 @@ def ask_pdf(
 
             seen = set()
             page_indexes = [x for x in idxs if not (x in seen or seen.add(x))]
-
         except Exception:
-            return {"ok": False, "error": "Invalid pages format. Use e.g. pages=1,2,340"}
+            raise ValueError("Invalid pages format. Use e.g. pages=1,2,340")
 
-    try:
-        if page_indexes is None:
-            page_indexes = auto_select_pages(pdf_name, question, top_k=top_k, window=window)
+    if page_indexes is None:
+        page_indexes = auto_select_pages(pdf_name, question, top_k=top_k, window=window)
 
-        images = pdf_pages_to_images(pdf_path, page_indexes, dpi=dpi)
-
-        response = client.responses.create(
-            model="gpt-4o",
-            input=[
-                {"role": "system", "content": [{"type": "input_text", "text": SYSTEM_RULES}]},
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "input_text", "text": build_user_prompt(question, pdf_name, page_indexes)},
-                        *images,
-                    ],
-                },
-            ],
-        )
-
-        return {"ok": True, "answer": response.output_text, "pages_used": [p + 1 for p in page_indexes]}
-
-    except Exception as e:
-        return {
-            "ok": False,
-            "error": str(e),
-            "trace": traceback.format_exc().splitlines()[-12:],
-        }
+    return page_indexes
 
 # ----------------------------
-# Frontend-compatible ASK endpoint
+# Non-stream endpoint (compatible with your current frontend)
 # ----------------------------
 
 @app.get("/ask")
 def ask(
     q: str = Query(..., description="User question"),
     pdf: str = Query(..., description="PDF filename"),
-    pages: Optional[str] = Query(None, description="Optional: comma-separated 1-based page numbers e.g. 340,341"),
-    top_k: int = Query(8, description="Auto mode: number of strongest-matching pages to include"),
-    window: int = Query(1, description="Auto mode: neighbour pages around each match"),
-    dpi: int = Query(180, description="Render DPI (lower=faster)"),
+    pages: Optional[str] = Query(None, description="Optional: comma-separated 1-based pages e.g. 340,341"),
+    top_k: int = Query(4, description="Auto: number of strongest pages"),
+    window: int = Query(1, description="Auto: neighbour pages around each match"),
+    dpi: int = Query(120, description="Render DPI for vision pages (lower = cheaper/faster)"),
+    vision: bool = Query(False, description="Force vision pages"),
 ):
-    return ask_pdf(question=q, pdf_name=pdf, pages=pages, top_k=top_k, window=window, dpi=dpi)
+    pdf_path = PDF_DIR / pdf
+    if not pdf_path.exists():
+        return {"ok": False, "error": f"PDF not found in {PDF_DIR}"}
+
+    try:
+        page_indexes = resolve_page_indexes(pdf, q, pages, top_k, window, pdf_path)
+
+        user_blocks, vision_used = build_openai_input(
+            question=q,
+            pdf_name=pdf,
+            pdf_path=pdf_path,
+            page_indexes=page_indexes,
+            dpi=dpi,
+            force_vision=vision
+        )
+
+        resp = client.responses.create(
+            model=MODEL_NAME,
+            max_output_tokens=700,  # cost control
+            input=[{"role": "user", "content": user_blocks}],
+        )
+
+        return {
+            "ok": True,
+            "answer": resp.output_text,
+            "pages_used": [p + 1 for p in page_indexes],
+            "vision_used": vision_used
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e), "trace": traceback.format_exc().splitlines()[-12:]}
 
 # ----------------------------
-# List PDFs (frontend counter uses this)
+# Streaming endpoint (for "typing" UI)
+# ----------------------------
+
+@app.get("/ask_stream")
+def ask_stream(
+    q: str = Query(..., description="User question"),
+    pdf: str = Query(..., description="PDF filename"),
+    pages: Optional[str] = Query(None, description="Optional: comma-separated 1-based pages e.g. 340,341"),
+    top_k: int = Query(4),
+    window: int = Query(1),
+    dpi: int = Query(120),
+    vision: bool = Query(False),
+):
+    pdf_path = PDF_DIR / pdf
+    if not pdf_path.exists():
+        def err():
+            yield "event: error\ndata: PDF not found\n\n"
+        return StreamingResponse(err(), media_type="text/event-stream")
+
+    try:
+        page_indexes = resolve_page_indexes(pdf, q, pages, top_k, window, pdf_path)
+        user_blocks, vision_used = build_openai_input(
+            question=q,
+            pdf_name=pdf,
+            pdf_path=pdf_path,
+            page_indexes=page_indexes,
+            dpi=dpi,
+            force_vision=vision
+        )
+    except Exception as e:
+        def err():
+            yield f"event: error\ndata: {str(e)}\n\n"
+        return StreamingResponse(err(), media_type="text/event-stream")
+
+    def sse():
+        # Let UI know we started + what pages are being used (optional)
+        yield f"event: meta\ndata: pages_used={','.join(str(p+1) for p in page_indexes)};vision_used={vision_used}\n\n"
+
+        stream = client.responses.create(
+            model=MODEL_NAME,
+            max_output_tokens=700,
+            input=[{"role": "user", "content": user_blocks}],
+            stream=True,
+        )
+
+        # Stream text deltas as they arrive
+        try:
+            for event in stream:
+                # Most helpful is "response.output_text.delta" events
+                if getattr(event, "type", None) == "response.output_text.delta":
+                    delta = getattr(event, "delta", "")
+                    if delta:
+                        # SSE requires no newlines unescaped; keep it simple
+                        safe = delta.replace("\r", "").replace("\n", "\\n")
+                        yield f"data: {safe}\n\n"
+
+                # When done:
+                if getattr(event, "type", None) == "response.completed":
+                    break
+
+        except Exception as e:
+            msg = str(e).replace("\r", "").replace("\n", " ")
+            yield f"event: error\ndata: {msg}\n\n"
+
+        yield "event: done\ndata: ok\n\n"
+
+    return StreamingResponse(sse(), media_type="text/event-stream")
+
+# ----------------------------
+# List PDFs
 # ----------------------------
 
 @app.get("/pdfs")
