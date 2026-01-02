@@ -1,31 +1,39 @@
 """
-Raheem AI — FastAPI backend
-Goal: normal AI vibe + becomes a PDF/TGD expert when needed, WITHOUT scanning everything.
+Raheem AI — FastAPI backend (Vertex Gemini)
 
-Key upgrades:
-- Robust PDF storage on Render (store beside main.py)
-- Case-insensitive PDF listing (Linux-safe)
-- Adds /docs endpoint for frontend checks
-- /health supports GET + HEAD
-- Upload returns updated pdf_count and exact stored path
+Goals:
+- Friendly, natural assistant for everyone (normal chat by default).
+- Automatically switches into Irish TGD/compliance mode when relevant.
+- Uses fast PDF page retrieval (BM25-like) to keep costs down.
+- Uses vision only when needed (tables/diagrams/scanned pages).
+- NEVER says “PDFs you uploaded/attached”. It just cites TGDs naturally.
+
+Render/GitHub friendly:
+- Reads credentials from GOOGLE_CREDENTIALS_JSON (recommended) OR GOOGLE_APPLICATION_CREDENTIALS.
+- Keeps your existing endpoints unchanged.
 """
 
 from fastapi import FastAPI, UploadFile, File, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
-from openai import OpenAI
 
 import os
 import re
 import math
 import base64
 import traceback
+import json
+import tempfile
 from pathlib import Path
 from typing import List, Optional, Dict, Tuple, Any
 from collections import Counter, OrderedDict
 
 import fitz  # PyMuPDF
+
+# Vertex AI Gemini (requires google-cloud-aiplatform in requirements)
+import vertexai
+from vertexai.generative_models import GenerativeModel, Part
 
 
 # ----------------------------
@@ -34,17 +42,27 @@ import fitz  # PyMuPDF
 
 load_dotenv()
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY is missing")
-
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*")
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "80"))
 IMAGE_CACHE_MAX = int(os.getenv("IMAGE_CACHE_MAX", "64"))
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+# Vertex config
+GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID") or os.getenv("VERTEX_PROJECT_ID")
+GCP_LOCATION = os.getenv("GCP_LOCATION") or os.getenv("VERTEX_LOCATION", "europe-west4")
 
+# Models (cost-aware)
+# Default chat: cheapest good model
+MODEL_CHAT = os.getenv("GEMINI_MODEL_CHAT", "gemini-2.0-flash-lite")
+# Compliance: stronger model (still reasonably priced)
+MODEL_COMPLIANCE = os.getenv("GEMINI_MODEL_COMPLIANCE", "gemini-2.0-flash")
+
+# If you want one model for everything, set both env vars to the same.
+# MODEL_CHAT=gemini-2.0-flash
+# MODEL_COMPLIANCE=gemini-2.0-flash
+
+GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON", "").strip()
+
+# App
 app = FastAPI(docs_url="/swagger", redoc_url=None)
 app.add_middleware(
     CORSMiddleware,
@@ -55,14 +73,49 @@ app.add_middleware(
 
 BASE_DIR = Path(__file__).resolve().parent
 
-
 # ----------------------------
 # Storage paths (Render-safe)
 # ----------------------------
-
-# Always store PDFs beside main.py (works reliably on Render)
 PDF_DIR = BASE_DIR / "pdfs"
 PDF_DIR.mkdir(parents=True, exist_ok=True)
+
+
+# ----------------------------
+# Vertex AI auth helper (Render-safe)
+# ----------------------------
+
+_VERTEX_READY = False
+_VERTEX_ERR = None
+
+def ensure_vertex_ready() -> None:
+    global _VERTEX_READY, _VERTEX_ERR
+    if _VERTEX_READY:
+        return
+    try:
+        # If Render env contains the full service account JSON, write it to a temp file.
+        # (This is the easiest secure setup for Render.)
+        if GOOGLE_CREDENTIALS_JSON and not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+            creds = json.loads(GOOGLE_CREDENTIALS_JSON)
+            fd, path = tempfile.mkstemp(prefix="gcp-sa-", suffix=".json")
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(creds, f)
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = path
+
+        if not GCP_PROJECT_ID:
+            raise RuntimeError("GCP_PROJECT_ID/VERTEX_PROJECT_ID env var is missing")
+
+        vertexai.init(project=GCP_PROJECT_ID, location=GCP_LOCATION)
+        _VERTEX_READY = True
+        _VERTEX_ERR = None
+    except Exception as e:
+        _VERTEX_READY = False
+        _VERTEX_ERR = str(e)
+
+
+def get_model(use_docs: bool) -> GenerativeModel:
+    ensure_vertex_ready()
+    name = MODEL_COMPLIANCE if use_docs else MODEL_CHAT
+    return GenerativeModel(name)
 
 
 # ----------------------------
@@ -82,7 +135,6 @@ def clean_text(s: str) -> str:
 
 def tokenize(text: str) -> List[str]:
     t = (text or "").lower()
-    # Keep hyphenated and numeric-ish tokens (e.g. "u-value", "m2", "25%")
     toks = re.findall(r"[a-z0-9][a-z0-9\-/\.%]*", t)
     toks = [x for x in toks if len(x) >= 2 and x not in STOPWORDS]
     return toks
@@ -95,9 +147,6 @@ def tokenize(text: str) -> List[str]:
 PDF_INDEX: Dict[str, Dict[str, Any]] = {}
 
 def list_pdfs() -> List[str]:
-    """
-    Case-insensitive PDF listing (Linux/Render safe).
-    """
     files = []
     if PDF_DIR.exists():
         for p in PDF_DIR.iterdir():
@@ -132,9 +181,7 @@ def index_pdf(pdf_path: Path) -> None:
             tf = Counter(toks)
             page_tf.append(tf)
 
-            unique = set(tf.keys())
-            df.update(unique)
-
+            df.update(set(tf.keys()))
             page_len.append(len(toks))
 
         avgdl = (sum(page_len) / len(page_len)) if page_len else 0.0
@@ -188,7 +235,6 @@ def bm25_page_score(
 
         n_t = df.get(t, 0)
         idf = math.log(1 + (N - n_t + 0.5) / (n_t + 0.5))
-
         score += idf * (f * (k1 + 1)) / (f + k1 * denom_norm)
 
     return score
@@ -262,7 +308,6 @@ def retrieve_across_pdfs_iterative(
     page_hint: Optional[int] = None,
     max_docs: int = 3,
 ) -> List[Tuple[str, List[int], float]]:
-
     available = list_pdfs()
     if not available:
         return []
@@ -318,7 +363,6 @@ def iterative_select_pages(
     max_docs: int = 3,
     max_total_pages: int = 8,
 ) -> List[Tuple[str, List[int], float]]:
-
     hits = retrieve_across_pdfs_iterative(question, pdf_pin=pdf_pin, page_hint=page_hint, max_docs=max_docs)
     if not hits:
         return []
@@ -328,7 +372,6 @@ def iterative_select_pages(
     top_score = hits[0][2]
     window = 0
     pages_per_doc = 3
-
     if top_score < 2.0:
         window = 1
         pages_per_doc = 4
@@ -357,10 +400,10 @@ def iterative_select_pages(
 
 
 # ----------------------------
-# Vision helpers
+# Vision helpers (cache + render pages)
 # ----------------------------
 
-_IMAGE_CACHE: "OrderedDict[Tuple[str,int,int], str]" = OrderedDict()
+_IMAGE_CACHE: "OrderedDict[Tuple[str,int,int], bytes]" = OrderedDict()
 
 def cache_get(k):
     if k in _IMAGE_CACHE:
@@ -374,28 +417,26 @@ def cache_set(k, v):
     while len(_IMAGE_CACHE) > IMAGE_CACHE_MAX:
         _IMAGE_CACHE.popitem(last=False)
 
-def pdf_page_to_data_url(pdf_path: Path, page_index: int, dpi: int = 120) -> str:
+def pdf_page_to_png_bytes(pdf_path: Path, page_index: int, dpi: int = 140) -> bytes:
     doc = fitz.open(pdf_path)
     try:
         page = doc.load_page(page_index)
         mat = fitz.Matrix(dpi / 72.0, dpi / 72.0)
         pix = page.get_pixmap(matrix=mat, alpha=False)
-        img_bytes = pix.tobytes("png")
+        return pix.tobytes("png")
     finally:
         doc.close()
-    b64 = base64.b64encode(img_bytes).decode("utf-8")
-    return f"data:image/png;base64,{b64}"
 
-def pages_to_images(pdf_path: Path, pdf_name: str, pages: List[int], dpi: int = 120) -> List[Dict[str, Any]]:
-    blocks: List[Dict[str, Any]] = []
+def pages_to_parts(pdf_path: Path, pdf_name: str, pages: List[int], dpi: int = 140) -> List[Part]:
+    parts: List[Part] = []
     for p in pages:
         key = (pdf_name, p, dpi)
-        data_url = cache_get(key)
-        if data_url is None:
-            data_url = pdf_page_to_data_url(pdf_path, p, dpi=dpi)
-            cache_set(key, data_url)
-        blocks.append({"type": "input_image", "image_url": data_url})
-    return blocks
+        img_bytes = cache_get(key)
+        if img_bytes is None:
+            img_bytes = pdf_page_to_png_bytes(pdf_path, p, dpi=dpi)
+            cache_set(key, img_bytes)
+        parts.append(Part.from_data(img_bytes, mime_type="image/png"))
+    return parts
 
 def needs_vision(question: str, excerpt: str) -> bool:
     q = (question or "").lower()
@@ -414,7 +455,7 @@ def needs_vision(question: str, excerpt: str) -> bool:
 
 
 # ----------------------------
-# Router
+# Router (normal vs docs)
 # ----------------------------
 
 def is_short_topic_prompt(q: str) -> bool:
@@ -430,11 +471,11 @@ def doc_intent_score(question: str) -> int:
     score = 0
 
     hard = [
-        "tgd", "technical guidance", "building regulations", "part a", "part b", "part m", "part l",
-        "deap", "seai", "irish building regs", "bcar",
-        "according to", "in the document", "in the pdf", "pdf", "document",
-        "what does it say", "where does it say", "cite", "citation", "page", "clause", "section", "appendix",
-        "table", "diagram", "figure", "schedule"
+        "tgd", "technical guidance", "building regulations", "irish building regs",
+        "part a", "part b", "part c", "part d", "part e", "part f", "part g", "part h", "part j", "part k", "part l", "part m",
+        "deap", "ber", "seai", "bcar", "dac",
+        "according to", "in the guidance", "in the document", "cite", "citation", "page", "clause", "section", "appendix",
+        "table", "diagram", "figure", "schedule", "travel distance", "compartment", "escape", "accessible"
     ]
     for t in hard:
         if t in q:
@@ -442,11 +483,16 @@ def doc_intent_score(question: str) -> int:
 
     soft = [
         "minimum","maximum","shall","must","required","requirement","compliance","comply","regulation",
-        "guidance","standard","fire safety","accessibility","u-value","y-value","escape","travel distance"
+        "guidance","standard","fire safety","accessibility","u-value","y-value","airtight","thermal bridge",
+        "stairs","ramp","handrail","guarding","major renovation"
     ]
     for t in soft:
         if t in q:
             score += 1
+
+    # numeric + units smell test
+    if re.search(r"\b\d+(\.\d+)?\s*(mm|cm|m|m²|m2|minutes|min|w/m²k|w/m2k)\b", q):
+        score += 3
 
     return score
 
@@ -463,26 +509,31 @@ def should_use_docs(question: str, pdf_pin: Optional[str] = None, page_hint: Opt
     return False
 
 
+# ----------------------------
+# Prompts (sellable product voice)
+# ----------------------------
+
 SYSTEM_RULES = """
-You are Raheem AI — calm, capable, and natural.
+You are Raheem AI.
 
-Tone:
-- Professional, friendly, and human.
-- If the user is unclear, ask 1–2 clarifying questions.
+Personality:
+- Warm, natural, and genuinely helpful. Like a smart best friend.
+- Don’t sound like a developer tool. Don’t mention “uploads”, “attachments”, “PDFs the user provided”, or backend steps.
 
-Core behavior:
-- Understand the user’s question first.
-- If it’s a compliance question, choose the most relevant document(s) yourself.
-- If pinned to a document, focus there first.
+Two modes (automatic):
+1) Normal mode: chat, writing, explaining, brainstorming, life/study help.
+2) Compliance mode: Irish Building Regulations + TGDs (fire safety, accessibility, BER/DEAP, construction requirements).
 
-When SOURCES are provided:
-- Treat SOURCES as authoritative.
-- Cite pages like (DocName p.12).
-- Do not invent clause numbers or numeric limits you cannot see.
+When reference excerpts are provided (Compliance mode):
+- Treat them as authoritative.
+- Answer using only what you can support from the excerpts.
+- If the excerpts don’t support a specific numeric limit or rule, say you can’t confirm it from the provided guidance and explain what you’d check next.
+- Use citations in this exact format: (DocumentName p.X). Keep citations minimal but precise.
+- Never invent clause numbers.
 
-Output style:
-- Answer clearly.
-- If SOURCES were used, add a short “Where this comes from” with citations.
+Style:
+- Short paragraphs.
+- Clear and confident.
 """.strip()
 
 
@@ -515,35 +566,39 @@ def build_sources_bundle(
         if not pdf_path.exists():
             continue
         excerpt = extract_pages_text(pdf_path, page_idxs, max_chars_per_page=max_chars_per_page)
-        parts.append(f"SOURCE: {doc_name}\n{excerpt}")
+        parts.append(f"REFERENCE: {doc_name}\n{excerpt}")
         for pi in page_idxs:
             cites.append((doc_name, pi + 1))
     return "\n\n".join(parts).strip(), cites
 
-def build_openai_blocks(
+
+def build_gemini_parts(
     question: str,
     sources_text: str,
-    images: Optional[List[Dict[str, Any]]] = None,
+    images: Optional[List[Part]] = None,
     history_blob: Optional[str] = None
-) -> List[Dict[str, Any]]:
-    blocks: List[Dict[str, Any]] = [{"type": "input_text", "text": SYSTEM_RULES}]
+) -> List[Part]:
+    """
+    Build multimodal prompt parts for Gemini.
+    We keep it product-voice and avoid “you uploaded…”.
+    """
+    text = []
+    text.append(SYSTEM_RULES)
 
     if history_blob:
-        prompt = f"CHAT HISTORY (most recent):\n{history_blob}\n\nLATEST USER QUESTION:\n{question}\n"
-    else:
-        prompt = f"USER QUESTION:\n{question}\n"
+        text.append("\nCHAT HISTORY (recent):\n" + history_blob.strip())
+
+    text.append("\nUSER:\n" + (question or "").strip())
 
     if sources_text:
-        prompt += f"\nSOURCES:\n{sources_text}"
-    else:
-        prompt += "\n(No PDF sources provided.)"
+        # No “pdf attached” phrasing; just “reference excerpts”.
+        text.append("\nREFERENCE EXCERPTS:\n" + sources_text)
 
-    blocks.append({"type": "input_text", "text": prompt})
-
+    full = "\n".join(text).strip()
+    parts: List[Part] = [Part.from_text(full)]
     if images:
-        blocks.extend(images)
-
-    return blocks
+        parts.extend(images)
+    return parts
 
 
 # ----------------------------
@@ -558,15 +613,19 @@ def root():
         "pdf_dir": str(PDF_DIR),
         "pdf_count": len(list_pdfs()),
         "indexed_pdfs": len(PDF_INDEX),
-        "model": MODEL_NAME,
+        "models": {"chat": MODEL_CHAT, "compliance": MODEL_COMPLIANCE},
+        "vertex_ready": bool(_VERTEX_READY),
+        "vertex_error": _VERTEX_ERR,
+        "location": GCP_LOCATION,
+        "project": bool(GCP_PROJECT_ID),
     }
 
-# Important: allow HEAD too (Render checks often use HEAD)
 @app.api_route("/health", methods=["GET", "HEAD"])
 def health():
-    return {"ok": True}
+    # Render sometimes uses HEAD
+    ensure_vertex_ready()
+    return {"ok": True, "vertex_ready": bool(_VERTEX_READY)}
 
-# Frontend compatibility endpoint (stops "documents unavailable" checks)
 @app.get("/docs")
 def docs_check():
     return {"ok": True, "pdf_count": len(list_pdfs())}
@@ -581,20 +640,12 @@ def safe_filename(name: str) -> str:
     name = re.sub(r"[^a-zA-Z0-9._\- ]+", "", name).strip()
     if not name.lower().endswith(".pdf"):
         name += ".pdf"
-    # Force lowercase extension for Linux consistency
     if not name.endswith(".pdf"):
         name = re.sub(r"\.[pP][dD][fF]$", ".pdf", name)
     return name[:180]
 
 @app.post("/upload-pdf")
 async def upload_pdf(file: UploadFile = File(...)):
-    """
-    Robust uploader:
-    - Streams to disk
-    - Validates extension + size
-    - Returns JSON errors instead of plain 500
-    - Returns updated pdf_count
-    """
     try:
         if not file or not file.filename:
             return {"ok": False, "error": "No file received (filename empty)."}
@@ -607,13 +658,12 @@ async def upload_pdf(file: UploadFile = File(...)):
 
         PDF_DIR.mkdir(parents=True, exist_ok=True)
 
-        # Stream-save to disk with a size cap
         max_bytes = MAX_UPLOAD_MB * 1024 * 1024 if MAX_UPLOAD_MB > 0 else None
         written = 0
 
         with open(path, "wb") as out:
             while True:
-                chunk = await file.read(1024 * 1024)  # 1MB chunks
+                chunk = await file.read(1024 * 1024)
                 if not chunk:
                     break
                 written += len(chunk)
@@ -631,7 +681,6 @@ async def upload_pdf(file: UploadFile = File(...)):
             except Exception:
                 pass
 
-        # Index it
         indexed_ok = True
         index_error = None
         try:
@@ -670,25 +719,23 @@ def ask(
     force_docs: bool = Query(False, description="Force using PDFs even if router says no"),
     max_docs: int = Query(3),
     max_total_pages: int = Query(8),
-    dpi: int = Query(120),
+    dpi: int = Query(140),
     force_vision: bool = Query(False),
 ):
     try:
+        # cheap shortcut for tiny prompts (keeps costs low)
         if is_short_topic_prompt(q) and not force_docs and not should_use_docs(q, pdf_pin=pdf, page_hint=page_hint):
-            blocks = build_openai_blocks(q, sources_text="", images=None)
-            resp = client.responses.create(
-                model=MODEL_NAME,
-                input=[{"role": "user", "content": blocks}],
-                max_output_tokens=220,
-            )
+            model = get_model(use_docs=False)
+            parts = build_gemini_parts(q, sources_text="", images=None)
+            resp = model.generate_content(parts)
             return {
                 "ok": True,
-                "answer": resp.output_text,
+                "answer": (resp.text or "").strip(),
                 "used_docs": False,
                 "sources_used": [],
                 "retrieved_docs": [],
                 "vision_used": False,
-                "model": MODEL_NAME,
+                "model": MODEL_CHAT,
             }
 
         use_docs = force_docs or should_use_docs(q, pdf_pin=pdf, page_hint=page_hint)
@@ -696,7 +743,7 @@ def ask(
         selected: List[Tuple[str, List[int], float]] = []
         sources_text = ""
         cites: List[Tuple[str,int]] = []
-        images = None
+        image_parts: Optional[List[Part]] = None
 
         if use_docs and list_pdfs():
             selected = iterative_select_pages(
@@ -709,24 +756,21 @@ def ask(
                 pdf_path = PDF_DIR / top_doc
                 excerpt = extract_pages_text(pdf_path, pages[:1], max_chars_per_page=900)
                 if force_vision or needs_vision(q, excerpt):
-                    images = pages_to_images(pdf_path, top_doc, pages[:2], dpi=dpi)
+                    image_parts = pages_to_parts(pdf_path, top_doc, pages[:2], dpi=dpi)
 
-        blocks = build_openai_blocks(q, sources_text, images)
+        model = get_model(use_docs=bool(use_docs and sources_text))
+        parts = build_gemini_parts(q, sources_text, images=image_parts)
 
-        resp = client.responses.create(
-            model=MODEL_NAME,
-            input=[{"role": "user", "content": blocks}],
-            max_output_tokens=750 if use_docs else 500,
-        )
+        resp = model.generate_content(parts)
 
         return {
             "ok": True,
-            "answer": resp.output_text,
+            "answer": (resp.text or "").strip(),
             "used_docs": bool(use_docs and sources_text),
             "sources_used": [{"doc": d, "page": p} for d, p in cites],
             "retrieved_docs": [s[0] for s in selected],
-            "vision_used": bool(images),
-            "model": MODEL_NAME,
+            "vision_used": bool(image_parts),
+            "model": MODEL_COMPLIANCE if (use_docs and sources_text) else MODEL_CHAT,
         }
 
     except Exception as e:
@@ -749,28 +793,25 @@ def ask_stream(
     force_docs: bool = Query(False),
     max_docs: int = Query(3),
     max_total_pages: int = Query(8),
-    dpi: int = Query(120),
+    dpi: int = Query(140),
     force_vision: bool = Query(False),
 ):
     def sse():
         try:
+            # tiny prompt shortcut
             if is_short_topic_prompt(q) and not force_docs and not should_use_docs(q, pdf_pin=pdf, page_hint=page_hint):
-                yield f"event: meta\ndata: model={MODEL_NAME};used_docs=False;vision=False\n\n"
-                blocks = build_openai_blocks(q, sources_text="", images=None)
-                stream = client.responses.create(
-                    model=MODEL_NAME,
-                    input=[{"role": "user", "content": blocks}],
-                    max_output_tokens=220,
-                    stream=True,
-                )
-                for event in stream:
-                    if getattr(event, "type", None) == "response.output_text.delta":
-                        delta = getattr(event, "delta", "")
-                        if delta:
-                            safe = delta.replace("\r","").replace("\n","\\n")
-                            yield f"data: {safe}\n\n"
-                    if getattr(event, "type", None) == "response.completed":
-                        break
+                model = get_model(use_docs=False)
+                yield f"event: meta\ndata: model={MODEL_CHAT};used_docs=False;vision=False\n\n"
+
+                parts = build_gemini_parts(q, sources_text="", images=None)
+                stream = model.generate_content(parts, stream=True)
+
+                for chunk in stream:
+                    delta = getattr(chunk, "text", None)
+                    if delta:
+                        safe = delta.replace("\r","").replace("\n","\\n")
+                        yield f"data: {safe}\n\n"
+
                 yield "event: done\ndata: ok\n\n"
                 return
 
@@ -779,7 +820,7 @@ def ask_stream(
             selected: List[Tuple[str, List[int], float]] = []
             sources_text = ""
             cites: List[Tuple[str,int]] = []
-            images = None
+            image_parts: Optional[List[Part]] = None
 
             if use_docs and list_pdfs():
                 selected = iterative_select_pages(
@@ -792,29 +833,24 @@ def ask_stream(
                     pdf_path = PDF_DIR / top_doc
                     excerpt = extract_pages_text(pdf_path, pages[:1], max_chars_per_page=900)
                     if force_vision or needs_vision(q, excerpt):
-                        images = pages_to_images(pdf_path, top_doc, pages[:2], dpi=dpi)
+                        image_parts = pages_to_parts(pdf_path, top_doc, pages[:2], dpi=dpi)
 
-            yield f"event: meta\ndata: model={MODEL_NAME};used_docs={bool(use_docs and sources_text)};vision={bool(images)}\n\n"
+            used_docs_flag = bool(use_docs and sources_text)
+            model_name = MODEL_COMPLIANCE if used_docs_flag else MODEL_CHAT
+
+            yield f"event: meta\ndata: model={model_name};used_docs={used_docs_flag};vision={bool(image_parts)}\n\n"
             if cites:
                 yield "event: meta\ndata: sources=" + ",".join([f"{d}:{p}" for d,p in cites]) + "\n\n"
 
-            blocks = build_openai_blocks(q, sources_text, images)
+            model = get_model(use_docs=used_docs_flag)
+            parts = build_gemini_parts(q, sources_text, images=image_parts)
+            stream = model.generate_content(parts, stream=True)
 
-            stream = client.responses.create(
-                model=MODEL_NAME,
-                input=[{"role": "user", "content": blocks}],
-                max_output_tokens=750 if use_docs else 500,
-                stream=True,
-            )
-
-            for event in stream:
-                if getattr(event, "type", None) == "response.output_text.delta":
-                    delta = getattr(event, "delta", "")
-                    if delta:
-                        safe = delta.replace("\r","").replace("\n","\\n")
-                        yield f"data: {safe}\n\n"
-                if getattr(event, "type", None) == "response.completed":
-                    break
+            for chunk in stream:
+                delta = getattr(chunk, "text", None)
+                if delta:
+                    safe = delta.replace("\r","").replace("\n","\\n")
+                    yield f"data: {safe}\n\n"
 
             yield "event: done\ndata: ok\n\n"
 
@@ -871,27 +907,22 @@ def chat_stream(payload: Dict[str, Any] = Body(...)):
                 )
                 sources_text, cites = build_sources_bundle(selected)
 
-            yield f"event: meta\ndata: model={MODEL_NAME};used_docs={bool(use_docs and sources_text)};vision=False\n\n"
+            used_docs_flag = bool(use_docs and sources_text)
+            model_name = MODEL_COMPLIANCE if used_docs_flag else MODEL_CHAT
+
+            yield f"event: meta\ndata: model={model_name};used_docs={used_docs_flag};vision=False\n\n"
             if cites:
                 yield "event: meta\ndata: sources=" + ",".join([f"{d}:{p}" for d,p in cites]) + "\n\n"
 
-            blocks = build_openai_blocks(last_user, sources_text, images=None, history_blob=history_blob)
+            model = get_model(use_docs=used_docs_flag)
+            parts = build_gemini_parts(last_user, sources_text, images=None, history_blob=history_blob)
+            stream = model.generate_content(parts, stream=True)
 
-            stream = client.responses.create(
-                model=MODEL_NAME,
-                input=[{"role":"user","content": blocks}],
-                max_output_tokens=750 if use_docs else 500,
-                stream=True,
-            )
-
-            for event in stream:
-                if getattr(event, "type", None) == "response.output_text.delta":
-                    delta = getattr(event, "delta", "")
-                    if delta:
-                        safe = delta.replace("\r","").replace("\n","\\n")
-                        yield f"data: {safe}\n\n"
-                if getattr(event, "type", None) == "response.completed":
-                    break
+            for chunk in stream:
+                delta = getattr(chunk, "text", None)
+                if delta:
+                    safe = delta.replace("\r","").replace("\n","\\n")
+                    yield f"data: {safe}\n\n"
 
             yield "event: done\ndata: ok\n\n"
 
