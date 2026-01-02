@@ -59,29 +59,10 @@ BASE_DIR = Path(__file__).resolve().parent
 # Storage paths
 # ----------------------------
 
-def choose_pdf_dir() -> Path:
-    env_dir = os.getenv("PDF_DIR")
-    if env_dir:
-        p = Path(env_dir)
-        p.mkdir(parents=True, exist_ok=True)
-        return p
+# Always store PDFs beside main.py (works reliably on Render)
+PDF_DIR = BASE_DIR / "pdfs"
+PDF_DIR.mkdir(parents=True, exist_ok=True)
 
-    preferred = Path("/var/data/pdfs")
-    fallback = BASE_DIR / "pdfs"
-
-    if os.getenv("RENDER"):
-        try:
-            preferred.mkdir(parents=True, exist_ok=True)
-            return preferred
-        except Exception:
-            fallback.mkdir(parents=True, exist_ok=True)
-            return fallback
-
-    fallback.mkdir(parents=True, exist_ok=True)
-    return fallback
-
-
-PDF_DIR = choose_pdf_dir()
 
 
 # ----------------------------
@@ -960,4 +941,5 @@ def chat_stream(payload: Dict[str, Any] = Body(...)):
         media_type="text/event-stream",
         headers={"Cache-Control":"no-cache","Connection":"keep-alive","X-Accel-Buffering":"no"},
     )
+
 
