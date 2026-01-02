@@ -6,38 +6,30 @@
   <title>Raheem AI | Construction Compliance Intelligence</title>
 
   <style>
-    /* -----------------------------------
-      RAHEEM AI — NEW LAYOUT (SELLABLE)
-      - spacious, premium, clear
-      - visible movement (aurora + particles)
-      - keep all existing functions
-      - hide saved chats unless in Chat view
-    ----------------------------------- */
-
     :root{
       --bg0:#050610;
       --bg1:#070a18;
       --bg2:#0a0f22;
 
-      --panel: rgba(255,255,255,.07);
-      --panel2: rgba(255,255,255,.10);
-      --stroke: rgba(255,255,255,.12);
-      --stroke2: rgba(255,255,255,.18);
+      --glass: rgba(255,255,255,.08);
+      --glass2: rgba(255,255,255,.11);
+      --stroke: rgba(255,255,255,.14);
+      --stroke2: rgba(255,255,255,.22);
 
-      --text:#f3f7ff;
-      --muted: rgba(243,247,255,.78);
-      --muted2: rgba(243,247,255,.60);
+      --text:#f4f7ff;
+      --muted: rgba(244,247,255,.78);
+      --muted2: rgba(244,247,255,.60);
 
-      /* Brighter brand accents */
-      --a1:#55f7d6; /* neon mint */
-      --a2:#6cb6ff; /* bright blue */
-      --a3:#b99bff; /* violet */
+      --a1:#50ffd7;   /* neon mint */
+      --a2:#65b7ff;   /* neon blue */
+      --a3:#c7a5ff;   /* neon violet */
+      --hot:#ff4fd8;  /* neon pink accent */
 
       --ok:#22c55e;
       --warn:#f59e0b;
 
-      --shadow: 0 26px 70px rgba(0,0,0,.58);
-      --shadow2: 0 16px 44px rgba(0,0,0,.40);
+      --shadow: 0 28px 72px rgba(0,0,0,.58);
+      --shadow2: 0 18px 48px rgba(0,0,0,.42);
 
       --r:22px;
       --r2:16px;
@@ -51,7 +43,10 @@
       margin:0;
       font-family: var(--font);
       color: var(--text);
-      background: linear-gradient(180deg, var(--bg0), var(--bg1) 35%, var(--bg2));
+      background: radial-gradient(1200px 700px at 20% -10%, rgba(80,255,215,.18), transparent 60%),
+                  radial-gradient(1100px 650px at 85% 0%, rgba(101,183,255,.18), transparent 58%),
+                  radial-gradient(900px 620px at 50% 115%, rgba(199,165,255,.16), transparent 58%),
+                  linear-gradient(180deg, var(--bg0), var(--bg1) 35%, var(--bg2));
       overflow-x:hidden;
     }
 
@@ -64,14 +59,14 @@
       overflow:hidden;
     }
 
-    /* animated aurora */
     .aurora{
       position:absolute;
-      inset:-20%;
+      inset:-25%;
       background:
-        radial-gradient(900px 520px at 15% 20%, rgba(85,247,214,.18) 0%, rgba(85,247,214,0) 65%),
-        radial-gradient(900px 520px at 85% 18%, rgba(108,182,255,.18) 0%, rgba(108,182,255,0) 62%),
-        radial-gradient(980px 560px at 55% 105%, rgba(185,155,255,.16) 0%, rgba(185,155,255,0) 60%);
+        radial-gradient(900px 520px at 12% 18%, rgba(80,255,215,.18) 0%, rgba(80,255,215,0) 65%),
+        radial-gradient(900px 520px at 88% 14%, rgba(101,183,255,.18) 0%, rgba(101,183,255,0) 62%),
+        radial-gradient(980px 560px at 50% 108%, rgba(199,165,255,.16) 0%, rgba(199,165,255,0) 60%),
+        radial-gradient(840px 520px at 45% 40%, rgba(255,79,216,.08) 0%, rgba(255,79,216,0) 60%);
       filter: blur(18px);
       opacity:.95;
       transform: translate3d(0,0,0);
@@ -79,33 +74,22 @@
     }
     @keyframes auroraMove{
       0%,100%{ transform: translate3d(0,0,0) scale(1); }
-      40%{ transform: translate3d(18px,-14px,0) scale(1.02); }
-      70%{ transform: translate3d(-16px,12px,0) scale(1.03); }
+      40%{ transform: translate3d(18px,-14px,0) scale(1.03); }
+      75%{ transform: translate3d(-18px,12px,0) scale(1.02); }
     }
 
-    /* subtle grid */
-    .grid{
-      position:absolute;
-      inset:0;
-      opacity:.08;
-      background-image:
-        linear-gradient(to right, rgba(255,255,255,.16) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255,255,255,.10) 1px, transparent 1px);
-      background-size: 76px 76px;
-      mask-image: radial-gradient(circle at 30% 15%, rgba(0,0,0,1), rgba(0,0,0,0) 70%);
-      animation: gridDrift 24s linear infinite;
-    }
-    @keyframes gridDrift{
-      0%{ background-position: 0 0, 0 0; }
-      100%{ background-position: 220px 140px, 140px 220px; }
-    }
-
-    /* particles */
     canvas#particles{
       position:absolute;
       inset:0;
       opacity:.55;
-      filter: blur(.1px);
+      filter: blur(.15px);
+    }
+
+    .vignette{
+      position:absolute;
+      inset:-1px;
+      background: radial-gradient(900px 520px at 50% 20%, rgba(0,0,0,0), rgba(0,0,0,.55));
+      opacity:.9;
     }
 
     /* ---------- Layout ---------- */
@@ -113,1587 +97,1089 @@
       position:relative;
       z-index:1;
       min-height:100vh;
-      padding: 22px;
       display:grid;
-      grid-template-columns: 360px 1fr;
+      grid-template-columns: 320px 1fr;
       gap: 18px;
-      align-items:start;
-      max-width: 1320px;
-      margin: 0 auto;
+      padding: 18px;
     }
 
-    @media (max-width: 1080px){
-      .app{
-        grid-template-columns: 1fr;
-        padding: 16px;
-      }
-      .sidebar{ position: relative; }
+    @media (max-width: 980px){
+      .app{ grid-template-columns: 1fr; }
+      .side{ position:sticky; top:0; }
     }
 
-    /* Sidebar (brand + controls) */
-    .sidebar{
-      border:1px solid var(--stroke);
-      background: var(--panel);
+    .side{
+      border: 1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
       border-radius: var(--r);
       box-shadow: var(--shadow2);
-      backdrop-filter: blur(14px);
       overflow:hidden;
     }
 
-    .brand{
-      padding: 18px 18px 14px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-      display:flex;
-      gap: 12px;
-      align-items:center;
-    }
-
-    .logo{
-      width: 54px;
-      height: 54px;
-      border-radius: 18px;
-      border: 1px solid rgba(255,255,255,.16);
-      background:
-        radial-gradient(circle at 30% 30%, rgba(255,255,255,.18), rgba(255,255,255,0) 60%),
-        linear-gradient(135deg, rgba(85,247,214,.95), rgba(108,182,255,.95));
-      box-shadow: 0 18px 40px rgba(85,247,214,.18);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      flex:0 0 auto;
-    }
-    .logo svg{ width: 32px; height: 32px; }
-
-    .brand-meta{
+    .main{
+      border: 1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      overflow:hidden;
       display:flex;
       flex-direction:column;
-      gap: 4px;
-      min-width: 0;
-    }
-    .brand-meta strong{
-      font-size: 16px;
-      letter-spacing:.2px;
-      font-weight: 950;
-      line-height:1.1;
-    }
-    .brand-meta span{
-      font-size: 12px;
-      color: var(--muted);
-      line-height:1.35;
+      min-height: calc(100vh - 36px);
     }
 
-    .nav{
+    /* ---------- Brand / header ---------- */
+    .brand{
       display:flex;
-      gap: 10px;
-      padding: 14px 18px;
+      align-items:center;
+      gap: 12px;
+      padding: 16px 16px 12px 16px;
       border-bottom: 1px solid rgba(255,255,255,.10);
     }
 
-    .tab{
-      flex:1;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: var(--text);
-      padding: 11px 12px;
+    .mark{
+      width: 44px;
+      height: 44px;
       border-radius: 14px;
-      cursor:pointer;
-      font-weight: 950;
-      font-size: 13px;
-      transition: transform .12s ease, background .12s ease, border-color .12s ease;
-      user-select:none;
+      position:relative;
+      background: radial-gradient(18px 18px at 30% 30%, rgba(80,255,215,.95), rgba(80,255,215,0) 70%),
+                  radial-gradient(20px 20px at 75% 35%, rgba(101,183,255,.95), rgba(101,183,255,0) 72%),
+                  radial-gradient(22px 22px at 55% 80%, rgba(199,165,255,.90), rgba(199,165,255,0) 72%),
+                  linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+      border: 1px solid rgba(255,255,255,.16);
+      box-shadow: 0 0 28px rgba(80,255,215,.14), 0 0 26px rgba(101,183,255,.12);
+      overflow:hidden;
     }
-    .tab:hover{
-      transform: translateY(-1px);
-      background: rgba(255,255,255,.10);
-      border-color: rgba(108,182,255,.25);
+    .mark:after{
+      content:"";
+      position:absolute;
+      inset:-40%;
+      background: conic-gradient(from 180deg, rgba(80,255,215,.0), rgba(80,255,215,.25), rgba(101,183,255,.0), rgba(255,79,216,.18), rgba(199,165,255,.0));
+      animation: spin 7s linear infinite;
+      opacity:.85;
     }
-    .tab.active{
-      background: linear-gradient(135deg, rgba(85,247,214,.95), rgba(108,182,255,.95));
-      border-color: rgba(85,247,214,.30);
-      color: #041017;
+    @keyframes spin{ to{ transform: rotate(360deg);} }
+
+    .brand h1{
+      margin:0;
+      font-size: 18px;
+      letter-spacing:.6px;
+      font-weight: 800;
+      line-height:1.1;
+    }
+    .brand h1 span{
+      background: linear-gradient(90deg, var(--a1), var(--a2), var(--a3));
+      -webkit-background-clip: text;
+      background-clip:text;
+      color: transparent;
+      text-shadow: 0 0 22px rgba(101,183,255,.15);
+    }
+    .brand .sub{
+      margin-top:4px;
+      font-size: 12px;
+      color: var(--muted2);
+      line-height:1.2;
     }
 
-    .block{
-      padding: 16px 18px;
-      border-bottom: 1px solid rgba(255,255,255,.08);
+    /* ---------- Side nav ---------- */
+    .nav{
+      padding: 12px 12px 14px 12px;
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
     }
-    .block:last-child{ border-bottom:none; }
 
-    .block-title{
+    .navbtn{
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap: 10px;
-      margin-bottom: 10px;
+      width:100%;
+      padding: 12px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      color: var(--text);
+      cursor:pointer;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
     }
-    .block-title b{
-      font-size: 12px;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      color: rgba(243,247,255,.86);
+    .navbtn:hover{
+      transform: translateY(-1px);
+      border-color: rgba(101,183,255,.34);
+      background: rgba(0,0,0,.24);
     }
-
-    .pill{
-      display:inline-flex;
+    .navbtn .left{
+      display:flex;
       align-items:center;
-      gap: 8px;
+      gap: 10px;
+    }
+    .tag{
+      font-size: 11px;
       padding: 6px 10px;
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,.14);
+      color: var(--muted);
       background: rgba(255,255,255,.06);
-      font-weight: 950;
-      font-size: 12px;
-      color: rgba(243,247,255,.82);
-      white-space: nowrap;
-      user-select:none;
-    }
-    .pill.live{
-      border-color: rgba(34,197,94,.36);
-      background: rgba(34,197,94,.10);
-      color: #d9ffe9;
-    }
-    .pill.brand{
-      border-color: rgba(85,247,214,.26);
-      background: rgba(85,247,214,.08);
-      color: rgba(230,255,250,.95);
-    }
-
-    .row{ margin-top: 10px; }
-    label{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap: 10px;
-      font-size: 12px;
-      color: rgba(243,247,255,.84);
-      font-weight: 900;
-      margin-bottom: 6px;
-    }
-
-    input, select{
-      width:100%;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(2,5,12,.78);
-      color: var(--text);
-      padding: 11px 12px;
-      font-size: 13px;
-      font-weight: 750;
-      outline:none;
-    }
-    select option{ background:#0b1222; color:#f3f7ff; }
-    input:focus, select:focus{
-      outline: 3px solid rgba(108,182,255,.22);
-      outline-offset: 2px;
-    }
-
-    .status{
-      display:flex;
-      gap: 10px;
-      align-items:center;
-      justify-content:space-between;
-      margin-top: 12px;
-      padding: 10px 12px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.06);
-    }
-    .mini{
-      display:flex;
-      gap: 10px;
-      align-items:center;
-      color: rgba(243,247,255,.76);
-      font-weight: 900;
-      font-size: 12px;
-    }
-    .dot{
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: rgba(243,247,255,.40);
-    }
-    .ok .dot{ background: var(--ok); box-shadow: 0 0 0 5px rgba(34,197,94,.12); }
-    .warn .dot{ background: var(--warn); box-shadow: 0 0 0 5px rgba(245,158,11,.12); }
-
-    .hint{
-      margin-top: 10px;
-      font-size: 12px;
-      color: rgba(243,247,255,.66);
-      line-height: 1.5;
-    }
-
-    /* Hide history panel unless in chat view */
-    .history-panel{ display:none; }
-    body.is-chat .history-panel{ display:block; }
-
-    .history-list{
-      display:flex;
-      flex-direction:column;
-      gap: 8px;
-      max-height: 260px;
-      overflow:auto;
-      padding-right: 4px;
-    }
-    .history-item{
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(2,5,12,.55);
-      border-radius: 16px;
-      padding: 10px 10px;
-      cursor:pointer;
-      transition: transform .12s ease, background .12s ease, border-color .12s ease;
-    }
-    .history-item:hover{
-      transform: translateY(-1px);
-      background: rgba(255,255,255,.08);
-      border-color: rgba(108,182,255,.24);
-    }
-    .history-item.active{
-      border-color: rgba(85,247,214,.30);
-      background: rgba(255,255,255,.10);
-    }
-    .history-row{
-      display:flex;
-      justify-content:space-between;
-      gap: 10px;
-      align-items:flex-start;
-    }
-    .history-name{
-      font-weight: 950;
-      font-size: 12px;
-      color: rgba(243,247,255,.92);
-      line-height: 1.25;
-    }
-    .history-meta{
-      font-size: 11px;
-      color: rgba(243,247,255,.60);
       white-space:nowrap;
     }
-    .history-preview{
-      margin-top: 6px;
-      font-size: 12px;
-      color: rgba(243,247,255,.72);
-      line-height: 1.35;
-      display:-webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow:hidden;
-    }
-    .history-controls{
-      margin-top: 10px;
-      display:flex;
-      gap: 8px;
-    }
-    .history-btn{
-      flex:1;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.06);
-      color: rgba(243,247,255,.88);
-      padding: 8px 10px;
-      border-radius: 12px;
-      font-weight: 950;
-      font-size: 12px;
-      cursor:pointer;
-      transition: transform .12s ease, background .12s ease, border-color .12s ease;
-    }
-    .history-btn:hover{
-      transform: translateY(-1px);
-      background: rgba(255,255,255,.10);
-      border-color: rgba(108,182,255,.22);
+    .tag.live{
+      border-color: rgba(34,197,94,.45);
+      color: rgba(230,255,240,.92);
+      background: rgba(34,197,94,.10);
     }
 
-    .btn-mini{
+    /* ---------- Chat list (only in chat view) ---------- */
+    .chatlist{
+      display:none;
+      padding: 0 12px 12px 12px;
+    }
+    .chatlist.show{ display:block; }
+    .chatlist h3{
+      margin: 10px 4px 8px 4px;
+      font-size: 12px;
+      color: var(--muted2);
+      font-weight:700;
+      letter-spacing:.35px;
+      text-transform:uppercase;
+    }
+    .chatitem{
+      width:100%;
+      text-align:left;
+      padding: 10px 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.16);
+      color: var(--text);
+      cursor:pointer;
+      margin-bottom: 8px;
+      transition: border-color .15s ease, transform .15s ease;
+    }
+    .chatitem:hover{ transform: translateY(-1px); border-color: rgba(80,255,215,.28); }
+    .chatitem .t{ font-weight:750; font-size: 13px; }
+    .chatitem .s{ margin-top:3px; font-size: 11px; color: var(--muted2); }
+
+    .sidefoot{
+      padding: 12px 16px 14px 16px;
+      border-top: 1px solid rgba(255,255,255,.10);
+      color: var(--muted2);
+      font-size: 12px;
+      line-height:1.35;
+    }
+
+    /* ---------- Main header ---------- */
+    .topbar{
+      padding: 14px 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.12);
+    }
+    .crumb{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .crumb .title{
+      font-weight: 850;
+      letter-spacing:.25px;
+      font-size: 15px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .crumb .hint{
+      font-size: 12px;
+      color: var(--muted2);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .actions{
+      display:flex; gap:10px; align-items:center;
+    }
+    .btn{
+      padding: 10px 12px;
+      border-radius: 14px;
       border: 1px solid rgba(255,255,255,.14);
       background: rgba(255,255,255,.06);
       color: var(--text);
-      padding: 8px 10px;
-      border-radius: 12px;
-      font-weight: 950;
-      font-size: 12px;
       cursor:pointer;
-      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+      font-weight: 750;
+      font-size: 13px;
+      white-space:nowrap;
     }
-    .btn-mini:hover{
+    .btn:hover{
       transform: translateY(-1px);
+      border-color: rgba(101,183,255,.36);
       background: rgba(255,255,255,.10);
-      border-color: rgba(108,182,255,.22);
+    }
+    .btn.primary{
+      border-color: rgba(80,255,215,.38);
+      background: linear-gradient(135deg, rgba(80,255,215,.18), rgba(101,183,255,.12));
+      box-shadow: 0 0 24px rgba(80,255,215,.10);
     }
 
-    /* Content area */
-    .content{
-      border:1px solid var(--stroke);
-      background: var(--panel);
-      border-radius: var(--r);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(14px);
-      overflow:hidden;
-    }
-
-    .content-inner{ padding: 18px; }
+    /* ---------- Views ---------- */
+    .view{ display:none; padding: 18px; }
+    .view.show{ display:block; }
 
     .hero{
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.06);
+      padding: 16px;
       border-radius: var(--r);
-      padding: 18px;
-      box-shadow: 0 1px 0 rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.12);
+      background: radial-gradient(900px 320px at 20% 0%, rgba(80,255,215,.14), transparent 65%),
+                  radial-gradient(900px 320px at 90% 0%, rgba(101,183,255,.12), transparent 62%),
+                  rgba(0,0,0,.16);
+      box-shadow: var(--shadow2);
     }
-
     .hero h2{
       margin:0;
-      font-size: 18px;
+      font-size: 22px;
       letter-spacing:.2px;
-      font-weight: 980;
-      display:flex;
-      gap: 10px;
-      align-items:center;
-      flex-wrap: wrap;
     }
-
     .hero p{
-      margin: 10px 0 0;
-      color: rgba(243,247,255,.74);
-      font-size: 13px;
-      line-height: 1.55;
-      max-width: 80ch;
+      margin:8px 0 0 0;
+      color: var(--muted);
+      max-width: 920px;
+      line-height:1.5;
     }
-
     .quote{
       margin-top: 12px;
       padding: 12px 14px;
       border-radius: 16px;
       border: 1px solid rgba(255,255,255,.12);
-      background: rgba(2,5,12,.55);
-      color: rgba(243,247,255,.80);
-      font-weight: 800;
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    .top-row{
-      display:grid;
-      grid-template-columns: 1fr 340px;
-      gap: 16px;
-      align-items:start;
-      margin-top: 16px;
-    }
-    @media (max-width: 980px){
-      .top-row{ grid-template-columns: 1fr; }
-    }
-
-    .auth-top{
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.06);
-      border-radius: var(--r);
-      padding: 16px;
-      box-shadow: 0 1px 0 rgba(255,255,255,.03);
-    }
-    .auth-title{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-    .auth-title span:first-child{
-      font-weight: 980;
-      font-size: 14px;
-    }
-
-    .btn{
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: var(--text);
-      padding: 11px 12px;
-      border-radius: 14px;
-      font-weight: 950;
-      font-size: 13px;
-      cursor:pointer;
-      transition: transform .12s ease, background .12s ease, border-color .12s ease, box-shadow .12s ease;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap: 8px;
-      user-select:none;
-      width:100%;
-    }
-    .btn:hover{
-      transform: translateY(-1px);
-      background: rgba(255,255,255,.10);
-      border-color: rgba(108,182,255,.22);
-      box-shadow: 0 12px 26px rgba(0,0,0,.22);
-    }
-    .btn.primary{
-      background: linear-gradient(135deg, rgba(85,247,214,.95), rgba(108,182,255,.95));
-      border-color: rgba(85,247,214,.26);
-      color: #041017;
-      width:auto;
-    }
-    .btn.small{
-      padding: 10px 12px;
-      width:100%;
-    }
-
-    .auth-hint{
-      margin-top: 10px;
-      font-size: 12px;
-      color: rgba(243,247,255,.68);
+      background: rgba(0,0,0,.18);
+      color: rgba(244,247,255,.92);
       line-height:1.45;
     }
 
-    .section-title{
-      margin: 18px 2px 10px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-    }
-    .section-title h3{
-      margin:0;
-      font-size: 13px;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      color: rgba(243,247,255,.86);
-      font-weight: 980;
-    }
-
-    .grid-cards{
+    .grid{
+      margin-top: 14px;
       display:grid;
-      grid-template-columns: repeat(2, minmax(0,1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 14px;
     }
     @media (max-width: 980px){
-      .grid-cards{ grid-template-columns: 1fr; }
+      .grid{ grid-template-columns: 1fr; }
     }
 
     .card{
-      border:1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.06);
       border-radius: var(--r);
-      padding: 16px;
-      box-shadow: 0 1px 0 rgba(255,255,255,.03);
-      transition: transform .14s ease, background .14s ease, border-color .14s ease, box-shadow .14s ease;
-      cursor:pointer;
-      min-height: 170px;
-      position:relative;
-      overflow:hidden;
-    }
-    .card:hover{
-      transform: translateY(-2px);
-      border-color: rgba(108,182,255,.26);
-      background: rgba(255,255,255,.09);
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.16);
       box-shadow: var(--shadow2);
-    }
-    .card::after{
-      content:"";
-      position:absolute;
-      width: 320px; height: 320px;
-      border-radius: 999px;
-      top:-190px; right:-190px;
-      background: radial-gradient(circle, rgba(85,247,214,.14), rgba(85,247,214,0) 66%);
-      pointer-events:none;
-    }
-
-    .card-head{
+      padding: 14px;
       display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+    .cardhead{
+      display:flex;
+      align-items:flex-start;
       justify-content:space-between;
-      gap: 12px;
-      align-items:flex-start;
+      gap: 10px;
     }
-
-    .card-title{
+    .cardtitle{
       display:flex;
       gap: 12px;
       align-items:flex-start;
-      min-width:0;
     }
-
     .icon{
-      width: 44px;
-      height: 44px;
-      border-radius: 16px;
-      border:1px solid rgba(255,255,255,.14);
-      background: linear-gradient(135deg, rgba(108,182,255,.95), rgba(85,247,214,.95));
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      color:#041017;
-      font-weight: 980;
-      flex:0 0 auto;
-      box-shadow: 0 16px 30px rgba(0,0,0,.30);
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display:grid;
+      place-items:center;
+      font-weight: 900;
+      letter-spacing:.4px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: linear-gradient(135deg, rgba(80,255,215,.14), rgba(101,183,255,.10), rgba(199,165,255,.08));
+      box-shadow: 0 0 22px rgba(101,183,255,.08);
     }
+    .card h4{ margin:0; font-size: 15px; }
+    .card p{ margin:6px 0 0 0; color: var(--muted); line-height:1.45; }
 
-    .card-title h4{
-      margin: 0;
-      font-size: 15px;
-      font-weight: 980;
-      letter-spacing:.2px;
-    }
-    .card-title p{
-      margin: 6px 0 0;
-      font-size: 12.5px;
-      color: rgba(243,247,255,.72);
-      line-height: 1.45;
-      max-width: 70ch;
+    .pill{
+      font-size: 11px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      color: var(--muted);
+      background: rgba(255,255,255,.06);
+      white-space:nowrap;
+      align-self:flex-start;
     }
 
     .cta{
-      margin-top: 14px;
       display:flex;
+      align-items:center;
       justify-content:space-between;
       gap: 10px;
-      align-items:center;
-      flex-wrap: wrap;
+      margin-top:auto;
     }
 
-    .footer{
-      margin-top: 18px;
-      padding: 14px 4px 0;
+    /* ---------- Chat UI ---------- */
+    .chatwrap{
       display:flex;
-      align-items:center;
-      justify-content:space-between;
+      flex-direction:column;
       gap: 12px;
-      color: rgba(243,247,255,.62);
-      font-size: 12px;
-      flex-wrap: wrap;
+      height: calc(100vh - 168px);
+      min-height: 520px;
     }
-    .footer-left{
-      display:flex;
-      align-items:center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .sep{
-      width: 6px;
-      height: 6px;
-      border-radius: 99px;
-      background: rgba(85,247,214,.35);
-      box-shadow: 0 0 0 4px rgba(85,247,214,.12);
-    }
-
-    /* Views */
-    .view{ display:none; }
-    .view.active{ display:block; }
-
-    /* Chat */
-    .chat-shell{
+    .chatbox{
+      flex: 1;
       border-radius: var(--r);
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.06);
-      overflow:hidden;
-      box-shadow: var(--shadow2);
-    }
-
-    .chat-top{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap: 12px;
-      padding: 14px 14px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-      background: rgba(2,5,12,.55);
-      backdrop-filter: blur(12px);
-    }
-    .chat-top strong{ font-size: 14px; }
-    .chat-top span{ font-size: 12px; color: rgba(243,247,255,.72); }
-
-    .chat-help{
-      padding: 12px 14px;
-      border-bottom: 1px solid rgba(255,255,255,.08);
-      display:flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .chip{
       border: 1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.06);
-      color: var(--text);
-      padding: 9px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 950;
-      cursor:pointer;
-      transition: transform .12s ease, background .12s ease, border-color .12s ease;
-      user-select:none;
-    }
-    .chip:hover{
-      transform: translateY(-1px);
-      background: rgba(255,255,255,.10);
-      border-color: rgba(108,182,255,.22);
-    }
-
-    .chat-log{
-      height: 62vh;
-      overflow-y:auto;
+      background: rgba(0,0,0,.14);
       padding: 14px;
-      background:
-        radial-gradient(900px 480px at 20% 0%, rgba(108,182,255,.12), rgba(108,182,255,0) 62%),
-        radial-gradient(900px 480px at 90% 10%, rgba(85,247,214,.10), rgba(85,247,214,0) 55%),
-        rgba(0,0,0,.10);
+      overflow:auto;
     }
 
-    .msg{ display:flex; margin-bottom: 12px; }
-    .msg.user{ justify-content:flex-end; }
-
-    .bubble{
-      max-width: min(820px, 92%);
-      padding: 10px 12px;
-      border-radius: 16px;
+    .msg{
+      max-width: 78%;
+      padding: 12px 12px;
+      border-radius: 18px;
+      margin: 10px 0;
+      line-height:1.5;
       border: 1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.06);
-      box-shadow: 0 1px 0 rgba(255,255,255,.03);
-      font-size: 13px;
-      line-height: 1.55;
       white-space: pre-wrap;
+      word-wrap: break-word;
     }
-    .msg.user .bubble{
-      background: linear-gradient(135deg, rgba(85,247,214,.95), rgba(108,182,255,.95));
-      border-color: rgba(85,247,214,.20);
-      color: #041017;
-      font-weight: 760;
+    .msg.user{
+      margin-left:auto;
+      background: linear-gradient(135deg, rgba(80,255,215,.18), rgba(101,183,255,.12));
+      border-color: rgba(80,255,215,.30);
+      box-shadow: 0 0 18px rgba(80,255,215,.06);
     }
-
-    .meta{
-      font-size: 11px;
-      color: rgba(243,247,255,.55);
-      margin-top: 6px;
-    }
-    .msg.user .meta{ text-align:right; }
-
-    .typing{
-      display:inline-flex;
-      align-items:center;
-      gap: 6px;
-      color: rgba(243,247,255,.72);
-      font-weight: 800;
-    }
-    .dots{
-      display:inline-flex;
-      gap: 4px;
-      transform: translateY(1px);
-    }
-    .dots span{
-      width: 6px; height: 6px;
-      border-radius: 99px;
-      background: rgba(243,247,255,.42);
-      animation: dot 1.2s infinite ease-in-out;
-    }
-    .dots span:nth-child(2){ animation-delay: .15s; }
-    .dots span:nth-child(3){ animation-delay: .30s; }
-    @keyframes dot{
-      0%,100%{ opacity:.35; transform: translateY(0); }
-      50%{ opacity:1; transform: translateY(-2px); }
+    .msg.ai{
+      background: rgba(255,255,255,.06);
     }
 
-    .chat-input{
+    .composer{
       display:flex;
       gap: 10px;
       align-items:flex-end;
-      padding: 12px;
-      border-top: 1px solid rgba(255,255,255,.10);
-      background: rgba(2,5,12,.60);
-      backdrop-filter: blur(12px);
-      position: sticky;
-      bottom: 0;
     }
     textarea{
-      width:100%;
+      flex:1;
       min-height: 46px;
-      max-height: 160px;
-      resize:none;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(2,5,12,.78);
+      max-height: 150px;
+      resize: vertical;
+      padding: 12px 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.20);
       color: var(--text);
-      font-family: var(--font);
-      font-size: 13px;
-      padding: 10px 12px;
-      line-height: 1.35;
+      outline:none;
+      line-height:1.4;
     }
-    textarea::placeholder{ color: rgba(243,247,255,.55); }
-    textarea:focus{ outline: 3px solid rgba(108,182,255,.22); outline-offset: 2px; }
+    textarea:focus{
+      border-color: rgba(101,183,255,.40);
+      box-shadow: 0 0 0 3px rgba(101,183,255,.12);
+    }
+
+    .row{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .toggle{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      color: var(--muted);
+      font-size: 12px;
+      user-select:none;
+    }
+    .toggle input{ transform: translateY(1px); }
+
+    /* ---------- Toast ---------- */
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      z-index: 50;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(10px);
+      color: rgba(244,247,255,.95);
+      box-shadow: var(--shadow2);
+      display:none;
+      max-width: min(680px, calc(100vw - 26px));
+      line-height:1.4;
+    }
+    .toast.show{ display:block; animation: pop .18s ease; }
+    @keyframes pop{ from{ transform: translateX(-50%) translateY(8px); opacity:0; } to{ transform: translateX(-50%) translateY(0); opacity:1; } }
+
+    /* ---------- Footer ---------- */
+    .footer{
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-top: 1px solid rgba(255,255,255,.10);
+      color: var(--muted2);
+      font-size: 12px;
+      line-height:1.35;
+      display:flex;
+      justify-content:space-between;
+      gap: 10px;
+      flex-wrap:wrap;
+      background: rgba(0,0,0,.10);
+    }
+    .copy{
+      color: rgba(244,247,255,.78);
+    }
   </style>
 </head>
 
 <body>
-  <div class="bg-wrap" aria-hidden="true">
+  <div class="bg-wrap">
     <div class="aurora"></div>
-    <div class="grid"></div>
     <canvas id="particles"></canvas>
+    <div class="vignette"></div>
   </div>
 
   <div class="app">
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
+    <!-- SIDE -->
+    <aside class="side">
       <div class="brand">
-        <div class="logo" aria-label="Raheem AI logo">
-          <!-- same logo SVG you had -->
-          <svg viewBox="0 0 48 48" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-            <rect x="7" y="7" width="34" height="34" rx="7" stroke="rgba(255,255,255,.92)" stroke-width="2"/>
-            <path d="M15 16H30V30H22.5C18.9 30 16 27.1 16 23.5V16Z" stroke="rgba(255,255,255,.88)" stroke-width="2"/>
-            <path d="M22.5 30V35" stroke="rgba(255,255,255,.88)" stroke-width="2" stroke-linecap="round"/>
-            <path d="M13 24H20" stroke="rgba(255,255,255,.40)" stroke-width="1.6" stroke-linecap="round"/>
-            <path d="M13 20H20" stroke="rgba(255,255,255,.40)" stroke-width="1.6" stroke-linecap="round"/>
-            <path d="M13 28H20" stroke="rgba(255,255,255,.40)" stroke-width="1.6" stroke-linecap="round"/>
-            <path d="M30.5 19.5L34 23" stroke="rgba(255,255,255,.96)" stroke-width="2.6" stroke-linecap="round"/>
-            <path d="M34 23L40 17" stroke="rgba(255,255,255,.96)" stroke-width="2.6" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <div class="brand-meta">
-          <strong>Raheem AI</strong>
-          <span>Talk normally. When it becomes a compliance question, it switches automatically.</span>
+        <div class="mark" aria-hidden="true"></div>
+        <div>
+          <h1><span>Raheem AI</span></h1>
+          <div class="sub">Construction compliance + project intelligence</div>
         </div>
       </div>
 
       <div class="nav">
-        <button class="tab active" id="navDashboard" type="button">Home</button>
-        <button class="tab" id="navChat" type="button">Chat</button>
-        <button class="tab" id="navFuture" type="button">Future</button>
-      </div>
-
-      <div class="block">
-        <div class="block-title">
-          <b>Guidance</b>
-          <span class="pill brand" id="pdfCount">Docs 0</span>
-        </div>
-
-        <div class="row">
-          <label for="pdfSearch">Search documents <span class="pill" id="syncInline">sync</span></label>
-          <input id="pdfSearch" type="text" placeholder="Type to filter document names" />
-        </div>
-
-        <div class="row">
-          <label for="pdfSelect">Force a document <span class="pill brand" id="chipDoc">Auto mode</span></label>
-          <select id="pdfSelect">
-            <option value="">Auto mode</option>
-          </select>
-        </div>
-
-        <div class="status" id="serviceStatusWrap">
-          <div class="mini warn" id="serviceStatus"><span class="dot"></span>Connecting</div>
-          <div class="pill" id="lastSync">Updated</div>
-        </div>
-
-        <div class="hint">
-          Auto mode is recommended. Use “Force a document” only when you want to pin a source.
-        </div>
-      </div>
-
-      <div class="block history-panel" id="historyPanel">
-        <div class="block-title">
-          <b>Saved chats</b>
-          <div style="display:flex;gap:8px">
-            <button class="btn-mini" type="button" id="btnNewChat">New</button>
-            <button class="btn-mini" type="button" id="btnClearChats">Clear</button>
+        <button class="navbtn" id="navHome" type="button">
+          <div class="left">
+            <span class="tag">Dashboard</span>
+            <div style="min-width:0">
+              <div style="font-weight:850">Overview</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Live tools + roadmap</div>
+            </div>
           </div>
+          <span class="tag">↗</span>
+        </button>
+
+        <button class="navbtn" id="navChat" type="button">
+          <div class="left">
+            <span class="tag live">Live</span>
+            <div style="min-width:0">
+              <div style="font-weight:850">Chat</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Best-friend + compliance brain</div>
+            </div>
+          </div>
+          <span class="tag">↗</span>
+        </button>
+
+        <button class="navbtn" id="navFuture" type="button">
+          <div class="left">
+            <span class="tag">Roadmap</span>
+            <div style="min-width:0">
+              <div style="font-weight:850">Future Features</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Reports, BIM, manufacturers</div>
+            </div>
+          </div>
+          <span class="tag">↗</span>
+        </button>
+      </div>
+
+      <div class="chatlist" id="chatList">
+        <h3>Saved chats</h3>
+        <div id="chatItems"></div>
+        <button class="btn" id="btnNewChat" type="button" style="width:100%; margin-top:6px;">New chat</button>
+      </div>
+
+      <div class="sidefoot">
+        <div style="font-weight:800; color: rgba(244,247,255,.85)">Built for professionals.</div>
+        <div style="margin-top:6px;">
+          Calm answers when it’s casual.<br/>
+          Proper citations when it’s compliance.
         </div>
-        <div class="history-list" id="historyList"></div>
-        <div class="hint">Chats are stored locally in your browser.</div>
       </div>
     </aside>
 
-    <!-- CONTENT -->
-    <main class="content">
-      <div class="content-inner">
-        <!-- DASHBOARD -->
-        <section id="view-dashboard" class="view active">
-          <div class="top-row">
-            <div class="hero">
-              <h2>Raheem AI <span class="pill brand">2026</span> <span class="pill live">Live</span></h2>
-              <p>
-                A calm, professional assistant for Irish building regulation guidance.
-                Ask in plain language. It will select the right guidance and answer with clear support.
-              </p>
-              <div class="quote">
-                Good compliance starts early. The best time to catch a problem is before it becomes a drawing.
-              </div>
-            </div>
-
-            <div class="auth-top">
-              <div class="auth-title">
-                <span>Sign in</span>
-                <span class="pill brand">Coming</span>
-              </div>
-              <button class="btn small" type="button">Continue with Google</button>
-              <div class="auth-hint">
-                Sign in will unlock saved projects, access control, and shared chat history.
-                For now, chats save locally in your browser.
-              </div>
-            </div>
-          </div>
-
-          <div class="section-title"><h3>Live</h3></div>
-
-          <div class="grid-cards">
-            <article class="card" id="cardCompliance" role="button" tabindex="0">
-              <div class="card-head">
-                <div class="card-title">
-                  <div class="icon">CG</div>
-                  <div>
-                    <h4>Compliance Guidance</h4>
-                    <p>Ask anything. Raheem AI selects the most relevant guidance and answers logically with support.</p>
-                  </div>
-                </div>
-                <span class="pill live">Live</span>
-              </div>
-              <div class="cta">
-                <span class="pill brand" id="chipDoc2">Auto mode</span>
-                <button class="btn primary" id="btnOpenChat" type="button">Start</button>
-              </div>
-            </article>
-
-            <article class="card" id="cardRoadmap" role="button" tabindex="0">
-              <div class="card-head">
-                <div class="card-title">
-                  <div class="icon">FF</div>
-                  <div>
-                    <h4>Future Features</h4>
-                    <p>Early Design, structured reports, BIM review, energy compliance, and certification workflows.</p>
-                  </div>
-                </div>
-                <span class="pill brand">Roadmap</span>
-              </div>
-              <div class="cta">
-                <span class="pill brand">Preview roadmap</span>
-                <button class="btn" id="btnOpenFuture" type="button" style="width:auto">View</button>
-              </div>
-            </article>
-          </div>
-
-          <div class="footer">
-            <div class="footer-left">
-              <span class="pill brand">Raheem AI</span>
-              <span class="sep" aria-hidden="true"></span>
-              <span>Built 2026</span>
-              <span class="sep" aria-hidden="true"></span>
-              <span>Abdulraheem Hayder Ahmed · C22310933 · TU Dublin · Architectural Technology</span>
-            </div>
-          </div>
-        </section>
-
-        <!-- FUTURE -->
-        <section id="view-future" class="view">
-          <div class="hero" style="margin-bottom:14px;">
-            <h2>Future Features <span class="pill brand">Roadmap</span></h2>
-            <p>
-              Expanding Raheem AI into a full compliance and certification workflow.
-              Outputs will be clear, structured, and verifiable.
-            </p>
-            <div class="quote">
-              Move faster by knowing earlier. Reduce rework by catching risks before they become drawings.
-            </div>
-          </div>
-
-          <div class="grid-cards">
-            <article class="card">
-              <div class="card-head">
-                <div class="card-title">
-                  <div class="icon">ED</div>
-                  <div>
-                    <h4>Early Design</h4>
-                    <p>Enter areas and requirements. Generate basic layout options and refine the best direction.</p>
-                  </div>
-                </div>
-                <span class="pill brand">Roadmap</span>
-              </div>
-              <div class="cta">
-                <span class="pill brand">Example, 30m², 2 bed, kitchen</span>
-                <button class="btn" type="button" style="width:auto">Preview</button>
-              </div>
-            </article>
-
-            <article class="card">
-              <div class="card-head">
-                <div class="card-title">
-                  <div class="icon">DAC</div>
-                  <div>
-                    <h4>DAC Report Generator</h4>
-                    <p>Draft structured DAC reports aligned to guidance and project inputs, ready for review.</p>
-                  </div>
-                </div>
-                <span class="pill brand">Roadmap</span>
-              </div>
-              <div class="cta">
-                <span class="pill brand">Access and use</span>
-                <button class="btn" type="button" style="width:auto">Preview</button>
-              </div>
-            </article>
-
-            <!-- KEEP SPACE FOR MORE FUTURE FEATURES YOU ALREADY HAD -->
-            <!-- If your old file had more cards, paste them here and they will match styling. -->
-          </div>
-
-          <div class="footer">
-            <div class="footer-left">
-              <span class="pill brand">Raheem AI</span>
-              <span class="sep" aria-hidden="true"></span>
-              <span>Built 2026</span>
-              <span class="sep" aria-hidden="true"></span>
-              <span>Abdulraheem Hayder Ahmed · C22310933 · TU Dublin · Architectural Technology</span>
-            </div>
-          </div>
-        </section>
-
-        <!-- CHAT -->
-        <section id="view-chat" class="view">
-          <div class="chat-shell">
-            <div class="chat-top">
-              <div>
-                <strong>Chat</strong><br>
-                <span id="chatSub">Auto mode, Raheem AI chooses the right guidance</span>
-              </div>
-              <button class="btn" id="btnBack" type="button" style="width:auto">Back</button>
-            </div>
-
-            <div class="chat-help">
-              <button class="chip" type="button" data-prompt="What are the typical travel distance limits for an office?">Travel distance</button>
-              <button class="chip" type="button" data-prompt="What are the key requirements for an accessible WC?">Accessible WC</button>
-              <button class="chip" type="button" data-prompt="What are the main requirements for stair widths?">Stairs</button>
-              <button class="chip" type="button" data-prompt="What is the difference between compartments and sub-compartments?">Compartmentation</button>
-            </div>
-
-            <div class="chat-log" id="chatLog"></div>
-
-            <div class="chat-input">
-              <textarea id="chatInput" placeholder="Type your message. Enter to send. Shift+Enter for a new line."></textarea>
-              <button class="btn primary" id="btnSend" type="button" style="width:auto">Send</button>
-            </div>
-          </div>
-        </section>
-
+    <!-- MAIN -->
+    <main class="main">
+      <div class="topbar">
+        <div class="crumb">
+          <div class="title" id="viewTitle">Overview</div>
+          <div class="hint" id="viewHint">Live tools + roadmap</div>
+        </div>
+        <div class="actions">
+          <button class="btn" id="btnPing" type="button">Health</button>
+          <button class="btn primary" id="btnSwagger" type="button">Swagger</button>
+        </div>
       </div>
+
+      <!-- OVERVIEW -->
+      <section class="view show" id="viewHome">
+        <div class="hero">
+          <h2>Fast answers. Fewer mistakes. Less rework.</h2>
+          <p>
+            Raheem AI is built to chat like a normal human when you're brainstorming,
+            and switch into serious compliance mode the second you ask something technical.
+          </p>
+          <div class="quote">
+            “If it’s a quick idea — we talk. If it’s a regulation — we verify.”
+          </div>
+        </div>
+
+        <div class="grid">
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">CG</div>
+                <div>
+                  <h4>Compliance Guidance (Live)</h4>
+                  <p>Ask anything. It will search the right guidance and answer with support when needed.</p>
+                </div>
+              </div>
+              <span class="pill" style="border-color: rgba(34,197,94,.45); background: rgba(34,197,94,.10); color: rgba(230,255,240,.92)">Live</span>
+            </div>
+            <div class="cta">
+              <span class="pill">Auto mode • optional force-docs</span>
+              <button class="btn primary" id="btnStartChat" type="button">Start</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">FF</div>
+                <div>
+                  <h4>Future Features (Roadmap)</h4>
+                  <p>Reports, BIM review, manufacturer/spec search, energy workflows — all inside the same platform.</p>
+                </div>
+              </div>
+              <span class="pill">Roadmap</span>
+            </div>
+            <div class="cta">
+              <span class="pill">Preview the plan</span>
+              <button class="btn" id="btnOpenFuture" type="button">View</button>
+            </div>
+          </article>
+        </div>
+
+        <div class="footer">
+          <div class="copy">© 2026 Abdulraheem Hayder Ahmed · C22310933 · TU Dublin · Architectural Technology</div>
+          <div>Raheem AI — Construction Compliance Intelligence</div>
+        </div>
+      </section>
+
+      <!-- CHAT -->
+      <section class="view" id="viewChat">
+        <div class="hero">
+          <h2>Chat</h2>
+          <p>
+            Talk normally. If you drift into regs/compliance, it snaps into professional mode automatically.
+            (You can also force document mode if you want it extra strict.)
+          </p>
+        </div>
+
+        <div class="chatwrap">
+          <div class="row" style="justify-content:space-between;">
+            <div class="row">
+              <label class="toggle">
+                <input type="checkbox" id="forceDocs"/>
+                Force document mode
+              </label>
+            </div>
+            <div class="row">
+              <button class="btn" id="btnClear" type="button">Clear chat</button>
+            </div>
+          </div>
+
+          <div class="chatbox" id="chatBox"></div>
+
+          <div class="composer">
+            <textarea id="msg" placeholder="Say something…"></textarea>
+            <button class="btn primary" id="send" type="button">Send</button>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div class="copy">© 2026 Abdulraheem Hayder Ahmed · C22310933 · TU Dublin · Architectural Technology</div>
+          <div>Tip: If you want exact numbers, toggle “Force document mode”.</div>
+        </div>
+      </section>
+
+      <!-- FUTURE -->
+      <section class="view" id="viewFuture">
+        <div class="hero">
+          <h2>Future Features</h2>
+          <p>
+            Expanding Raheem AI into a full compliance and certification workflow — clear, structured, verifiable outputs.
+          </p>
+          <div class="quote">
+            The roadmap is ambitious. The goal is simple: fewer errors, faster approvals, less stress.
+          </div>
+        </div>
+
+        <div class="grid">
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">ED</div>
+                <div>
+                  <h4>Early Design</h4>
+                  <p>Enter areas + requirements. Generate layout directions and refine the best option.</p>
+                </div>
+              </div>
+              <span class="pill">Roadmap</span>
+            </div>
+            <div class="cta">
+              <span class="pill">Example: 30m² • 2 bed • kitchen</span>
+              <button class="btn" data-soon="Early Design">Preview</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">DAC</div>
+                <div>
+                  <h4>DAC Report Generator</h4>
+                  <p>Draft structured DAC reports aligned to guidance and project inputs, ready for review.</p>
+                </div>
+              </div>
+              <span class="pill">Roadmap</span>
+            </div>
+            <div class="cta">
+              <span class="pill">Access & use</span>
+              <button class="btn" data-soon="DAC Reports">Preview</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">FCS</div>
+                <div>
+                  <h4>Fire Cert Report Generator</h4>
+                  <p>Generate structured fire safety report drafts with consistent headings and traceable checks.</p>
+                </div>
+              </div>
+              <span class="pill">Roadmap</span>
+            </div>
+            <div class="cta">
+              <span class="pill">TGD B + workflow</span>
+              <button class="btn" data-soon="Fire Cert Reports">Preview</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">MFG</div>
+                <div>
+                  <h4>Manufacturer & Spec Search</h4>
+                  <p>Auto-search local manufacturers and specs using element parameters and project context.</p>
+                </div>
+              </div>
+              <span class="pill">Roadmap</span>
+            </div>
+            <div class="cta">
+              <span class="pill">Local + verified sources</span>
+              <button class="btn" data-soon="Manufacturer Search">Preview</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="cardhead">
+              <div class="cardtitle">
+                <div class="icon">BER</div>
+                <div>
+                  <h4>BER Report Generator</h4>
+                  <p>Learn DEAP logic, import a Revit model, auto-fill what we can — manual input only where needed.</p>
+                </div>
+              </div>
+              <span class="pill">Roadmap</span>
+            </div>
+            <div class="cta">
+              <span class="pill">DEAP + Revit import</span>
+              <button class="btn" data-soon="BER Reports">Preview</button>
+            </div>
+          </article>
+        </div>
+
+        <div class="footer">
+          <div class="copy">© 2026 Abdulraheem Hayder Ahmed · C22310933 · TU Dublin · Architectural Technology</div>
+          <div>Roadmap items are under active design.</div>
+        </div>
+      </section>
     </main>
   </div>
 
+  <div class="toast" id="toast"></div>
+
   <script>
-    const API_BASE = "https://complyr.onrender.com";
-
-    // Views
-    const viewDashboard = document.getElementById("view-dashboard");
-    const viewFuture = document.getElementById("view-future");
-    const viewChat = document.getElementById("view-chat");
-
-    const navDashboard = document.getElementById("navDashboard");
-    const navChat = document.getElementById("navChat");
-    const navFuture = document.getElementById("navFuture");
-
-    function setNavActive(which){
-      navDashboard.classList.toggle("active", which === "dashboard");
-      navChat.classList.toggle("active", which === "chat");
-      navFuture.classList.toggle("active", which === "future");
+    // --------------------------
+    // Simple toast
+    // --------------------------
+    const toast = document.getElementById("toast");
+    let toastTimer = null;
+    function showToast(msg){
+      toast.textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(()=>toast.classList.remove("show"), 2600);
     }
 
-    function setBodyMode(which){
-      document.body.classList.toggle("is-chat", which === "chat");
-    }
+    // --------------------------
+    // Navigation
+    // --------------------------
+    const viewTitle = document.getElementById("viewTitle");
+    const viewHint  = document.getElementById("viewHint");
+    const viewHome  = document.getElementById("viewHome");
+    const viewChat  = document.getElementById("viewChat");
+    const viewFuture= document.getElementById("viewFuture");
 
-    function showView(name){
-      viewDashboard.classList.toggle("active", name === "dashboard");
-      viewChat.classList.toggle("active", name === "chat");
-      viewFuture.classList.toggle("active", name === "future");
-      setNavActive(name);
-      setBodyMode(name);
-      if(name === "chat"){
-        setTimeout(() => document.getElementById("chatInput").focus(), 40);
+    const chatList  = document.getElementById("chatList");
+
+    function showView(which){
+      [viewHome, viewChat, viewFuture].forEach(v=>v.classList.remove("show"));
+      chatList.classList.remove("show");
+
+      if(which==="home"){
+        viewHome.classList.add("show");
+        viewTitle.textContent = "Overview";
+        viewHint.textContent  = "Live tools + roadmap";
+      }
+      if(which==="chat"){
+        viewChat.classList.add("show");
+        viewTitle.textContent = "Chat";
+        viewHint.textContent  = "Memory stays per conversation";
+        chatList.classList.add("show");
+        renderChatList();
+      }
+      if(which==="future"){
+        viewFuture.classList.add("show");
+        viewTitle.textContent = "Future Features";
+        viewHint.textContent  = "Roadmap preview";
       }
     }
 
-    function goDash(){ location.hash = "#/"; }
-    function openChat(){ location.hash = "#/chat"; }
-    function openFuture(){ location.hash = "#/future"; }
+    document.getElementById("navHome").onclick  = ()=>showView("home");
+    document.getElementById("navChat").onclick  = ()=>showView("chat");
+    document.getElementById("navFuture").onclick= ()=>showView("future");
 
-    function handleRoute(){
-      const h = location.hash || "#/";
-      if(h === "#/chat") showView("chat");
-      else if(h === "#/future") showView("future");
-      else showView("dashboard");
-    }
-    window.addEventListener("hashchange", handleRoute);
-    handleRoute();
+    document.getElementById("btnStartChat").onclick = ()=>showView("chat");
+    document.getElementById("btnOpenFuture").onclick = ()=>showView("future");
 
-    navDashboard.addEventListener("click", goDash);
-    navChat.addEventListener("click", openChat);
-    navFuture.addEventListener("click", openFuture);
-
-    document.getElementById("btnOpenChat").addEventListener("click", openChat);
-    document.getElementById("btnBack").addEventListener("click", goDash);
-    document.getElementById("btnOpenFuture").addEventListener("click", openFuture);
-
-    document.getElementById("cardCompliance").addEventListener("click", openChat);
-    document.getElementById("cardRoadmap").addEventListener("click", openFuture);
-
-    // Docs panel
-    const pdfCount = document.getElementById("pdfCount");
-    const pdfSelect = document.getElementById("pdfSelect");
-    const pdfSearch = document.getElementById("pdfSearch");
-    const chatSub = document.getElementById("chatSub");
-    const chipDoc = document.getElementById("chipDoc");
-    const chipDoc2 = document.getElementById("chipDoc2");
-
-    const serviceStatus = document.getElementById("serviceStatus");
-    const lastSync = document.getElementById("lastSync");
-    const syncInline = document.getElementById("syncInline");
-
-    let allDocs = [];
-    let activePdf = "";
-
-    function setActivePdf(name){
-      activePdf = name || "";
-      const label = activePdf ? ("Pinned, " + activePdf) : "Auto mode";
-      chatSub.textContent = activePdf ? ("Pinned document, " + activePdf) : "Auto mode, Raheem AI chooses the right guidance";
-      chipDoc.textContent = label;
-      chipDoc2.textContent = label;
-      persistActiveChat();
-      renderHistory();
-    }
-
-    function setSyncLabel(){
-      const d = new Date();
-      const t = d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-      lastSync.textContent = "Updated " + t;
-      syncInline.textContent = t;
-    }
-
-    function fillSelect(list){
-      const current = activePdf;
-      pdfSelect.innerHTML = "";
-      const autoOpt = document.createElement("option");
-      autoOpt.value = "";
-      autoOpt.textContent = "Auto mode";
-      pdfSelect.appendChild(autoOpt);
-
-      const sorted = list.slice().sort((a,b)=>a.localeCompare(b, undefined, {sensitivity:"base"}));
-      for(const name of sorted){
-        const opt = document.createElement("option");
-        opt.value = name;
-        opt.textContent = name;
-        pdfSelect.appendChild(opt);
-      }
-      pdfSelect.value = current;
-    }
-
-    async function refreshDocs(){
+    // Swagger + health
+    document.getElementById("btnSwagger").onclick = ()=> window.open("/swagger", "_blank");
+    document.getElementById("btnPing").onclick = async ()=>{
       try{
-        const r = await fetch(API_BASE + "/pdfs", { cache: "no-store" });
-        if(!r.ok) throw new Error("bad");
-        const data = await r.json();
-        allDocs = Array.isArray(data.pdfs) ? data.pdfs : [];
-        const count = (typeof data.count === "number") ? data.count : allDocs.length;
-
-        pdfCount.textContent = "Docs " + count;
-
-        serviceStatus.classList.remove("warn");
-        serviceStatus.classList.add("ok");
-        serviceStatus.innerHTML = '<span class="dot"></span>Service ready';
-
-        setSyncLabel();
-        fillSelect(allDocs);
-
-        if(activePdf && !allDocs.includes(activePdf)){
-          setActivePdf("");
-          pdfSelect.value = "";
-        }
-      } catch(e){
-        pdfCount.textContent = "Docs 0";
-        serviceStatus.classList.remove("ok");
-        serviceStatus.classList.add("warn");
-        serviceStatus.innerHTML = '<span class="dot"></span>Service unavailable';
-        pdfSelect.innerHTML = '<option value="">Auto mode</option>';
-        setSyncLabel();
+        const r = await fetch("/health");
+        const j = await r.json();
+        showToast(j.vertex_ready ? "Healthy. Vertex is ready ✅" : "Healthy… but Vertex isn’t ready yet ⚠️");
+      }catch(e){
+        showToast("Health check failed ⚠️");
       }
-    }
+    };
 
-    pdfSelect.addEventListener("change", ()=> setActivePdf(pdfSelect.value));
-    pdfSearch.addEventListener("input", ()=>{
-      const q = pdfSearch.value.trim().toLowerCase();
-      const filtered = !q ? allDocs : allDocs.filter(n => n.toLowerCase().includes(q));
-      fillSelect(filtered);
-      pdfSelect.value = activePdf;
-    });
-
-    refreshDocs();
-    setInterval(refreshDocs, 9000);
-
-    // Chat UI
-    const chatLog = document.getElementById("chatLog");
-    const chatInput = document.getElementById("chatInput");
-    const btnSend = document.getElementById("btnSend");
-
-    document.querySelectorAll("[data-prompt]").forEach(btn=>{
+    // Future feature buttons
+    document.querySelectorAll("[data-soon]").forEach(btn=>{
       btn.addEventListener("click", ()=>{
-        chatInput.value = btn.getAttribute("data-prompt");
-        chatInput.focus();
+        const name = btn.getAttribute("data-soon");
+        const lines = [
+          `${name} is coming soon.`,
+          `It’s cooking. Please don’t stand over the pot 😄`,
+          `Not live yet — patience… I’m trying to make it *good* 😄`,
+          `Soon™. The professional version of “trust me bro” 😄`
+        ];
+        showToast(lines[Math.floor(Math.random()*lines.length)]);
       });
     });
 
-    // Streaming
-    let activeStream = null;
-
-    function stamp(){
-      const d = new Date();
-      return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+    // --------------------------
+    // Particles background (alive)
+    // --------------------------
+    const canvas = document.getElementById("particles");
+    const ctx = canvas.getContext("2d");
+    let W=0,H=0, particles=[];
+    function resize(){
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+      const n = Math.floor(Math.min(140, Math.max(60, W/14)));
+      particles = Array.from({length:n}).map(()=>({
+        x: Math.random()*W,
+        y: Math.random()*H,
+        r: Math.random()*1.6 + 0.6,
+        vx:(Math.random()*0.5+0.15)*(Math.random()<0.5?-1:1),
+        vy:(Math.random()*0.35+0.12)*(Math.random()<0.5?-1:1),
+        a: Math.random()*0.6 + 0.2
+      }));
     }
+    window.addEventListener("resize", resize);
+    resize();
 
-    function stopActiveStream(){
-      try{ if(activeStream){ activeStream.close(); activeStream = null; } }catch(e){}
-    }
+    function tick(){
+      ctx.clearRect(0,0,W,H);
+      for(const p of particles){
+        p.x += p.vx; p.y += p.vy;
+        if(p.x < -20) p.x = W+20;
+        if(p.x > W+20) p.x = -20;
+        if(p.y < -20) p.y = H+20;
+        if(p.y > H+20) p.y = -20;
 
-    function addMessageDom(role, text, time){
-      const wrap = document.createElement("div");
-      wrap.className = "msg " + (role === "user" ? "user" : "assistant");
-
-      const bubble = document.createElement("div");
-      bubble.className = "bubble";
-      bubble.textContent = text || "";
-
-      const meta = document.createElement("div");
-      meta.className = "meta";
-      meta.textContent = time || stamp();
-
-      const container = document.createElement("div");
-      container.appendChild(bubble);
-      container.appendChild(meta);
-
-      wrap.appendChild(container);
-      chatLog.appendChild(wrap);
-      chatLog.scrollTop = chatLog.scrollHeight;
-
-      return {wrap, bubble, meta};
-    }
-
-    function setTyping(bubbleEl, on){
-      if(!bubbleEl) return;
-      if(on){
-        bubbleEl.innerHTML = '';
-        const span = document.createElement("span");
-        span.className = "typing";
-        span.textContent = "Typing";
-        const dots = document.createElement("span");
-        dots.className = "dots";
-        dots.innerHTML = "<span></span><span></span><span></span>";
-        span.appendChild(dots);
-        bubbleEl.appendChild(span);
-      } else {
-        bubbleEl.textContent = "";
+        ctx.globalAlpha = p.a;
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        ctx.fillStyle = "white";
+        ctx.fill();
       }
-      chatLog.scrollTop = chatLog.scrollHeight;
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(tick);
+    }
+    tick();
+
+    // --------------------------
+    // Chat memory (per saved chat)
+    // Uses /chat_stream with full history so it never "resets".
+    // --------------------------
+    const chatBox = document.getElementById("chatBox");
+    const msgEl = document.getElementById("msg");
+    const sendBtn = document.getElementById("send");
+    const forceDocsEl = document.getElementById("forceDocs");
+    const btnClear = document.getElementById("btnClear");
+
+    const STORAGE_KEY = "raheem_ai_chats_v2";
+
+    function loadAllChats(){
+      try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
+      catch(e){ return {}; }
+    }
+    function saveAllChats(obj){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
     }
 
-    function buildStreamUrl(question){
-      const params = new URLSearchParams();
-      params.set("q", question);
-
-      if(activePdf){
-        params.set("pdf", activePdf);
-        params.set("force_docs", "true");
-      }
-      return API_BASE + "/ask_stream?" + params.toString();
+    function newChatId(){
+      return "chat_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7);
     }
 
-    // Local chat history (improved naming)
-    const STORAGE_KEY = "raheem_ai_chats_v4";
-    let chats = [];
     let activeChatId = null;
 
-    function loadChats(){
-      try{
-        const raw = localStorage.getItem(STORAGE_KEY);
-        chats = raw ? JSON.parse(raw) : [];
-        if(!Array.isArray(chats)) chats = [];
-      } catch(e){ chats = []; }
-    }
-    function saveChats(){
-      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(chats)); } catch(e){}
-    }
-
-    function cleanTitle(s){
-      const t = (s || "").trim().replace(/\s+/g," ");
-      if(!t) return "";
-      return t.length > 42 ? (t.slice(0,42) + "…") : t;
-    }
-
-    function newChatTitle(){
-      // Session numbering, clean and sellable
-      const n = (chats?.length || 0) + 1;
-      return "Session " + n;
-    }
-
-    function createChat(){
-      const id = "c_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
-      const chat = { id, title: newChatTitle(), createdAt: Date.now(), updatedAt: Date.now(), forcedPdf: activePdf || "", messages: [] };
-      chats.unshift(chat);
-      activeChatId = id;
-      saveChats();
-      renderHistory();
-      renderActiveChat();
-      return chat;
-    }
-
-    function getActiveChat(){ return chats.find(c => c.id === activeChatId) || null; }
-
-    function setActiveChat(id){
-      const c = chats.find(x => x.id === id);
-      if(!c) return;
-      activeChatId = id;
-
-      if(c.forcedPdf && allDocs.includes(c.forcedPdf)){
-        setActivePdf(c.forcedPdf);
-        pdfSelect.value = c.forcedPdf;
-      } else {
-        setActivePdf("");
-        pdfSelect.value = "";
+    function ensureActiveChat(){
+      const all = loadAllChats();
+      if(!activeChatId || !all[activeChatId]){
+        activeChatId = newChatId();
+        all[activeChatId] = {
+          title: "New chat",
+          updated: Date.now(),
+          messages: [
+            { role:"assistant", content:"Hey — I’m Raheem. What are we getting into today?" }
+          ]
+        };
+        saveAllChats(all);
       }
-
-      renderHistory();
-      renderActiveChat();
+      return all;
     }
 
-    function persistActiveChat(){
-      const c = getActiveChat();
+    function setChatTitleFromFirstUser(all, chatId){
+      const c = all[chatId];
       if(!c) return;
-      c.updatedAt = Date.now();
-      c.forcedPdf = activePdf || "";
-      saveChats();
-    }
-
-    function addMsgToChat(role, text){
-      const c = getActiveChat();
-      if(!c) return;
-
-      // auto-title after first user message if still "Session X"
-      if(role === "user" && /^Session\s\d+$/.test(c.title || "")){
-        const candidate = cleanTitle(text);
-        if(candidate) c.title = candidate;
+      const firstUser = c.messages.find(m=>m.role==="user");
+      if(firstUser && (c.title==="New chat" || !c.title)){
+        c.title = firstUser.content.slice(0, 42) + (firstUser.content.length>42 ? "…" : "");
       }
-
-      c.messages.push({ role, text: text || "", time: stamp() });
-      c.updatedAt = Date.now();
-      c.forcedPdf = activePdf || "";
-      saveChats();
-      renderHistory();
     }
 
-    function lastMeaningfulPreview(chat){
-      const arr = chat.messages || [];
-      for(let i = arr.length - 1; i >= 0; i--){
-        const t = (arr[i].text || "").trim();
-        if(t) return t;
+    function renderChatList(){
+      const all = loadAllChats();
+      const items = Object.entries(all)
+        .sort((a,b)=>(b[1].updated||0)-(a[1].updated||0))
+        .slice(0, 24);
+
+      const wrap = document.getElementById("chatItems");
+      wrap.innerHTML = "";
+      for(const [id, chat] of items){
+        const btn = document.createElement("button");
+        btn.className = "chatitem";
+        btn.innerHTML = `<div class="t">${escapeHtml(chat.title || "Chat")}</div>
+                         <div class="s">${new Date(chat.updated||Date.now()).toLocaleString()}</div>`;
+        btn.onclick = ()=>{
+          activeChatId = id;
+          renderChat();
+        };
+        wrap.appendChild(btn);
       }
-      return "No messages yet.";
     }
 
-    function formatSmallTime(ts){
-      const d = new Date(ts);
-      return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-    }
+    document.getElementById("btnNewChat").onclick = ()=>{
+      activeChatId = null;
+      ensureActiveChat();
+      renderChatList();
+      renderChat();
+      showToast("New chat created ✅");
+    };
 
     function escapeHtml(s){
-      return String(s)
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
+      return (s||"").replace(/[&<>"']/g, c => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+      }[c]));
     }
 
-    const historyList = document.getElementById("historyList");
-    const btnNewChat = document.getElementById("btnNewChat");
-    const btnClearChats = document.getElementById("btnClearChats");
-
-    function renderHistory(){
-      historyList.innerHTML = "";
-      if(!chats.length){
-        const empty = document.createElement("div");
-        empty.className = "history-item";
-        empty.style.cursor = "default";
-        empty.innerHTML = '<div class="history-name">No saved chats yet</div><div class="history-preview">Start a chat and it will appear here.</div>';
-        historyList.appendChild(empty);
-        return;
+    function renderChat(){
+      const all = ensureActiveChat();
+      const chat = all[activeChatId];
+      chatBox.innerHTML = "";
+      for(const m of chat.messages){
+        const div = document.createElement("div");
+        div.className = "msg " + (m.role==="user" ? "user" : "ai");
+        div.textContent = m.content;
+        chatBox.appendChild(div);
       }
-      for(const c of chats){
-        const item = document.createElement("div");
-        item.className = "history-item" + (c.id === activeChatId ? " active" : "");
-        item.tabIndex = 0;
+      chatBox.scrollTop = chatBox.scrollHeight;
+      renderChatList();
+    }
 
-        const preview = lastMeaningfulPreview(c);
-        const meta = formatSmallTime(c.updatedAt || c.createdAt);
+    btnClear.onclick = ()=>{
+      const all = ensureActiveChat();
+      all[activeChatId].messages = [
+        { role:"assistant", content:"Alright — clean slate. What’s next?" }
+      ];
+      all[activeChatId].updated = Date.now();
+      all[activeChatId].title = "New chat";
+      saveAllChats(all);
+      renderChat();
+      showToast("Cleared ✅");
+    };
 
-        item.innerHTML = `
-          <div class="history-row">
-            <div class="history-name">${escapeHtml(c.title || "Session")}</div>
-            <div class="history-meta">${meta}</div>
-          </div>
-          <div class="history-preview">${escapeHtml(preview)}</div>
-          <div class="history-controls">
-            <button class="history-btn" data-act="open" data-id="${c.id}">Open</button>
-            <button class="history-btn" data-act="rename" data-id="${c.id}">Rename</button>
-            <button class="history-btn" data-act="delete" data-id="${c.id}">Delete</button>
-          </div>
-        `;
+    // Stream parser for SSE over fetch
+    async function streamChat(messages, forceDocs){
+      const resp = await fetch("/chat_stream", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ messages, force_docs: !!forceDocs })
+      });
 
-        item.addEventListener("click", (e)=>{
-          const btn = e.target.closest("button");
-          if(btn){
-            const act = btn.getAttribute("data-act");
-            const id = btn.getAttribute("data-id");
-            if(act === "open") setActiveChat(id);
-            if(act === "rename") renameChat(id);
-            if(act === "delete") deleteChat(id);
-            return;
+      if(!resp.ok){
+        const t = await resp.text();
+        throw new Error(t || "Request failed");
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+      let done = false;
+
+      let assistantText = "";
+
+      while(!done){
+        const { value, done: d } = await reader.read();
+        done = d;
+        if(value){
+          buffer += decoder.decode(value, {stream:true});
+          // split by double newline (SSE frame boundary)
+          let idx;
+          while((idx = buffer.indexOf("\n\n")) !== -1){
+            const frame = buffer.slice(0, idx);
+            buffer = buffer.slice(idx+2);
+
+            // handle data lines
+            const lines = frame.split("\n");
+            for(const line of lines){
+              if(line.startsWith("data: ")){
+                const payload = line.slice(6);
+                const text = payload.replaceAll("\\n", "\n");
+                assistantText += text;
+
+                // live update last assistant bubble
+                updateAssistantBubble(assistantText);
+              }
+              if(line.startsWith("event: done")){
+                done = true;
+              }
+              if(line.startsWith("event: error")){
+                // next line might have data, but we keep it simple
+              }
+            }
           }
-          setActiveChat(c.id);
-        });
+        }
+      }
+      return assistantText.trim();
+    }
 
-        item.addEventListener("keydown", (e)=>{
-          if(e.key === "Enter" || e.key === " "){
-            e.preventDefault();
-            setActiveChat(c.id);
-          }
-        });
-
-        historyList.appendChild(item);
+    function updateAssistantBubble(text){
+      // replace last AI message bubble text visually while streaming
+      const bubbles = chatBox.querySelectorAll(".msg.ai");
+      const last = bubbles[bubbles.length-1];
+      if(last){
+        last.textContent = text;
+        chatBox.scrollTop = chatBox.scrollHeight;
       }
     }
-
-    function renameChat(id){
-      const c = chats.find(x => x.id === id);
-      if(!c) return;
-      const name = prompt("Rename chat", c.title || "Session");
-      if(name === null) return;
-      const cleaned = (name || "").trim();
-      if(!cleaned) return;
-      c.title = cleanTitle(cleaned) || c.title;
-      c.updatedAt = Date.now();
-      saveChats();
-      renderHistory();
-    }
-
-    function deleteChat(id){
-      const c = chats.find(x => x.id === id);
-      if(!c) return;
-      if(!confirm("Delete this chat?")) return;
-      chats = chats.filter(x => x.id !== id);
-      if(activeChatId === id){
-        activeChatId = chats.length ? chats[0].id : null;
-      }
-      saveChats();
-      renderHistory();
-      renderActiveChat();
-    }
-
-    function clearAllChats(){
-      if(!confirm("Clear all saved chats? This cannot be undone.")) return;
-      chats = [];
-      activeChatId = null;
-      saveChats();
-      renderHistory();
-      renderActiveChat();
-    }
-
-    btnNewChat.addEventListener("click", ()=>{ createChat(); openChat(); });
-    btnClearChats.addEventListener("click", clearAllChats);
-
-    function renderActiveChat(){
-      chatLog.innerHTML = "";
-      const c = getActiveChat();
-      if(!c){
-        const created = createChat();
-        created.messages.push({
-          role: "assistant",
-          text: "Hey. Talk to me normally. If your question turns into regs or compliance, I’ll switch automatically and keep it readable.",
-          time: stamp()
-        });
-        saveChats();
-        renderHistory();
-        renderActiveChat();
-        return;
-      }
-      for(const m of (c.messages || [])){
-        addMessageDom(m.role, m.text, m.time);
-      }
-      chatLog.scrollTop = chatLog.scrollHeight;
-    }
-
-    loadChats();
-    if(chats.length) activeChatId = chats[0].id;
-    renderHistory();
-    renderActiveChat();
 
     async function send(){
-      const raw = chatInput.value.trim();
-      if(!raw) return;
+      const text = (msgEl.value || "").trim();
+      if(!text) return;
 
-      stopActiveStream();
-      addMsgToChat("user", raw);
-      renderActiveChat();
-      chatInput.value = "";
+      const all = ensureActiveChat();
+      const chat = all[activeChatId];
 
-      const timeNow = stamp();
-      const assistantDom = addMessageDom("assistant", "", timeNow);
-      setTyping(assistantDom.bubble, true);
+      // add user message
+      chat.messages.push({ role:"user", content:text });
+      chat.updated = Date.now();
+      saveAllChats(all);
+      renderChat();
 
-      const url = buildStreamUrl(raw);
+      msgEl.value = "";
 
-      let buffer = "";
-      let gotAnyText = false;
-      let finished = false;
+      // add placeholder assistant bubble
+      const all2 = ensureActiveChat();
+      all2[activeChatId].messages.push({ role:"assistant", content:"" });
+      all2[activeChatId].updated = Date.now();
+      saveAllChats(all2);
+      renderChat();
 
       try{
-        activeStream = new EventSource(url);
+        const assistant = await streamChat(all2[activeChatId].messages, forceDocsEl.checked);
 
-        activeStream.onmessage = (e) => {
-          const chunk = (e.data || "").replaceAll("\\n", "\n");
-          if(!gotAnyText){
-            gotAnyText = true;
-            setTyping(assistantDom.bubble, false);
-          }
-          buffer += chunk;
-          assistantDom.bubble.textContent = buffer;
-          chatLog.scrollTop = chatLog.scrollHeight;
-        };
-
-        activeStream.addEventListener("done", () => {
-          finished = true;
-          stopActiveStream();
-          const finalText = (buffer || "").trim() || "No response available.";
-          assistantDom.bubble.textContent = finalText;
-          addMsgToChat("assistant", finalText);
-          persistActiveChat();
-          renderHistory();
-        });
-
-        activeStream.addEventListener("error", () => {
-          if(finished) return;
-
-          setTimeout(() => {
-            if(finished) return;
-
-            if(gotAnyText){
-              finished = true;
-              stopActiveStream();
-              const finalText = (buffer || "").trim() || "No response available.";
-              assistantDom.bubble.textContent = finalText;
-              addMsgToChat("assistant", finalText);
-              persistActiveChat();
-              renderHistory();
-              return;
-            }
-
-            stopActiveStream();
-            setTyping(assistantDom.bubble, false);
-            const msg = "The service is currently unavailable. Please try again in a moment.";
-            assistantDom.bubble.textContent = msg;
-            addMsgToChat("assistant", msg);
-          }, 350);
-        });
-
-      } catch(err){
-        stopActiveStream();
-        setTyping(assistantDom.bubble, false);
-        const msg = "The service is currently unavailable. Please try again in a moment.";
-        assistantDom.bubble.textContent = msg;
-        addMsgToChat("assistant", msg);
+        const all3 = ensureActiveChat();
+        all3[activeChatId].messages[all3[activeChatId].messages.length-1].content = assistant || "…";
+        all3[activeChatId].updated = Date.now();
+        setChatTitleFromFirstUser(all3, activeChatId);
+        saveAllChats(all3);
+        renderChat();
+      }catch(e){
+        const all3 = ensureActiveChat();
+        all3[activeChatId].messages[all3[activeChatId].messages.length-1].content =
+          "Hmm — something broke on my side. Try again in a sec (or check /swagger for errors).";
+        all3[activeChatId].updated = Date.now();
+        saveAllChats(all3);
+        renderChat();
+        showToast("Backend error ⚠️");
       }
     }
 
-    btnSend.addEventListener("click", send);
-    chatInput.addEventListener("keydown", (e)=>{
-      if(e.key === "Enter" && !e.shiftKey){
+    sendBtn.onclick = send;
+    msgEl.addEventListener("keydown", (e)=>{
+      if(e.key==="Enter" && !e.shiftKey){
         e.preventDefault();
         send();
       }
     });
 
-    // keep pdf pin in sync with history
-    function setActivePdfSafe(v){
-      setActivePdf(v);
-      pdfSelect.value = v || "";
-    }
-
-    // Particle background (visible motion)
-    (function(){
-      const canvas = document.getElementById("particles");
-      const ctx = canvas.getContext("2d");
-      let w=0,h=0, dpr=1;
-      let particles = [];
-      const COUNT = 64;
-
-      function resize(){
-        dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-        w = canvas.width = Math.floor(window.innerWidth * dpr);
-        h = canvas.height = Math.floor(window.innerHeight * dpr);
-        canvas.style.width = window.innerWidth + "px";
-        canvas.style.height = window.innerHeight + "px";
-      }
-
-      function rand(a,b){ return a + Math.random()*(b-a); }
-
-      function init(){
-        particles = [];
-        for(let i=0;i<COUNT;i++){
-          particles.push({
-            x: rand(0,w),
-            y: rand(0,h),
-            r: rand(1.2, 2.8) * dpr,
-            vx: rand(-0.18, 0.18) * dpr,
-            vy: rand(-0.12, 0.12) * dpr,
-            a: rand(0.18, 0.55)
-          });
-        }
-      }
-
-      function draw(){
-        ctx.clearRect(0,0,w,h);
-
-        // dots
-        for(const p of particles){
-          p.x += p.vx;
-          p.y += p.vy;
-
-          if(p.x < -20) p.x = w+20;
-          if(p.x > w+20) p.x = -20;
-          if(p.y < -20) p.y = h+20;
-          if(p.y > h+20) p.y = -20;
-
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-
-          // alternate between mint and blue softly
-          const c = (p.x / w) > 0.5 ? `rgba(108,182,255,${p.a})` : `rgba(85,247,214,${p.a})`;
-          ctx.fillStyle = c;
-          ctx.fill();
-        }
-
-        // faint connecting lines
-        for(let i=0;i<particles.length;i++){
-          for(let j=i+1;j<particles.length;j++){
-            const a = particles[i], b = particles[j];
-            const dx = a.x - b.x, dy = a.y - b.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            const max = 140 * dpr;
-            if(dist < max){
-              const alpha = (1 - dist/max) * 0.10;
-              ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
-              ctx.lineWidth = 1 * dpr;
-              ctx.beginPath();
-              ctx.moveTo(a.x, a.y);
-              ctx.lineTo(b.x, b.y);
-              ctx.stroke();
-            }
-          }
-        }
-
-        requestAnimationFrame(draw);
-      }
-
-      window.addEventListener("resize", ()=>{
-        resize();
-        init();
-      });
-
-      resize();
-      init();
-      draw();
-    })();
-
+    // Boot
+    ensureActiveChat();
+    renderChatList();
+    renderChat();
+    showView("home");
   </script>
 </body>
 </html>
