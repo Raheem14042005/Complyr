@@ -6,43 +6,64 @@
   <title>Raheem AI | Construction Compliance Intelligence</title>
 
   <style>
+    /* -----------------------------
+      RAHEEM AI — 2026 UI REFINEMENT
+      Goals:
+      - calmer, more premium palette
+      - better spacing & hierarchy
+      - subtle moving light sweep background
+      - preserve all existing functions
+    ------------------------------ */
+
     :root{
-      --bg0:#050913;
-      --bg1:#071225;
-      --bg2:#0a1a33;
-      --surface: rgba(255,255,255,.06);
-      --surface2: rgba(255,255,255,.08);
-      --border: rgba(255,255,255,.14);
-      --text:#eaf2ff;
-      --muted: rgba(234,242,255,.82);
-      --muted2: rgba(234,242,255,.62);
-      --p1:#2563eb;
-      --p2:#38bdf8;
-      --p3:#22d3ee;
+      /* Base */
+      --bg0:#05070f;
+      --bg1:#070b16;
+      --bg2:#0a1022;
+
+      /* Surfaces */
+      --panel: rgba(255,255,255,.06);
+      --panel2: rgba(255,255,255,.08);
+      --stroke: rgba(255,255,255,.12);
+      --stroke2: rgba(255,255,255,.16);
+
+      /* Text */
+      --text:#edf4ff;
+      --muted: rgba(237,244,255,.78);
+      --muted2: rgba(237,244,255,.60);
+
+      /* Brand accent (more “architectural” / premium) */
+      --a1:#5eead4; /* mint-cyan */
+      --a2:#60a5fa; /* soft blue */
+      --a3:#a78bfa; /* subtle violet */
+
       --ok:#22c55e;
       --warn:#f59e0b;
-      --shadow: 0 18px 42px rgba(0,0,0,.52);
-      --shadow2: 0 12px 26px rgba(0,0,0,.40);
-      --r:18px;
+
+      --shadow: 0 22px 60px rgba(0,0,0,.55);
+      --shadow2: 0 14px 34px rgba(0,0,0,.42);
+
+      --r:20px;
       --r2:14px;
+
       --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     }
 
     *{ box-sizing:border-box; }
     html,body{ height:100%; }
-
     body{
       margin:0;
       font-family: var(--font);
       color: var(--text);
       background:
-        radial-gradient(1100px 520px at 12% 10%, rgba(56,189,248,.18) 0%, rgba(56,189,248,0) 60%),
-        radial-gradient(1000px 520px at 88% 16%, rgba(37,99,235,.22) 0%, rgba(37,99,235,0) 58%),
-        radial-gradient(900px 520px at 55% 100%, rgba(34,211,238,.12) 0%, rgba(34,211,238,0) 60%),
-        linear-gradient(180deg, var(--bg0) 0%, var(--bg1) 30%, var(--bg2) 100%);
+        radial-gradient(1200px 680px at 14% 10%, rgba(94,234,212,.10) 0%, rgba(94,234,212,0) 62%),
+        radial-gradient(1000px 620px at 88% 12%, rgba(96,165,250,.12) 0%, rgba(96,165,250,0) 58%),
+        radial-gradient(1000px 620px at 56% 100%, rgba(167,139,250,.10) 0%, rgba(167,139,250,0) 60%),
+        linear-gradient(180deg, var(--bg0) 0%, var(--bg1) 36%, var(--bg2) 100%);
       overflow-x:hidden;
     }
 
+    /* Subtle grid texture */
     body::before{
       content:"";
       position: fixed;
@@ -50,47 +71,48 @@
       pointer-events:none;
       opacity:.10;
       background-image:
-        linear-gradient(to right, rgba(56,189,248,.15) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(56,189,248,.12) 1px, transparent 1px);
-      background-size: 64px 64px;
-      mask-image: radial-gradient(circle at 30% 10%, rgba(0,0,0,1), rgba(0,0,0,0) 65%);
-      animation: gridDrift 18s linear infinite;
+        linear-gradient(to right, rgba(94,234,212,.15) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(96,165,250,.12) 1px, transparent 1px);
+      background-size: 72px 72px;
+      mask-image: radial-gradient(circle at 30% 10%, rgba(0,0,0,1), rgba(0,0,0,0) 70%);
+      animation: gridDrift 22s linear infinite;
       z-index: 0;
     }
-
     @keyframes gridDrift{
       0%{ background-position: 0 0, 0 0; }
-      100%{ background-position: 140px 70px, 70px 140px; }
+      100%{ background-position: 160px 80px, 80px 160px; }
     }
 
-    body::after{
-      content:"";
+    /* Moving “light sweep” (professional, subtle) */
+    .light-sweep{
       position: fixed;
-      inset:-40vh -40vw;
+      inset:-30vh -30vw;
       pointer-events:none;
-      background:
-        radial-gradient(closest-side at 18% 30%, rgba(56,189,248,.12), rgba(56,189,248,0) 60%),
-        radial-gradient(closest-side at 82% 18%, rgba(37,99,235,.14), rgba(37,99,235,0) 62%),
-        radial-gradient(closest-side at 55% 86%, rgba(34,211,238,.10), rgba(34,211,238,0) 60%);
-      filter: blur(10px);
-      opacity: .90;
-      animation: auroraDrift 26s ease-in-out infinite;
       z-index: 0;
+      opacity:.85;
+      filter: blur(18px);
+      background:
+        radial-gradient(closest-side at 12% 22%, rgba(94,234,212,.12), rgba(94,234,212,0) 62%),
+        radial-gradient(closest-side at 86% 18%, rgba(96,165,250,.14), rgba(96,165,250,0) 64%),
+        radial-gradient(closest-side at 62% 82%, rgba(167,139,250,.11), rgba(167,139,250,0) 60%);
+      animation: sweepMove 18s ease-in-out infinite;
+      transform: translate3d(0,0,0) scale(1);
     }
-
-    @keyframes auroraDrift{
+    @keyframes sweepMove{
       0%,100%{ transform: translate3d(0,0,0) scale(1); }
-      50%{ transform: translate3d(3vw,-2vh,0) scale(1.03); }
+      35%{ transform: translate3d(3vw,-2vh,0) scale(1.02); }
+      70%{ transform: translate3d(-2vw,2vh,0) scale(1.03); }
     }
 
+    /* App layout */
     .app{
       display:grid;
-      grid-template-columns: 340px 1fr;
+      grid-template-columns: 360px 1fr;
       min-height:100vh;
       position: relative;
       z-index: 1;
     }
-    @media (max-width: 980px){
+    @media (max-width: 1040px){
       .app{ grid-template-columns: 1fr; }
       .sidebar{
         position: sticky; top:0; z-index:50;
@@ -98,10 +120,11 @@
       }
     }
 
+    /* Sidebar */
     .sidebar{
-      background: rgba(6,12,26,.84);
+      background: rgba(6,10,18,.84);
       border-right: 1px solid rgba(255,255,255,.08);
-      backdrop-filter: blur(12px);
+      backdrop-filter: blur(14px);
       padding: 18px;
       position: relative;
       overflow:hidden;
@@ -110,11 +133,11 @@
     .sidebar::after{
       content:"";
       position:absolute;
-      inset:-140px -140px auto auto;
-      width: 320px; height: 320px;
-      background: radial-gradient(circle, rgba(56,189,248,.22), rgba(56,189,248,0) 65%);
+      inset:-160px -160px auto auto;
+      width: 360px; height: 360px;
+      background: radial-gradient(circle, rgba(96,165,250,.16), rgba(96,165,250,0) 66%);
       pointer-events:none;
-      transform: translate(40px,-40px);
+      transform: translate(60px,-60px);
     }
 
     .brand{
@@ -130,37 +153,28 @@
       width:46px; height:46px;
       border-radius: 16px;
       display:flex; align-items:center; justify-content:center;
-      border: 1px solid rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.16);
       background:
-        radial-gradient(circle at 30% 30%, rgba(255,255,255,.20), rgba(255,255,255,0) 60%),
-        linear-gradient(135deg, rgba(56,189,248,.95), rgba(37,99,235,.95));
-      box-shadow: 0 18px 40px rgba(56,189,248,.18);
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,.18), rgba(255,255,255,0) 60%),
+        linear-gradient(135deg, rgba(94,234,212,.95), rgba(96,165,250,.95));
+      box-shadow: 0 18px 44px rgba(96,165,250,.14);
       overflow:hidden;
       user-select:none;
       position:relative;
-      animation: logoGlow 3.8s ease-in-out infinite;
+      animation: logoGlow 4.2s ease-in-out infinite;
     }
     @keyframes logoGlow{
-      0%,100%{ box-shadow: 0 18px 40px rgba(56,189,248,.18); }
-      50%{ box-shadow: 0 22px 56px rgba(34,211,238,.22); }
+      0%,100%{ box-shadow: 0 18px 44px rgba(96,165,250,.14); }
+      50%{ box-shadow: 0 22px 64px rgba(167,139,250,.16); }
     }
     .logo svg{ width:34px; height:34px; }
-    .logo::after{
-      content:"";
-      position:absolute;
-      inset:-90px auto auto -90px;
-      width:200px; height:200px;
-      background: radial-gradient(circle, rgba(34,211,238,.24), rgba(34,211,238,0) 62%);
-      transform: rotate(16deg);
-      pointer-events:none;
-    }
 
     .brand h1{
       margin:0;
       font-size: 16px;
       letter-spacing: .2px;
       line-height:1.1;
-      font-weight: 800;
+      font-weight: 900;
     }
     .brand p{
       margin:4px 0 0;
@@ -172,6 +186,7 @@
       color: var(--muted2);
       margin-top: 4px;
       line-height: 1.25;
+      max-width: 260px;
     }
 
     .pill{
@@ -180,49 +195,42 @@
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,.12);
       background: rgba(255,255,255,.06);
-      color: rgba(234,242,255,.70);
+      color: rgba(237,244,255,.72);
       user-select:none;
       white-space: nowrap;
     }
-    .pill.live{
-      border-color: rgba(34,197,94,.40);
-      color: #ccffe0;
-      background: rgba(34,197,94,.12);
-    }
-    .pill.brand{
-      border-color: rgba(34,211,238,.40);
-      color: #d7fbff;
-      background: rgba(34,211,238,.10);
-    }
+    .pill.live{ border-color: rgba(34,197,94,.40); color: #ccffe0; background: rgba(34,197,94,.10); }
+    .pill.brand{ border-color: rgba(94,234,212,.35); color: rgba(223,255,249,.92); background: rgba(94,234,212,.08); }
 
-    .doc-panel{
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.07);
+    .panel{
+      border: 1px solid var(--stroke);
+      background: var(--panel);
       border-radius: var(--r2);
       padding: 12px;
       margin-bottom: 14px;
       position:relative;
       z-index:1;
     }
-    .doc-head{
+
+    .panel-head{
       display:flex;
       align-items:flex-start;
       justify-content:space-between;
       gap: 10px;
       margin-bottom: 10px;
     }
-    .doc-title{
+    .panel-title{
       margin:0;
       font-size: 12px;
-      letter-spacing: .9px;
+      letter-spacing: 1.0px;
       text-transform: uppercase;
-      color: rgba(234,242,255,.86);
-      font-weight: 900;
+      color: rgba(237,244,255,.88);
+      font-weight: 950;
     }
-    .doc-sub{
+    .panel-sub{
       margin:6px 0 0;
       font-size: 12px;
-      color: rgba(234,242,255,.64);
+      color: rgba(237,244,255,.66);
       line-height: 1.35;
     }
 
@@ -233,29 +241,29 @@
       justify-content:space-between;
       gap: 10px;
       font-size: 11px;
-      color: rgba(234,242,255,.80);
+      color: rgba(237,244,255,.84);
       margin-bottom: 6px;
       letter-spacing: .2px;
-      font-weight: 900;
+      font-weight: 950;
     }
 
     .input, select{
       width:100%;
       border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.18);
-      background: rgba(3,7,16,.86);
+      border: 1px solid var(--stroke2);
+      background: rgba(3,6,14,.88);
       color: var(--text);
       padding: 11px 12px;
       font-size: 13px;
-      font-weight: 780;
+      font-weight: 760;
       outline:none;
     }
     select option{
-      background: #0b1428;
-      color: #eaf2ff;
+      background: #0b1222;
+      color: #edf4ff;
     }
     .input:focus, select:focus{
-      outline: 3px solid rgba(56,189,248,.22);
+      outline: 3px solid rgba(96,165,250,.20);
       outline-offset: 2px;
     }
 
@@ -266,7 +274,7 @@
     }
     .mini{
       font-size: 11px;
-      color: rgba(234,242,255,.74);
+      color: rgba(237,244,255,.76);
       background: rgba(255,255,255,.06);
       border: 1px solid rgba(255,255,255,.12);
       padding: 6px 10px;
@@ -277,137 +285,10 @@
     }
     .mini .dot{
       width:8px; height:8px; border-radius:50%;
-      background: rgba(234,242,255,.35);
+      background: rgba(237,244,255,.35);
     }
-    .mini.ok .dot{
-      background: var(--ok);
-      box-shadow: 0 0 0 4px rgba(34,197,94,.12);
-    }
-    .mini.warn .dot{
-      background: #f59e0b;
-      box-shadow: 0 0 0 4px rgba(245,158,11,.12);
-    }
-
-    .history-panel{
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.06);
-      border-radius: var(--r2);
-      padding: 12px;
-      margin-top: 14px;
-      position:relative;
-      z-index:1;
-    }
-    .history-head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-    .history-title{
-      font-size: 12px;
-      letter-spacing: .9px;
-      text-transform: uppercase;
-      color: rgba(234,242,255,.86);
-      font-weight: 950;
-      margin:0;
-    }
-    .history-actions{
-      display:flex;
-      gap: 8px;
-      align-items:center;
-    }
-    .btn-mini{
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: var(--text);
-      padding: 7px 9px;
-      border-radius: 12px;
-      font-weight: 950;
-      font-size: 12px;
-      cursor:pointer;
-      transition: transform .12s ease, background .12s ease, border-color .12s ease;
-    }
-    .btn-mini:hover{
-      transform: translateY(-1px);
-      background: rgba(255,255,255,.10);
-      border-color: rgba(56,189,248,.22);
-    }
-
-    .history-list{
-      display:flex;
-      flex-direction:column;
-      gap: 8px;
-      max-height: 240px;
-      overflow:auto;
-      padding-right: 4px;
-    }
-    .history-item{
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(3,7,16,.62);
-      border-radius: 14px;
-      padding: 10px;
-      cursor:pointer;
-      transition: transform .12s ease, background .12s ease, border-color .12s ease;
-    }
-    .history-item:hover{
-      transform: translateY(-1px);
-      background: rgba(255,255,255,.08);
-      border-color: rgba(56,189,248,.22);
-    }
-    .history-item.active{
-      border-color: rgba(34,211,238,.38);
-      background: rgba(255,255,255,.10);
-    }
-    .history-row{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap: 10px;
-    }
-    .history-name{
-      font-weight: 950;
-      font-size: 12px;
-      color: rgba(234,242,255,.90);
-      line-height: 1.25;
-    }
-    .history-meta{
-      font-size: 11px;
-      color: rgba(234,242,255,.60);
-      white-space: nowrap;
-    }
-    .history-preview{
-      margin-top: 6px;
-      font-size: 12px;
-      color: rgba(234,242,255,.70);
-      line-height: 1.35;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-    .history-controls{
-      margin-top: 10px;
-      display:flex;
-      gap: 8px;
-    }
-    .history-btn{
-      flex:1;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.06);
-      color: rgba(234,242,255,.86);
-      padding: 8px 10px;
-      border-radius: 12px;
-      font-weight: 950;
-      font-size: 12px;
-      cursor:pointer;
-      transition: transform .12s ease, background .12s ease, border-color .12s ease;
-    }
-    .history-btn:hover{
-      transform: translateY(-1px);
-      background: rgba(255,255,255,.10);
-      border-color: rgba(56,189,248,.22);
-    }
+    .mini.ok .dot{ background: var(--ok); box-shadow: 0 0 0 4px rgba(34,197,94,.12); }
+    .mini.warn .dot{ background: var(--warn); box-shadow: 0 0 0 4px rgba(245,158,11,.12); }
 
     .nav{
       display:flex;
@@ -434,14 +315,116 @@
     .nav button:hover{
       transform: translateY(-1px);
       background: rgba(255,255,255,.09);
-      border-color: rgba(56,189,248,.24);
+      border-color: rgba(94,234,212,.22);
       box-shadow: 0 10px 26px rgba(0,0,0,.22);
     }
     .nav button.active{
-      border-color: rgba(56,189,248,.40);
+      border-color: rgba(96,165,250,.34);
       background: rgba(255,255,255,.10);
     }
 
+    /* History */
+    .history-panel{ margin-top: 14px; }
+    .history-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .history-title{
+      font-size: 12px;
+      letter-spacing: 1.0px;
+      text-transform: uppercase;
+      color: rgba(237,244,255,.88);
+      font-weight: 950;
+      margin:0;
+    }
+    .history-actions{ display:flex; gap: 8px; align-items:center; }
+    .btn-mini{
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding: 7px 9px;
+      border-radius: 12px;
+      font-weight: 950;
+      font-size: 12px;
+      cursor:pointer;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    }
+    .btn-mini:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.10);
+      border-color: rgba(96,165,250,.22);
+    }
+
+    .history-list{
+      display:flex;
+      flex-direction:column;
+      gap: 8px;
+      max-height: 240px;
+      overflow:auto;
+      padding-right: 4px;
+    }
+    .history-item{
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(3,6,14,.62);
+      border-radius: 14px;
+      padding: 10px;
+      cursor:pointer;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    }
+    .history-item:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.08);
+      border-color: rgba(96,165,250,.22);
+    }
+    .history-item.active{
+      border-color: rgba(94,234,212,.30);
+      background: rgba(255,255,255,.10);
+    }
+    .history-row{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap: 10px;
+    }
+    .history-name{ font-weight: 950; font-size: 12px; color: rgba(237,244,255,.92); line-height: 1.25; }
+    .history-meta{ font-size: 11px; color: rgba(237,244,255,.60); white-space: nowrap; }
+    .history-preview{
+      margin-top: 6px;
+      font-size: 12px;
+      color: rgba(237,244,255,.70);
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .history-controls{
+      margin-top: 10px;
+      display:flex;
+      gap: 8px;
+    }
+    .history-btn{
+      flex:1;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: rgba(237,244,255,.88);
+      padding: 8px 10px;
+      border-radius: 12px;
+      font-weight: 950;
+      font-size: 12px;
+      cursor:pointer;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    }
+    .history-btn:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.10);
+      border-color: rgba(96,165,250,.22);
+    }
+
+    /* Content area */
     .content{ padding: 18px 22px 40px; position: relative; z-index: 1; }
 
     .topbar{
@@ -451,14 +434,14 @@
       gap: 14px;
       margin-bottom: 14px;
     }
-    @media (max-width: 980px){
+    @media (max-width: 1040px){
       .topbar{ flex-direction: column; }
       .auth-top{ width: 100% !important; min-width: unset !important; }
     }
 
     .hero{
       flex:1;
-      border: 1px solid rgba(255,255,255,.12);
+      border: 1px solid var(--stroke);
       background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.045));
       border-radius: var(--r);
       padding: 18px;
@@ -469,15 +452,15 @@
     .hero::after{
       content:"";
       position:absolute;
-      inset:auto -120px -120px auto;
-      width: 340px; height: 340px;
-      background: radial-gradient(circle, rgba(37,99,235,.22), rgba(37,99,235,0) 65%);
+      inset:auto -150px -150px auto;
+      width: 380px; height: 380px;
+      background: radial-gradient(circle, rgba(96,165,250,.16), rgba(96,165,250,0) 66%);
       pointer-events:none;
-      animation: sweep 8s ease-in-out infinite;
+      animation: heroGlow 9s ease-in-out infinite;
     }
-    @keyframes sweep{
+    @keyframes heroGlow{
       0%,100%{ transform: translate(0,0); opacity:.95; }
-      50%{ transform: translate(-18px,-10px); opacity:.78; }
+      50%{ transform: translate(-20px,-12px); opacity:.78; }
     }
 
     .hero h2{
@@ -487,11 +470,11 @@
       display:flex;
       align-items:center;
       gap: 10px;
-      font-weight: 900;
+      font-weight: 950;
     }
     .hero p{
       margin: 10px 0 0;
-      color: rgba(234,242,255,.82);
+      color: rgba(237,244,255,.82);
       font-size: 13px;
       max-width: 980px;
       line-height: 1.55;
@@ -500,18 +483,18 @@
       margin-top: 12px;
       padding: 10px 12px;
       border: 1px solid rgba(255,255,255,.12);
-      background: rgba(3,7,16,.55);
+      background: rgba(3,6,14,.55);
       border-radius: 14px;
-      color: rgba(234,242,255,.74);
+      color: rgba(237,244,255,.72);
       font-size: 12px;
       font-style: italic;
       max-width: 980px;
     }
 
     .auth-top{
-      width: 250px;
-      min-width: 230px;
-      border: 1px solid rgba(255,255,255,.12);
+      width: 260px;
+      min-width: 240px;
+      border: 1px solid var(--stroke);
       background: rgba(255,255,255,.06);
       border-radius: var(--r);
       padding: 14px;
@@ -522,9 +505,9 @@
     .auth-top::after{
       content:"";
       position:absolute;
-      inset:-130px auto auto -130px;
-      width: 320px; height: 320px;
-      background: radial-gradient(circle, rgba(56,189,248,.16), rgba(56,189,248,0) 65%);
+      inset:-140px auto auto -140px;
+      width: 340px; height: 340px;
+      background: radial-gradient(circle, rgba(94,234,212,.12), rgba(94,234,212,0) 66%);
       pointer-events:none;
     }
     .auth-title{
@@ -538,9 +521,17 @@
     }
     .auth-title span{
       font-size: 12px;
-      color: rgba(234,242,255,.84);
+      color: rgba(237,244,255,.84);
       font-weight: 950;
       letter-spacing: .2px;
+    }
+    .auth-hint{
+      margin-top: 10px;
+      font-size: 12px;
+      color: rgba(237,244,255,.66);
+      line-height: 1.45;
+      position:relative;
+      z-index:1;
     }
 
     .btn{
@@ -562,13 +553,13 @@
     .btn:hover{
       transform: translateY(-1px);
       background: rgba(255,255,255,.10);
-      border-color: rgba(56,189,248,.24);
+      border-color: rgba(96,165,250,.22);
       box-shadow: 0 10px 24px rgba(0,0,0,.22);
     }
-
     .btn.primary{
-      background: linear-gradient(135deg, rgba(34,211,238,.96), rgba(37,99,235,.96));
-      border-color: rgba(56,189,248,.38);
+      background: linear-gradient(135deg, rgba(94,234,212,.95), rgba(96,165,250,.95));
+      border-color: rgba(94,234,212,.26);
+      color: #041016;
     }
     .btn.small{
       padding: 9px 10px;
@@ -587,9 +578,10 @@
     .section-title h3{
       margin:0;
       font-size: 12px;
-      color: rgba(234,242,255,.70);
+      color: rgba(237,244,255,.70);
       text-transform: uppercase;
       letter-spacing: 1.2px;
+      font-weight: 950;
     }
 
     .grid{
@@ -606,7 +598,7 @@
 
     .card{
       border-radius: var(--r);
-      border: 1px solid rgba(255,255,255,.12);
+      border: 1px solid var(--stroke);
       background: rgba(255,255,255,.06);
       box-shadow: 0 1px 0 rgba(255,255,255,.02);
       padding: 16px;
@@ -620,16 +612,16 @@
     .card::after{
       content:"";
       position:absolute;
-      width: 240px; height: 240px;
+      width: 260px; height: 260px;
       border-radius: 999px;
-      top:-130px; right:-130px;
-      background: radial-gradient(circle, rgba(56,189,248,.16), rgba(56,189,248,0) 65%);
+      top:-150px; right:-150px;
+      background: radial-gradient(circle, rgba(94,234,212,.12), rgba(94,234,212,0) 66%);
       pointer-events:none;
     }
     .card:hover{
       transform: translateY(-2px);
       box-shadow: var(--shadow);
-      border-color: rgba(56,189,248,.40);
+      border-color: rgba(96,165,250,.28);
       background: rgba(255,255,255,.09);
     }
 
@@ -637,27 +629,19 @@
       display:flex; justify-content:space-between; align-items:flex-start; gap: 10px;
       margin-bottom: 10px;
     }
-    .card-title{
-      display:flex; gap: 10px; align-items:center;
-    }
+    .card-title{ display:flex; gap: 10px; align-items:center; }
     .icon{
       width: 44px; height: 44px; border-radius: 16px;
       display:flex; align-items:center; justify-content:center;
-      color: white;
+      color: #05121a;
       font-weight: 950;
       box-shadow: 0 14px 30px rgba(0,0,0,.35);
       user-select:none;
       border: 1px solid rgba(255,255,255,.14);
+      background: linear-gradient(135deg, rgba(94,234,212,.95), rgba(96,165,250,.90));
     }
-    .i-live{ background: linear-gradient(135deg, rgba(34,211,238,.95), rgba(37,99,235,.95)); }
-    .i-early{ background: linear-gradient(135deg, rgba(56,189,248,.92), rgba(34,211,238,.92)); }
-    .i-report{ background: linear-gradient(135deg, rgba(37,99,235,.90), rgba(34,211,238,.80)); }
-    .i-bim{ background: linear-gradient(135deg, rgba(29,78,216,.92), rgba(37,99,235,.92)); }
-    .i-ber{ background: linear-gradient(135deg, rgba(34,211,238,.86), rgba(56,189,248,.92)); }
-    .i-products{ background: linear-gradient(135deg, rgba(56,189,248,.92), rgba(34,211,238,.86)); }
-
-    .card h4{ margin:0; font-size: 16px; letter-spacing: .1px; }
-    .card p{ margin: 6px 0 0; color: rgba(234,242,255,.76); font-size: 13px; line-height:1.5; }
+    .card h4{ margin:0; font-size: 16px; letter-spacing: .1px; font-weight: 950; }
+    .card p{ margin: 6px 0 0; color: rgba(237,244,255,.76); font-size: 13px; line-height:1.5; }
 
     .cta{
       margin-top:auto;
@@ -671,9 +655,10 @@
     .view{ display:none; }
     .view.active{ display:block; }
 
+    /* Chat */
     .chat-shell{
       border-radius: var(--r);
-      border: 1px solid rgba(255,255,255,.12);
+      border: 1px solid var(--stroke);
       background: rgba(255,255,255,.06);
       box-shadow: var(--shadow2);
       overflow:hidden;
@@ -682,11 +667,11 @@
       display:flex; align-items:center; justify-content:space-between;
       padding: 14px 14px;
       border-bottom: 1px solid rgba(255,255,255,.10);
-      background: rgba(6,12,26,.45);
-      backdrop-filter: blur(10px);
+      background: rgba(6,10,18,.55);
+      backdrop-filter: blur(12px);
     }
     .chat-top strong{ font-size: 14px; }
-    .chat-top span{ font-size: 12px; color: rgba(234,242,255,.70); }
+    .chat-top span{ font-size: 12px; color: rgba(237,244,255,.70); }
 
     .chat-help{
       padding: 14px;
@@ -706,15 +691,15 @@
       cursor:pointer;
       transition: transform .12s ease, background .12s ease, border-color .12s ease;
     }
-    .chip:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); border-color: rgba(56,189,248,.22); }
+    .chip:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); border-color: rgba(96,165,250,.22); }
 
     .chat-log{
       height: 60vh;
       overflow-y:auto;
       padding: 14px;
       background:
-        radial-gradient(900px 480px at 20% 0%, rgba(37,99,235,.14), rgba(37,99,235,0) 60%),
-        radial-gradient(900px 480px at 90% 10%, rgba(56,189,248,.10), rgba(56,189,248,0) 55%),
+        radial-gradient(900px 480px at 20% 0%, rgba(96,165,250,.12), rgba(96,165,250,0) 62%),
+        radial-gradient(900px 480px at 90% 10%, rgba(94,234,212,.10), rgba(94,234,212,0) 55%),
         rgba(0,0,0,.10);
     }
     .msg{ display:flex; margin-bottom: 12px; }
@@ -732,13 +717,15 @@
       white-space: pre-wrap;
     }
     .msg.user .bubble{
-      background: linear-gradient(135deg, rgba(34,211,238,.92), rgba(37,99,235,.92));
-      border-color: rgba(56,189,248,.28);
+      background: linear-gradient(135deg, rgba(94,234,212,.95), rgba(96,165,250,.95));
+      border-color: rgba(94,234,212,.20);
+      color: #05121a;
+      font-weight: 760;
     }
 
     .meta{
       font-size: 11px;
-      color: rgba(234,242,255,.55);
+      color: rgba(237,244,255,.55);
       margin-top: 6px;
     }
     .msg.user .meta{ text-align:right; }
@@ -747,7 +734,8 @@
       display:inline-flex;
       align-items:center;
       gap: 6px;
-      color: rgba(234,242,255,.70);
+      color: rgba(237,244,255,.72);
+      font-weight: 700;
     }
     .dots{
       display:inline-flex;
@@ -757,7 +745,7 @@
     .dots span{
       width: 6px; height: 6px;
       border-radius: 99px;
-      background: rgba(234,242,255,.42);
+      background: rgba(237,244,255,.42);
       animation: dot 1.2s infinite ease-in-out;
     }
     .dots span:nth-child(2){ animation-delay: .15s; }
@@ -773,8 +761,8 @@
       align-items:flex-end;
       padding: 12px;
       border-top: 1px solid rgba(255,255,255,.10);
-      background: rgba(6,12,26,.55);
-      backdrop-filter: blur(10px);
+      background: rgba(6,10,18,.60);
+      backdrop-filter: blur(12px);
       position: sticky;
       bottom: 0;
     }
@@ -785,15 +773,15 @@
       resize:none;
       border-radius: 14px;
       border: 1px solid rgba(255,255,255,.12);
-      background: rgba(3,7,16,.86);
+      background: rgba(3,6,14,.88);
       color: var(--text);
       font-family: var(--font);
       font-size: 13px;
       padding: 10px 12px;
       line-height: 1.35;
     }
-    textarea::placeholder{ color: rgba(234,242,255,.55); }
-    textarea:focus{ outline: 3px solid rgba(56,189,248,.22); outline-offset: 2px; }
+    textarea::placeholder{ color: rgba(237,244,255,.55); }
+    textarea:focus{ outline: 3px solid rgba(96,165,250,.20); outline-offset: 2px; }
 
     .footer{
       margin-top: 16px;
@@ -802,7 +790,7 @@
       align-items:center;
       justify-content:space-between;
       gap: 12px;
-      color: rgba(234,242,255,.62);
+      color: rgba(237,244,255,.62);
       font-size: 12px;
       flex-wrap: wrap;
     }
@@ -815,13 +803,15 @@
     .sep{
       width: 6px; height: 6px;
       border-radius: 99px;
-      background: rgba(56,189,248,.35);
-      box-shadow: 0 0 0 4px rgba(56,189,248,.10);
+      background: rgba(94,234,212,.30);
+      box-shadow: 0 0 0 4px rgba(94,234,212,.10);
     }
   </style>
 </head>
 
 <body>
+  <div class="light-sweep" aria-hidden="true"></div>
+
   <div class="app">
     <aside class="sidebar">
       <div class="brand">
@@ -840,15 +830,15 @@
         <div>
           <h1>Raheem AI</h1>
           <p>Construction Compliance Intelligence</p>
-          <div class="tagline">Ask naturally. Raheem AI chooses the right guidance and finds the answer.</div>
+          <div class="tagline">Ask naturally. I’ll find the relevant guidance and answer with support — without the “robot paperwork energy”.</div>
         </div>
       </div>
 
-      <div class="doc-panel">
-        <div class="doc-head">
+      <div class="panel">
+        <div class="panel-head">
           <div>
-            <div class="doc-title">Document Mode</div>
-            <div class="doc-sub">Auto mode is recommended. Choose a document only if you want to force it.</div>
+            <div class="panel-title">Document Mode</div>
+            <div class="panel-sub">Auto mode is recommended. Force a document only when you want to pin the source.</div>
           </div>
           <span class="pill brand" id="pdfCount">Documents: 0</span>
         </div>
@@ -891,7 +881,7 @@
         </button>
       </div>
 
-      <div class="history-panel" id="historyPanel">
+      <div class="panel history-panel" id="historyPanel">
         <div class="history-head">
           <h3 class="history-title">Previous Chats</h3>
           <div class="history-actions">
@@ -909,10 +899,10 @@
           <div class="hero">
             <h2>Raheem AI <span class="pill brand">2026</span></h2>
             <p>
-              Raheem AI helps professionals navigate Irish building regulation guidance more efficiently.
-              Ask a question in plain language. Raheem AI identifies the relevant guidance, searches it, and answers with supporting references.
+              A calm, professional compliance assistant for Irish building regulation guidance.
+              Ask a question in plain language — I’ll identify the most relevant guidance, search it, and respond with supporting references.
             </p>
-            <div class="quote">Good compliance starts early, when design decisions are still easy to change.</div>
+            <div class="quote">Good compliance starts early — when design decisions are still easy (and cheap) to change.</div>
           </div>
 
           <div class="auth-top">
@@ -920,11 +910,9 @@
               <span>Sign in</span>
               <span class="pill brand">Coming</span>
             </div>
-            <button class="btn small" type="button">
-              Continue with Google
-            </button>
+            <button class="btn small" type="button">Continue with Google</button>
             <div class="auth-hint">
-              Sign in will enable saved projects, access control, and shared chat history.
+              Sign in will unlock saved projects, access control, and shared chat history. For now, chats save locally in your browser.
             </div>
           </div>
         </div>
@@ -935,10 +923,10 @@
           <article class="card" id="cardCompliance" role="button" tabindex="0">
             <div class="card-head">
               <div class="card-title">
-                <div class="icon i-live">CG</div>
+                <div class="icon">CG</div>
                 <div>
                   <h4>Compliance Guidance</h4>
-                  <p>Ask anything. Raheem AI chooses the most relevant TGD and finds the answer logically.</p>
+                  <p>Ask anything. Raheem AI selects the most relevant guidance and answers logically with support.</p>
                 </div>
               </div>
               <span class="pill live">Live</span>
@@ -952,16 +940,16 @@
           <article class="card" id="cardRoadmap" role="button" tabindex="0">
             <div class="card-head">
               <div class="card-title">
-                <div class="icon i-early">FF</div>
+                <div class="icon">FF</div>
                 <div>
                   <h4>Future Features</h4>
-                  <p>Explore planned capabilities including Early Design, DAC, certificates, model review, and energy compliance.</p>
+                  <p>Early Design, structured reports, BIM review, energy compliance, and certification workflows.</p>
                 </div>
               </div>
               <span class="pill brand">Roadmap</span>
             </div>
             <div class="cta">
-              <span class="pill brand">Future Features</span>
+              <span class="pill brand">Preview roadmap</span>
               <button class="btn" id="btnOpenFuture" type="button">View</button>
             </div>
           </article>
@@ -982,8 +970,8 @@
         <div class="hero" style="margin-bottom:14px;">
           <h2>Future Features <span class="pill brand">Roadmap</span></h2>
           <p>
-            These capabilities expand Raheem AI from guidance into a complete compliance and certification platform,
-            designed for professional workflows and clear outputs that support verification.
+            Expanding Raheem AI from guidance into a full compliance and certification workflow,
+            designed for professional outputs that are clear and verifiable.
           </p>
           <div class="quote">Move faster by knowing earlier. Reduce rework by catching risks before they become drawings.</div>
         </div>
@@ -992,16 +980,16 @@
           <article class="card">
             <div class="card-head">
               <div class="card-title">
-                <div class="icon i-early">ED</div>
+                <div class="icon">ED</div>
                 <div>
                   <h4>Early Design</h4>
-                  <p>Enter your area and requirements. Raheem AI generates multiple basic layout options and you choose what works best.</p>
+                  <p>Enter areas and requirements. Generate basic layout options and refine the best direction.</p>
                 </div>
               </div>
               <span class="pill brand">Roadmap</span>
             </div>
             <div class="cta">
-              <span class="pill brand">Example: 30m2, 2 bed, kitchen</span>
+              <span class="pill brand">Example: 30m², 2 bed, kitchen</span>
               <button class="btn" type="button">Preview</button>
             </div>
           </article>
@@ -1009,16 +997,16 @@
           <article class="card">
             <div class="card-head">
               <div class="card-title">
-                <div class="icon i-report">DAC</div>
+                <div class="icon">DAC</div>
                 <div>
                   <h4>DAC Report Generator</h4>
-                  <p>Draft structured DAC reports with key checks aligned to access guidance and project inputs.</p>
+                  <p>Draft structured DAC reports aligned to guidance and project inputs, ready for review.</p>
                 </div>
               </div>
               <span class="pill brand">Roadmap</span>
             </div>
             <div class="cta">
-              <span class="pill brand">Access and use</span>
+              <span class="pill brand">Access & use</span>
               <button class="btn" type="button">Preview</button>
             </div>
           </article>
@@ -1066,6 +1054,7 @@
   <script>
     const API_BASE = "https://complyr.onrender.com";
 
+    // Views
     const viewDashboard = document.getElementById("view-dashboard");
     const viewFuture = document.getElementById("view-future");
     const viewChat = document.getElementById("view-chat");
@@ -1119,6 +1108,7 @@
       if(e.key === "Enter" || e.key === " ") openFuture();
     });
 
+    // Docs panel
     const pdfCount = document.getElementById("pdfCount");
     const pdfSelect = document.getElementById("pdfSelect");
     const pdfSearch = document.getElementById("pdfSearch");
@@ -1167,7 +1157,7 @@
         opt.textContent = name;
         pdfSelect.appendChild(opt);
       }
-      pdfSelect.value = current; // stays Auto by default
+      pdfSelect.value = current;
     }
 
     async function refreshDocs(){
@@ -1185,12 +1175,10 @@
         setSyncLabel();
         fillSelect(allDocs);
 
-        // If user previously forced a doc that no longer exists, reset to Auto
         if(activePdf && !allDocs.includes(activePdf)){
           setActivePdf("");
           pdfSelect.value = "";
         }
-
       } catch(e){
         pdfCount.textContent = "Documents: 0";
         serviceStatus.classList.remove("ok");
@@ -1212,6 +1200,7 @@
     refreshDocs();
     setInterval(refreshDocs, 8000);
 
+    // Chat UI
     const chatLog = document.getElementById("chatLog");
     const chatInput = document.getElementById("chatInput");
     const btnSend = document.getElementById("btnSend");
@@ -1224,6 +1213,7 @@
       });
     });
 
+    // Streaming
     let activeStream = null;
 
     function stamp(){
@@ -1279,14 +1269,19 @@
     function buildStreamUrl(question){
       const params = new URLSearchParams();
       params.set("q", question);
+
+      // If a document is forced, pass it along.
+      // (If your backend ignores `pdf`, it’s harmless; if it supports it, it works.)
       if(activePdf){
         params.set("pdf", activePdf);
+        params.set("force_docs", "true");
       }
+
       return API_BASE + "/ask_stream?" + params.toString();
     }
 
     // Local chat history
-    const STORAGE_KEY = "raheem_ai_chats_v2";
+    const STORAGE_KEY = "raheem_ai_chats_v3";
     let chats = [];
     let activeChatId = null;
 
@@ -1321,7 +1316,7 @@
       const c = chats.find(x => x.id === id);
       if(!c) return;
       activeChatId = id;
-      // restore forced doc only if it exists; otherwise auto
+
       if(c.forcedPdf && allDocs.includes(c.forcedPdf)){
         setActivePdf(c.forcedPdf);
         pdfSelect.value = c.forcedPdf;
@@ -1329,6 +1324,7 @@
         setActivePdf("");
         pdfSelect.value = "";
       }
+
       renderHistory();
       renderActiveChat();
     }
@@ -1361,7 +1357,12 @@
       return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
     }
     function escapeHtml(s){
-      return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
     }
 
     const historyList = document.getElementById("historyList");
@@ -1468,7 +1469,7 @@
         const created = createChat();
         created.messages.push({
           role: "assistant",
-          text: "Hi. Ask your question normally and I will work out which guidance applies, then find the answer. If you want to force a document you can choose one on the left, but Auto mode is recommended.",
+          text: "Hey — ask your question normally and I’ll work out which guidance applies, then find the answer. Auto mode is recommended. (I promise I’m calmer than your average regulations PDF.)",
           time: stamp()
         });
         saveChats();
@@ -1501,20 +1502,35 @@
       setTyping(assistantDom.bubble, true);
 
       const url = buildStreamUrl(raw);
+
+      // IMPORTANT FIX:
+      // EventSource often fires "error" when the server closes the connection.
+      // We only show "service unavailable" if we haven't received any content and no "done" arrived.
       let buffer = "";
+      let gotAnyText = false;
+      let finished = false;
 
       try{
         activeStream = new EventSource(url);
 
-        activeStream.addEventListener("error", () => {
-          stopActiveStream();
-          setTyping(assistantDom.bubble, false);
-          const msg = "The service is currently unavailable. Please try again in a moment.";
-          assistantDom.bubble.textContent = msg;
-          addMsgToChat("assistant", msg);
+        activeStream.addEventListener("meta", (e) => {
+          // optional: meta like model=...;used_docs=...
+          // we don't need to display it, but it can help debugging.
         });
 
+        activeStream.onmessage = (e) => {
+          const chunk = (e.data || "").replaceAll("\\n", "\n");
+          if(!gotAnyText){
+            gotAnyText = true;
+            setTyping(assistantDom.bubble, false);
+          }
+          buffer += chunk;
+          assistantDom.bubble.textContent = buffer;
+          chatLog.scrollTop = chatLog.scrollHeight;
+        };
+
         activeStream.addEventListener("done", () => {
+          finished = true;
           stopActiveStream();
           const finalText = (buffer || "").trim() || "No response available.";
           assistantDom.bubble.textContent = finalText;
@@ -1523,15 +1539,34 @@
           renderHistory();
         });
 
-        activeStream.onmessage = (e) => {
-          const chunk = (e.data || "").replaceAll("\\n", "\n");
-          if(!buffer){
+        activeStream.addEventListener("error", () => {
+          // If the stream already finished, ignore the error (normal close).
+          if(finished) return;
+
+          // Some browsers fire "error" on reconnect attempts. Give it a moment.
+          setTimeout(() => {
+            if(finished) return;
+
+            // If we received content, treat as completed (best UX).
+            if(gotAnyText){
+              finished = true;
+              stopActiveStream();
+              const finalText = (buffer || "").trim() || "No response available.";
+              assistantDom.bubble.textContent = finalText;
+              addMsgToChat("assistant", finalText);
+              persistActiveChat();
+              renderHistory();
+              return;
+            }
+
+            // Real failure (no content)
+            stopActiveStream();
             setTyping(assistantDom.bubble, false);
-          }
-          buffer += chunk;
-          assistantDom.bubble.textContent = buffer;
-          chatLog.scrollTop = chatLog.scrollHeight;
-        };
+            const msg = "The service is currently unavailable. Please try again in a moment.";
+            assistantDom.bubble.textContent = msg;
+            addMsgToChat("assistant", msg);
+          }, 350);
+        });
 
       } catch(err){
         stopActiveStream();
@@ -1548,13 +1583,6 @@
         e.preventDefault();
         send();
       }
-    });
-
-    document.querySelectorAll("[data-prompt]").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        chatInput.value = btn.getAttribute("data-prompt");
-        chatInput.focus();
-      });
     });
   </script>
 </body>
