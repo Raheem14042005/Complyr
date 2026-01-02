@@ -620,25 +620,85 @@ def safe_filename(name: str) -> str:
         name += ".pdf"
     return name[:180]
 
+from fastapi import HTTPException
+import shutil
+
 @app.post("/upload-pdf")
 async def upload_pdf(file: UploadFile = File(...)):
-    if not file.filename.lower().endswith(".pdf"):
-        return {"ok": False, "error": "Only PDF files allowed"}
-
-    data = await file.read()
-    if MAX_UPLOAD_MB > 0 and len(data) > MAX_UPLOAD_MB * 1024 * 1024:
-        return {"ok": False, "error": f"PDF too large. Max is {MAX_UPLOAD_MB}MB"}
-
-    fname = safe_filename(file.filename)
-    path = PDF_DIR / fname
-    path.write_bytes(data)
-
+    """
+    Robust uploader:
+    - Streams to disk (does NOT load whole file into RAM)
+    - Validates extension + size
+    - Returns JSON errors instead of plain 500
+    - Indexing failure won't delete the uploaded file (but will report it)
+    """
     try:
-        index_pdf(path)
-    except Exception:
-        pass
+        if not file or not file.filename:
+            return {"ok": False, "error": "No file received (filename empty)."}
 
-    return {"ok": True, "pdf": fname, "stored_in": str(PDF_DIR)}
+        if not file.filename.lower().endswith(".pdf"):
+            return {"ok": False, "error": "Only PDF files allowed"}
+
+        fname = safe_filename(file.filename)
+        path = PDF_DIR / fname
+
+        # Ensure directory exists and is writable
+        PDF_DIR.mkdir(parents=True, exist_ok=True)
+        try:
+            testfile = PDF_DIR / ".write_test"
+            testfile.write_text("ok", encoding="utf-8")
+            testfile.unlink(missing_ok=True)
+        except Exception as e:
+            return {
+                "ok": False,
+                "error": f"PDF_DIR is not writable: {PDF_DIR}",
+                "detail": str(e),
+            }
+
+        # Stream-save to disk with a size cap
+        max_bytes = MAX_UPLOAD_MB * 1024 * 1024 if MAX_UPLOAD_MB > 0 else None
+        written = 0
+        with open(path, "wb") as out:
+            while True:
+                chunk = await file.read(1024 * 1024)  # 1MB chunks
+                if not chunk:
+                    break
+                written += len(chunk)
+                if max_bytes and written > max_bytes:
+                    out.close()
+                    try:
+                        path.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+                    return {"ok": False, "error": f"PDF too large. Max is {MAX_UPLOAD_MB}MB"}
+                out.write(chunk)
+
+        # Try indexing (but don't 500 if indexing fails)
+        indexed_ok = True
+        index_error = None
+        try:
+            index_pdf(path)
+        except Exception as ie:
+            indexed_ok = False
+            index_error = str(ie)
+
+        return {
+            "ok": True,
+            "pdf": fname,
+            "bytes": written,
+            "stored_in": str(PDF_DIR),
+            "indexed": indexed_ok,
+            "index_error": index_error,
+        }
+
+    except Exception as e:
+        # Return a JSON error instead of plain 500
+        return {
+            "ok": False,
+            "error": str(e),
+            "trace": traceback.format_exc().splitlines()[-25:],
+        }
+
 
 
 # ----------------------------
@@ -900,3 +960,4 @@ def chat_stream(payload: Dict[str, Any] = Body(...)):
         media_type="text/event-stream",
         headers={"Cache-Control":"no-cache","Connection":"keep-alive","X-Accel-Buffering":"no"},
     )
+
