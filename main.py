@@ -3,10 +3,11 @@ Raheem AI — FastAPI backend
 Goal: normal AI vibe + becomes a PDF/TGD expert when needed, WITHOUT scanning everything.
 
 Key upgrades:
-- Stronger retrieval (BM25-like scoring) so deep pages (e.g. p.350) get found.
-- Iterative retrieval widening: starts small (cheap) and expands only if needed.
-- Vision only on selected pages when tables/diagrams likely matter.
-- Optional page_hint and pdf pinning.
+- Robust PDF storage on Render (store beside main.py)
+- Case-insensitive PDF listing (Linux-safe)
+- Adds /docs endpoint for frontend checks
+- /health supports GET + HEAD
+- Upload returns updated pdf_count and exact stored path
 """
 
 from fastapi import FastAPI, UploadFile, File, Query, Body
@@ -56,13 +57,12 @@ BASE_DIR = Path(__file__).resolve().parent
 
 
 # ----------------------------
-# Storage paths
+# Storage paths (Render-safe)
 # ----------------------------
 
 # Always store PDFs beside main.py (works reliably on Render)
 PDF_DIR = BASE_DIR / "pdfs"
 PDF_DIR.mkdir(parents=True, exist_ok=True)
-
 
 
 # ----------------------------
@@ -91,16 +91,20 @@ def tokenize(text: str) -> List[str]:
 # ----------------------------
 # Indexes
 # ----------------------------
-# For each PDF:
-# - page_text_lower: list[str]
-# - page_tf: list[Counter]
-# - df: Counter of term -> number of pages containing term
-# - avgdl: average document length (tokens per page)
-# - page_len: list[int] length per page
+
 PDF_INDEX: Dict[str, Dict[str, Any]] = {}
 
 def list_pdfs() -> List[str]:
-    return [p.name for p in PDF_DIR.glob("*.pdf")]
+    """
+    Case-insensitive PDF listing (Linux/Render safe).
+    """
+    files = []
+    if PDF_DIR.exists():
+        for p in PDF_DIR.iterdir():
+            if p.is_file() and p.suffix.lower() == ".pdf":
+                files.append(p.name)
+    files.sort()
+    return files
 
 def ensure_indexed(pdf_name: str) -> None:
     if pdf_name in PDF_INDEX:
@@ -147,7 +151,8 @@ def index_pdf(pdf_path: Path) -> None:
         doc.close()
 
 def index_all_pdfs() -> None:
-    for p in PDF_DIR.glob("*.pdf"):
+    for name in list_pdfs():
+        p = PDF_DIR / name
         try:
             index_pdf(p)
         except Exception:
@@ -170,9 +175,6 @@ def bm25_page_score(
     k1: float = 1.4,
     b: float = 0.75
 ) -> float:
-    """
-    Lightweight BM25-ish score for a single page.
-    """
     if not q_tokens or N <= 0:
         return 0.0
 
@@ -185,7 +187,6 @@ def bm25_page_score(
             continue
 
         n_t = df.get(t, 0)
-        # IDF with smoothing
         idf = math.log(1 + (N - n_t + 0.5) / (n_t + 0.5))
 
         score += idf * (f * (k1 + 1)) / (f + k1 * denom_norm)
@@ -193,10 +194,6 @@ def bm25_page_score(
     return score
 
 def phrase_bonus(page_text_lower: str, question: str) -> float:
-    """
-    Adds a small bonus for exact short phrase matches (2-4 grams).
-    Helps pull the right page even if BM25 is close.
-    """
     q_words = [w for w in re.findall(r"[a-z0-9]+", (question or "").lower()) if w not in STOPWORDS]
     bonus = 0.0
     for n in (2, 3, 4):
@@ -209,9 +206,6 @@ def phrase_bonus(page_text_lower: str, question: str) -> float:
     return bonus
 
 def page_hint_bonus(page_index: int, page_hint: Optional[int]) -> float:
-    """
-    If the user hints a page (1-based), gently bias nearby pages.
-    """
     if not page_hint or page_hint <= 0:
         return 0.0
     target = page_hint - 1
@@ -226,7 +220,7 @@ def page_hint_bonus(page_index: int, page_hint: Optional[int]) -> float:
 
 
 # ----------------------------
-# Retrieval: start small, widen if needed
+# Retrieval
 # ----------------------------
 
 def retrieve_top_pages_for_doc(
@@ -268,14 +262,6 @@ def retrieve_across_pdfs_iterative(
     page_hint: Optional[int] = None,
     max_docs: int = 3,
 ) -> List[Tuple[str, List[int], float]]:
-    """
-    Returns list of (pdf_name, page_indexes_0_based, score)
-
-    Strategy:
-    - If pdf_pin provided: only search that doc.
-    - Else: score docs by best pages, take top docs.
-    - Start with a small selection, widen only if weak.
-    """
 
     available = list_pdfs()
     if not available:
@@ -291,7 +277,6 @@ def retrieve_across_pdfs_iterative(
         pages = [p for p, _ in top_pages[:3]]
         return [(pdf_pin, sorted(set(pages)), best)]
 
-    # Score each doc by its best page score
     doc_best: List[Tuple[str, float]] = []
     per_doc_pages: Dict[str, List[Tuple[int, float]]] = {}
 
@@ -333,19 +318,14 @@ def iterative_select_pages(
     max_docs: int = 3,
     max_total_pages: int = 8,
 ) -> List[Tuple[str, List[int], float]]:
-    """
-    Start small (cheap), expand only if retrieval confidence seems low.
-    """
+
     hits = retrieve_across_pdfs_iterative(question, pdf_pin=pdf_pin, page_hint=page_hint, max_docs=max_docs)
     if not hits:
         return []
 
     final: List[Tuple[str, List[int], float]] = []
 
-    # Heuristic confidence: if top score is tiny, widen.
     top_score = hits[0][2]
-
-    # Base window / pages per doc
     window = 0
     pages_per_doc = 3
 
@@ -361,11 +341,9 @@ def iterative_select_pages(
         ensure_indexed(doc_name)
         total = PDF_INDEX[doc_name]["pages"]
 
-        # Take more pages if score is low, but cap total pages sent.
         pages = base_pages[:pages_per_doc]
         pages = expand_pages(pages, total, window=window)
 
-        # Cap total pages across docs
         remaining = max_total_pages - used_pages
         if remaining <= 0:
             break
@@ -379,7 +357,7 @@ def iterative_select_pages(
 
 
 # ----------------------------
-# Vision helpers (tables/diagrams)
+# Vision helpers
 # ----------------------------
 
 _IMAGE_CACHE: "OrderedDict[Tuple[str,int,int], str]" = OrderedDict()
@@ -423,7 +401,6 @@ def needs_vision(question: str, excerpt: str) -> bool:
     q = (question or "").lower()
     if any(t in q for t in ["table","diagram","figure","fig.","chart","schedule","drawing","plan","elevation","section"]):
         return True
-    # If extracted text looks like poor table extraction
     lines = (excerpt or "").splitlines()
     if not lines:
         return True
@@ -437,7 +414,7 @@ def needs_vision(question: str, excerpt: str) -> bool:
 
 
 # ----------------------------
-# Router (normal AI vs doc-grounded)
+# Router
 # ----------------------------
 
 def is_short_topic_prompt(q: str) -> bool:
@@ -482,36 +459,35 @@ def should_use_docs(question: str, pdf_pin: Optional[str] = None, page_hint: Opt
     if score >= 4:
         return True
     if looks_like_definition_question(question):
-        # Only go doc-mode if we can find evidence quickly
         return evidence_exists_in_pdfs(question, pdf_pin=pdf_pin, page_hint=page_hint)
     return False
 
 
 SYSTEM_RULES = """
-You are Raheem AI — a calm, capable assistant.
+You are Raheem AI — calm, capable, and natural.
 
 Tone:
-- Slightly positive and professionally humorous (subtle).
-- If the user’s prompt is short/unclear, ask 1–2 clarifying questions before dumping a long answer.
+- Professional, friendly, and human.
+- If the user is unclear, ask 1–2 clarifying questions.
 
 Core behavior:
-- Act like a normal AI by default: helpful, practical, natural.
-- When the user asks what TGDs/Parts/PDFs say, or asks about compliance requirements, become document-grounded.
+- Understand the user’s question first.
+- If it’s a compliance question, choose the most relevant document(s) yourself.
+- If pinned to a document, focus there first.
 
 When SOURCES are provided:
 - Treat SOURCES as authoritative.
 - Cite pages like (DocName p.12).
-- Do NOT invent clause numbers, numeric thresholds, or interpret a diagram you haven’t actually seen.
-- If SOURCES don’t contain enough to answer, say so and suggest what to search next (and what terms/pages to look for).
+- Do not invent clause numbers or numeric limits you cannot see.
 
 Output style:
-- Give the answer first in plain English.
-- Then add a short “Where this comes from” section with citations if you used SOURCES.
+- Answer clearly.
+- If SOURCES were used, add a short “Where this comes from” with citations.
 """.strip()
 
 
 # ----------------------------
-# Source extraction / bundling
+# Source extraction
 # ----------------------------
 
 def extract_pages_text(pdf_path: Path, page_indexes: List[int], max_chars_per_page: int = 1800) -> str:
@@ -585,9 +561,15 @@ def root():
         "model": MODEL_NAME,
     }
 
-@app.get("/health")
+# Important: allow HEAD too (Render checks often use HEAD)
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health():
     return {"ok": True}
+
+# Frontend compatibility endpoint (stops "documents unavailable" checks)
+@app.get("/docs")
+def docs_check():
+    return {"ok": True, "pdf_count": len(list_pdfs())}
 
 @app.get("/pdfs")
 def pdfs():
@@ -596,22 +578,22 @@ def pdfs():
 
 def safe_filename(name: str) -> str:
     name = Path(name).name
-    name = re.sub(r"[^a-zA-Z0-9._\\- ]+", "", name).strip()
+    name = re.sub(r"[^a-zA-Z0-9._\- ]+", "", name).strip()
     if not name.lower().endswith(".pdf"):
         name += ".pdf"
+    # Force lowercase extension for Linux consistency
+    if not name.endswith(".pdf"):
+        name = re.sub(r"\.[pP][dD][fF]$", ".pdf", name)
     return name[:180]
-
-from fastapi import HTTPException
-import shutil
 
 @app.post("/upload-pdf")
 async def upload_pdf(file: UploadFile = File(...)):
     """
     Robust uploader:
-    - Streams to disk (does NOT load whole file into RAM)
+    - Streams to disk
     - Validates extension + size
     - Returns JSON errors instead of plain 500
-    - Indexing failure won't delete the uploaded file (but will report it)
+    - Returns updated pdf_count
     """
     try:
         if not file or not file.filename:
@@ -623,22 +605,12 @@ async def upload_pdf(file: UploadFile = File(...)):
         fname = safe_filename(file.filename)
         path = PDF_DIR / fname
 
-        # Ensure directory exists and is writable
         PDF_DIR.mkdir(parents=True, exist_ok=True)
-        try:
-            testfile = PDF_DIR / ".write_test"
-            testfile.write_text("ok", encoding="utf-8")
-            testfile.unlink(missing_ok=True)
-        except Exception as e:
-            return {
-                "ok": False,
-                "error": f"PDF_DIR is not writable: {PDF_DIR}",
-                "detail": str(e),
-            }
 
         # Stream-save to disk with a size cap
         max_bytes = MAX_UPLOAD_MB * 1024 * 1024 if MAX_UPLOAD_MB > 0 else None
         written = 0
+
         with open(path, "wb") as out:
             while True:
                 chunk = await file.read(1024 * 1024)  # 1MB chunks
@@ -653,8 +625,13 @@ async def upload_pdf(file: UploadFile = File(...)):
                         pass
                     return {"ok": False, "error": f"PDF too large. Max is {MAX_UPLOAD_MB}MB"}
                 out.write(chunk)
+            out.flush()
+            try:
+                os.fsync(out.fileno())
+            except Exception:
+                pass
 
-        # Try indexing (but don't 500 if indexing fails)
+        # Index it
         indexed_ok = True
         index_error = None
         try:
@@ -670,16 +647,15 @@ async def upload_pdf(file: UploadFile = File(...)):
             "stored_in": str(PDF_DIR),
             "indexed": indexed_ok,
             "index_error": index_error,
+            "pdf_count_now": len(list_pdfs()),
         }
 
     except Exception as e:
-        # Return a JSON error instead of plain 500
         return {
             "ok": False,
             "error": str(e),
             "trace": traceback.format_exc().splitlines()[-25:],
         }
-
 
 
 # ----------------------------
@@ -698,7 +674,6 @@ def ask(
     force_vision: bool = Query(False),
 ):
     try:
-        # Short topic => ask 1 clarifying question unless user is clearly asking TGD rules
         if is_short_topic_prompt(q) and not force_docs and not should_use_docs(q, pdf_pin=pdf, page_hint=page_hint):
             blocks = build_openai_blocks(q, sources_text="", images=None)
             resp = client.responses.create(
@@ -723,13 +698,12 @@ def ask(
         cites: List[Tuple[str,int]] = []
         images = None
 
-        if use_docs:
+        if use_docs and list_pdfs():
             selected = iterative_select_pages(
                 q, pdf_pin=pdf, page_hint=page_hint, max_docs=max_docs, max_total_pages=max_total_pages
             )
             sources_text, cites = build_sources_bundle(selected)
 
-            # Decide if vision is needed, but ONLY for top doc + first couple pages
             if selected:
                 top_doc, pages, _score = selected[0]
                 pdf_path = PDF_DIR / top_doc
@@ -780,7 +754,6 @@ def ask_stream(
 ):
     def sse():
         try:
-            # Short topic => clarify (unless clearly doc intent)
             if is_short_topic_prompt(q) and not force_docs and not should_use_docs(q, pdf_pin=pdf, page_hint=page_hint):
                 yield f"event: meta\ndata: model={MODEL_NAME};used_docs=False;vision=False\n\n"
                 blocks = build_openai_blocks(q, sources_text="", images=None)
@@ -808,7 +781,7 @@ def ask_stream(
             cites: List[Tuple[str,int]] = []
             images = None
 
-            if use_docs:
+            if use_docs and list_pdfs():
                 selected = iterative_select_pages(
                     q, pdf_pin=pdf, page_hint=page_hint, max_docs=max_docs, max_total_pages=max_total_pages
                 )
@@ -863,15 +836,6 @@ def ask_stream(
 
 @app.post("/chat_stream")
 def chat_stream(payload: Dict[str, Any] = Body(...)):
-    """
-    POST:
-    {
-      "messages": [{"role":"user","content":"..."}, ...],
-      "pdf": "SomeDoc.pdf",
-      "page_hint": 350,
-      "force_docs": false
-    }
-    """
     messages = payload.get("messages", [])
     pdf = payload.get("pdf")
     page_hint = payload.get("page_hint")
@@ -901,7 +865,7 @@ def chat_stream(payload: Dict[str, Any] = Body(...)):
             sources_text = ""
             cites: List[Tuple[str,int]] = []
 
-            if use_docs:
+            if use_docs and list_pdfs():
                 selected = iterative_select_pages(
                     last_user, pdf_pin=pdf, page_hint=page_hint, max_docs=3, max_total_pages=8
                 )
@@ -941,5 +905,3 @@ def chat_stream(payload: Dict[str, Any] = Body(...)):
         media_type="text/event-stream",
         headers={"Cache-Control":"no-cache","Connection":"keep-alive","X-Accel-Buffering":"no"},
     )
-
-
