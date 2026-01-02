@@ -1,4 +1,4 @@
-# main.py — Raheem AI (Persistent PDFs + Smart Vision + Streaming)
+# main.py — Raheem AI (Persistent PDFs + Smart Vision + Streaming + Auto TGD Selection)
 
 from fastapi import FastAPI, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -291,26 +291,20 @@ async def upload_pdf(file: UploadFile = File(...)):
     return {"ok": True, "pdf": file.filename, "stored_in": str(PDF_DIR)}
 
 # ----------------------------
-# Prompt (no symbols, no markdown)
+# Natural prompt (less constrained, but no * or #)
 # ----------------------------
 
 SYSTEM_RULES = """
-You are Raheem AI, a specialist assistant for Irish Building Regulations Technical Guidance Documents (TGDs).
+You are Raheem AI, a capable assistant for Irish Building Regulations guidance.
 
-Communication style (mandatory):
-- Do NOT use markdown of any kind.
-- Do NOT use bullet points, numbered lists, asterisks, hashes, headings, or symbols.
-- Write in natural, flowing sentences only.
-- Respond as if explaining verbally to a professional colleague.
-- Sound calm, confident, and approachable.
-- Avoid robotic or overly formal language.
-- Do not say things like thinking or analyzing, and do not describe internal processes.
+How you should work:
+First, understand what the user is really asking. Then use the most relevant Technical Guidance Document and the provided excerpt to answer. If the excerpt does not support an exact answer, explain what you can confirm and what you would check next, in a calm and practical way.
 
-Answer rules:
-- Prioritise correctness. Do not invent numbers, limits, or clauses.
-- Where possible, mention the relevant section, table, or diagram name in sentence form.
-- If an exact value is not clearly visible in the provided material, say so plainly and explain what can be verified instead.
-- Keep answers clear, helpful, and naturally structured in short paragraphs.
+Style:
+Speak naturally and confidently like a helpful professional. Use short paragraphs. Do not use asterisks or hash symbols in your output. Avoid heavy formatting and avoid long lists. Do not say that you are thinking or analyzing. Do not describe internal tool steps.
+
+Accuracy:
+Do not invent numbers or clauses. If an exact value is not supported by what you can see, say so plainly and keep the guidance practical.
 """
 
 def build_user_header(question: str, pdf_name: str, pages_used: List[int], mode: str) -> str:
@@ -343,7 +337,7 @@ def build_openai_input(
 
     user_blocks = [
         {"type": "input_text", "text": SYSTEM_RULES},
-        {"type": "input_text", "text": header + "\n\n---\n\nEXCERPT:\n" + excerpt}
+        {"type": "input_text", "text": header + "\n\nEXCERPT:\n" + excerpt}
     ]
 
     if use_vision:
@@ -381,47 +375,186 @@ def resolve_page_indexes(pdf_name: str, question: str, pages: Optional[str], top
     return page_indexes
 
 # ----------------------------
+# Auto TGD selection and multi-doc search
+# ----------------------------
+
+TGD_HINTS = [
+    ("Technical Guidance Document K.pdf", ["stair", "stairs", "handrail", "guard", "guarding", "balustrade", "ramp", "step", "nosing", "landing", "fall"]),
+    ("Technical Guidance Document M.pdf", ["accessible", "wheelchair", "part m", "dac", "access", "gradient", "door width", "accessible wc", "turning circle"]),
+    ("Technical Guidance Document B Non Dwellings.pdf", ["travel distance", "means of escape", "escape", "fire resistance", "compartment", "exit", "evacuation", "fire"]),
+    ("Technical Guidance Document B.pdf", ["travel distance", "means of escape", "escape", "fire resistance", "compartment", "exit", "evacuation", "fire"]),
+    ("Technical Guidance Document L Dwellings.pdf", ["part l", "ber", "u-value", "u value", "y-value", "thermal bridge", "airtight", "air tight", "primary energy", "carbon"]),
+    ("Technical Guidance Document L Non Dwellings.pdf", ["part l", "ber", "u-value", "u value", "y-value", "thermal bridge", "airtight", "air tight", "primary energy", "carbon"]),
+    ("DEAP_Manual.pdf", ["deap", "ber", "primary energy", "carbon", "heat pump", "efficiency", "space heating", "water heating"]),
+    ("Technical Guidance Document F.pdf", ["ventilation", "extract", "purge", "background ventilation", "air change", "air changes"]),
+    ("Technical Guidance Document E.pdf", ["sound", "acoustic", "rw", "dnt", "impact sound", "airborne sound"]),
+    ("Technical Guidance Document H.pdf", ["drainage", "foul", "rainwater", "surface water", "soakaway"]),
+    ("Technical Guidance Document J.pdf", ["boiler", "flue", "chimney", "combustion", "appliance"]),
+    ("Technical Guidance Document A.pdf", ["structure", "load", "foundation", "eurocode", "beam", "column"]),
+    ("Technical Guidance Document D.pdf", ["materials", "workmanship", "durability"]),
+    ("Technical Guidance Document G.pdf", ["hygiene", "sanitary", "hot water", "wash hand basin", "wash-hand basin"]),
+]
+
+def list_available_pdfs() -> List[str]:
+    return [p.name for p in PDF_DIR.glob("*.pdf")]
+
+def rank_pdfs_for_question(question: str, available_pdfs: List[str]) -> List[str]:
+    ql = question.lower()
+    scored = []
+    for name in available_pdfs:
+        hint_score = 0
+        for tgd, kws in TGD_HINTS:
+            if name == tgd:
+                for kw in kws:
+                    if kw in ql:
+                        hint_score += 15
+        scored.append((name, hint_score))
+    scored.sort(key=lambda x: x[1], reverse=True)
+    return [n for n, _ in scored]
+
+def best_pages_score(pdf_name: str, question: str, top_k_pages: int = 3) -> int:
+    page_texts = PDF_TEXT_INDEX.get(pdf_name, [])
+    if not page_texts:
+        return 0
+    tokens = tokenize(question)
+    if not tokens:
+        return 0
+    scores = []
+    for txt in page_texts:
+        s = score_page(txt, tokens, question)
+        if s:
+            scores.append(s)
+    scores.sort(reverse=True)
+    return sum(scores[:top_k_pages]) if scores else 0
+
+def choose_best_pdf_by_evidence(question: str, candidates: List[str], max_check: int = 6) -> List[str]:
+    subset = candidates[:max_check]
+    evidence = []
+    for name in subset:
+        evidence.append((name, best_pages_score(name, question)))
+    evidence.sort(key=lambda x: x[1], reverse=True)
+    ranked = [n for n, _ in evidence]
+    # If evidence is flat (all zero), keep original order
+    if evidence and evidence[0][1] == 0:
+        return subset
+    return ranked if ranked else subset
+
+def looks_like_no_support(answer_text: str) -> bool:
+    t = (answer_text or "").lower()
+    signals = [
+        "not clearly",
+        "not visible",
+        "cannot confirm",
+        "can't confirm",
+        "not supported",
+        "i cannot see",
+        "i can't see",
+        "not enough information",
+        "not provided in the excerpt"
+    ]
+    return any(s in t for s in signals) or len(t.strip()) < 40
+
+# ----------------------------
+# Core answering logic (used by /ask and /ask_stream)
+# ----------------------------
+
+def answer_using_pdf(
+    q: str,
+    pdf_name: str,
+    pages: Optional[str],
+    top_k: int,
+    window: int,
+    dpi: int,
+    force_vision: bool
+):
+    pdf_path = PDF_DIR / pdf_name
+    if not pdf_path.exists():
+        raise FileNotFoundError(f"PDF not found: {pdf_name}")
+
+    page_indexes = resolve_page_indexes(pdf_name, q, pages, top_k, window, pdf_path)
+
+    user_blocks, vision_used = build_openai_input(
+        question=q,
+        pdf_name=pdf_name,
+        pdf_path=pdf_path,
+        page_indexes=page_indexes,
+        dpi=dpi,
+        force_vision=force_vision
+    )
+
+    resp = client.responses.create(
+        model=MODEL_NAME,
+        max_output_tokens=700,
+        input=[{"role": "user", "content": user_blocks}],
+    )
+
+    return resp.output_text, [p + 1 for p in page_indexes], vision_used
+
+# ----------------------------
 # Non-stream endpoint
 # ----------------------------
 
 @app.get("/ask")
 def ask(
     q: str = Query(..., description="User question"),
-    pdf: str = Query(..., description="PDF filename"),
+    pdf: Optional[str] = Query(None, description="PDF filename (optional). If omitted, Raheem AI chooses."),
     pages: Optional[str] = Query(None, description="Optional: comma-separated 1-based pages e.g. 340,341"),
     top_k: int = Query(4, description="Auto: number of strongest pages"),
     window: int = Query(1, description="Auto: neighbour pages around each match"),
     dpi: int = Query(120, description="Render DPI for vision pages (lower = cheaper/faster)"),
     vision: bool = Query(False, description="Force vision pages"),
+    max_docs: int = Query(3, description="If pdf is not provided, how many TGDs to try before stopping"),
 ):
-    pdf_path = PDF_DIR / pdf
-    if not pdf_path.exists():
-        return {"ok": False, "error": f"PDF not found in {PDF_DIR}"}
-
     try:
-        page_indexes = resolve_page_indexes(pdf, q, pages, top_k, window, pdf_path)
+        available = list_available_pdfs()
+        if not available:
+            return {"ok": False, "error": "No documents are available on the server right now."}
 
-        user_blocks, vision_used = build_openai_input(
-            question=q,
-            pdf_name=pdf,
-            pdf_path=pdf_path,
-            page_indexes=page_indexes,
-            dpi=dpi,
-            force_vision=vision
-        )
+        forced_pdf = (pdf is not None and pdf.strip() != "")
+        if forced_pdf:
+            chosen_list = [pdf.strip()]
+        else:
+            hint_ranked = rank_pdfs_for_question(q, available)
+            chosen_list = choose_best_pdf_by_evidence(q, hint_ranked, max_check=6)
+            chosen_list = chosen_list[:max(1, min(max_docs, 6))]
 
-        resp = client.responses.create(
-            model=MODEL_NAME,
-            max_output_tokens=700,
-            input=[{"role": "user", "content": user_blocks}],
-        )
+        best_payload = None
 
-        return {
-            "ok": True,
-            "answer": resp.output_text,
-            "pages_used": [p + 1 for p in page_indexes],
-            "vision_used": vision_used
-        }
+        for i, candidate in enumerate(chosen_list):
+            if candidate not in available:
+                continue
+            try:
+                answer, pages_used, vision_used = answer_using_pdf(
+                    q=q,
+                    pdf_name=candidate,
+                    pages=pages,
+                    top_k=top_k,
+                    window=window,
+                    dpi=dpi,
+                    force_vision=vision
+                )
+            except Exception:
+                continue
+
+            payload = {
+                "ok": True,
+                "answer": answer,
+                "pdf_used": candidate,
+                "pages_used": pages_used,
+                "vision_used": vision_used,
+                "searched": chosen_list
+            }
+            best_payload = payload
+
+            # If it seems supported, stop early. Otherwise try next TGD.
+            if not looks_like_no_support(answer):
+                break
+
+        if best_payload:
+            return best_payload
+
+        return {"ok": False, "error": "Unable to find a supported answer in the available documents."}
+
     except Exception as e:
         return {"ok": False, "error": str(e), "trace": traceback.format_exc().splitlines()[-12:]}
 
@@ -432,67 +565,97 @@ def ask(
 @app.get("/ask_stream")
 def ask_stream(
     q: str = Query(..., description="User question"),
-    pdf: str = Query(..., description="PDF filename"),
+    pdf: Optional[str] = Query(None, description="PDF filename (optional). If omitted, Raheem AI chooses."),
     pages: Optional[str] = Query(None, description="Optional: comma-separated 1-based pages e.g. 340,341"),
     top_k: int = Query(4),
     window: int = Query(1),
     dpi: int = Query(120),
     vision: bool = Query(False),
+    max_docs: int = Query(3),
 ):
-    pdf_path = PDF_DIR / pdf
-    if not pdf_path.exists():
+    available = list_available_pdfs()
+    if not available:
         def err():
-            yield "event: error\ndata: PDF not found\n\n"
+            yield "event: error\ndata: No documents are available on the server right now.\n\n"
         return StreamingResponse(
             err(),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"}
         )
 
-    try:
-        page_indexes = resolve_page_indexes(pdf, q, pages, top_k, window, pdf_path)
-        user_blocks, vision_used = build_openai_input(
-            question=q,
-            pdf_name=pdf,
-            pdf_path=pdf_path,
-            page_indexes=page_indexes,
-            dpi=dpi,
-            force_vision=vision
-        )
-    except Exception as e:
-        def err():
-            yield f"event: error\ndata: {str(e)}\n\n"
-        return StreamingResponse(
-            err(),
-            media_type="text/event-stream",
-            headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"}
-        )
+    forced_pdf = (pdf is not None and pdf.strip() != "")
+    if forced_pdf:
+        chosen_list = [pdf.strip()]
+    else:
+        hint_ranked = rank_pdfs_for_question(q, available)
+        chosen_list = choose_best_pdf_by_evidence(q, hint_ranked, max_check=6)
+        chosen_list = chosen_list[:max(1, min(max_docs, 6))]
 
+    # We stream only the final chosen attempt. To keep the experience smooth and not confusing,
+    # we pick the best candidate first by evidence, and only fall back if it clearly fails.
+    # If the first answer comes back as "no support", we then stream the second attempt.
     def sse():
-        yield f"event: meta\ndata: pages_used={','.join(str(p+1) for p in page_indexes)};vision_used={vision_used}\n\n"
+        tried = []
+        last_error = None
 
-        stream = client.responses.create(
-            model=MODEL_NAME,
-            max_output_tokens=700,
-            input=[{"role": "user", "content": user_blocks}],
-            stream=True,
-        )
+        for candidate in chosen_list:
+            if candidate not in available:
+                continue
 
-        try:
-            for event in stream:
-                if getattr(event, "type", None) == "response.output_text.delta":
-                    delta = getattr(event, "delta", "")
-                    if delta:
-                        safe = delta.replace("\r", "").replace("\n", "\\n")
-                        yield f"data: {safe}\n\n"
+            tried.append(candidate)
 
-                if getattr(event, "type", None) == "response.completed":
-                    break
+            try:
+                pdf_path = PDF_DIR / candidate
+                if not pdf_path.exists():
+                    continue
 
-        except Exception as e:
-            msg = str(e).replace("\r", "").replace("\n", " ")
-            yield f"event: error\ndata: {msg}\n\n"
+                page_indexes = resolve_page_indexes(candidate, q, pages, top_k, window, pdf_path)
+                user_blocks, vision_used = build_openai_input(
+                    question=q,
+                    pdf_name=candidate,
+                    pdf_path=pdf_path,
+                    page_indexes=page_indexes,
+                    dpi=dpi,
+                    force_vision=vision
+                )
 
+                yield f"event: meta\ndata: pdf_used={candidate};pages_used={','.join(str(p+1) for p in page_indexes)};vision_used={vision_used}\n\n"
+
+                stream = client.responses.create(
+                    model=MODEL_NAME,
+                    max_output_tokens=700,
+                    input=[{"role": "user", "content": user_blocks}],
+                    stream=True,
+                )
+
+                buffer = ""
+
+                for event in stream:
+                    if getattr(event, "type", None) == "response.output_text.delta":
+                        delta = getattr(event, "delta", "")
+                        if delta:
+                            buffer += delta
+                            safe = delta.replace("\r", "").replace("\n", "\\n")
+                            yield f"data: {safe}\n\n"
+
+                    if getattr(event, "type", None) == "response.completed":
+                        break
+
+                # If the result looks unsupported and we have more docs to try, continue.
+                if not forced_pdf and looks_like_no_support(buffer) and len(tried) < len(chosen_list):
+                    yield "event: meta\ndata: continuing=true\n\n"
+                    continue
+
+                yield f"event: meta\ndata: searched={','.join(tried)}\n\n"
+                yield "event: done\ndata: ok\n\n"
+                return
+
+            except Exception as e:
+                last_error = str(e)
+
+        msg = last_error or "Unable to find a supported answer in the available documents."
+        msg = msg.replace("\r", "").replace("\n", " ")
+        yield f"event: error\ndata: {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
 
     return StreamingResponse(
