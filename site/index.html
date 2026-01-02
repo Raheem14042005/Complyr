@@ -207,6 +207,11 @@
       color: #d7fbff;
       background: rgba(34,211,238,.10);
     }
+    .pill.danger{
+      border-color: rgba(244,63,94,.40);
+      background: rgba(244,63,94,.10);
+      color: rgba(255,225,230,.92);
+    }
 
     /* Document selection */
     .doc-panel{
@@ -301,6 +306,128 @@
     .mini.warn .dot{
       background: var(--warn);
       box-shadow: 0 0 0 4px rgba(245,158,11,.12);
+    }
+
+    /* Chat history panel */
+    .history-panel{
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      border-radius: var(--r2);
+      padding: 12px;
+      margin-top: 14px;
+      position:relative;
+      z-index:1;
+    }
+    .history-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .history-title{
+      font-size: 12px;
+      letter-spacing: .9px;
+      text-transform: uppercase;
+      color: rgba(234,242,255,.86);
+      font-weight: 950;
+      margin:0;
+    }
+    .history-actions{
+      display:flex;
+      gap: 8px;
+      align-items:center;
+    }
+    .btn-mini{
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding: 7px 9px;
+      border-radius: 12px;
+      font-weight: 950;
+      font-size: 12px;
+      cursor:pointer;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    }
+    .btn-mini:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.10);
+      border-color: rgba(56,189,248,.22);
+    }
+
+    .history-list{
+      display:flex;
+      flex-direction:column;
+      gap: 8px;
+      max-height: 240px;
+      overflow:auto;
+      padding-right: 4px;
+    }
+    .history-item{
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(3,7,16,.62);
+      border-radius: 14px;
+      padding: 10px;
+      cursor:pointer;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    }
+    .history-item:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.08);
+      border-color: rgba(56,189,248,.22);
+    }
+    .history-item.active{
+      border-color: rgba(34,211,238,.38);
+      background: rgba(255,255,255,.10);
+    }
+    .history-row{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap: 10px;
+    }
+    .history-name{
+      font-weight: 950;
+      font-size: 12px;
+      color: rgba(234,242,255,.90);
+      line-height: 1.25;
+    }
+    .history-meta{
+      font-size: 11px;
+      color: rgba(234,242,255,.60);
+      white-space: nowrap;
+    }
+    .history-preview{
+      margin-top: 6px;
+      font-size: 12px;
+      color: rgba(234,242,255,.70);
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .history-item .history-controls{
+      margin-top: 10px;
+      display:flex;
+      gap: 8px;
+    }
+    .history-btn{
+      flex:1;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: rgba(234,242,255,.86);
+      padding: 8px 10px;
+      border-radius: 12px;
+      font-weight: 950;
+      font-size: 12px;
+      cursor:pointer;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    }
+    .history-btn:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.10);
+      border-color: rgba(56,189,248,.22);
     }
 
     /* Nav */
@@ -665,7 +792,7 @@
     }
     .msg.user .meta{ text-align:right; }
 
-    /* Typing indicator (professional) */
+    /* Typing indicator */
     .typing{
       display:inline-flex;
       align-items:center;
@@ -766,10 +893,6 @@
       background: rgba(56,189,248,.35);
       box-shadow: 0 0 0 4px rgba(56,189,248,.10);
     }
-    .footer-quote{
-      color: rgba(234,242,255,.62);
-      font-style: italic;
-    }
   </style>
 </head>
 
@@ -793,7 +916,7 @@
         <div>
           <h1>Raheem AI</h1>
           <p>Construction Compliance Intelligence</p>
-          <div class="tagline">Clear guidance based on your selected Technical Guidance Document, with references to support professional review.</div>
+          <div class="tagline">Ask in plain language. Get a clear answer supported by your active guidance document.</div>
         </div>
       </div>
 
@@ -843,6 +966,21 @@
           <span class="pill brand">Roadmap</span>
         </button>
       </div>
+
+      <!-- Previous chats (shows under the nav; saved in browser local storage) -->
+      <div class="history-panel" id="historyPanel">
+        <div class="history-head">
+          <h3 class="history-title">Previous Chats</h3>
+          <div class="history-actions">
+            <button class="btn-mini" type="button" id="btnNewChat">New</button>
+            <button class="btn-mini" type="button" id="btnClearChats">Clear</button>
+          </div>
+        </div>
+
+        <div class="history-list" id="historyList">
+          <!-- injected -->
+        </div>
+      </div>
     </aside>
 
     <!-- CONTENT -->
@@ -857,7 +995,7 @@
               Ask questions in plain language and receive structured responses based on the active Technical Guidance Document,
               with references that support verification and professional judgement.
             </p>
-            <div class="quote">The future of construction is clarity, confidence, and compliance.</div>
+            <div class="quote">Good compliance starts early, when design decisions are still easy to change.</div>
           </div>
 
           <div class="auth-top">
@@ -923,7 +1061,6 @@
             <span class="sep" aria-hidden="true"></span>
             <span>Abdulraheem Hayder Ahmed · C22310933 · TU Dublin · Architectural Technology</span>
           </div>
-          <div class="footer-quote">Designed for real projects and real decisions.</div>
         </div>
       </section>
 
@@ -935,7 +1072,7 @@
             These capabilities expand Raheem AI from guidance into a complete compliance and certification platform,
             designed for professional workflows and clear outputs that support verification.
           </p>
-          <div class="quote">Raheem AI is built to reduce time spent searching and increase confidence in decisions.</div>
+          <div class="quote">Move faster by knowing earlier. Reduce rework by catching risks before they become drawings.</div>
         </div>
 
         <div class="grid">
@@ -1050,7 +1187,6 @@
             <span class="sep" aria-hidden="true"></span>
             <span>Abdulraheem Hayder Ahmed · C22310933 · TU Dublin · Architectural Technology</span>
           </div>
-          <div class="footer-quote">A compliance platform designed to scale.</div>
         </div>
       </section>
 
@@ -1106,6 +1242,12 @@
     const navChat = document.getElementById("navChat");
     const navFuture = document.getElementById("navFuture");
 
+    // History UI
+    const historyPanel = document.getElementById("historyPanel");
+    const historyList = document.getElementById("historyList");
+    const btnNewChat = document.getElementById("btnNewChat");
+    const btnClearChats = document.getElementById("btnClearChats");
+
     function setNavActive(which){
       navDashboard.classList.toggle("active", which === "dashboard");
       navChat.classList.toggle("active", which === "chat");
@@ -1117,6 +1259,9 @@
       viewChat.classList.toggle("active", name === "chat");
       viewFuture.classList.toggle("active", name === "future");
       setNavActive(name);
+
+      // Previous chats are most relevant in chat mode, but can stay visible
+      historyPanel.style.opacity = (name === "chat") ? "1" : ".92";
 
       if(name === "chat"){
         setTimeout(() => document.getElementById("chatInput").focus(), 40);
@@ -1195,6 +1340,8 @@
       chatSub.textContent = "Using document: " + (activePdf ? activePdf : "none selected");
       activeDocPill.innerHTML = '<span class="dot"></span>' + label;
       chipDoc.textContent = activePdf ? "Document selected" : "Select a document";
+      persistActiveChat();
+      renderHistory();
     }
 
     function sortDocs(list){
@@ -1286,77 +1433,12 @@
       });
     });
 
-    // Minimal message store + DOM rendering (smooth streaming updates)
-    const messages = [];
     let activeStream = null;
 
     function stamp(){
       const d = new Date();
       return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
     }
-
-    function makeMsg(role, text){
-      return { id: "m_" + Math.random().toString(16).slice(2), role, text: text || "", time: stamp() };
-    }
-
-    function addMessage(role, text){
-      const msg = makeMsg(role, text);
-      messages.push(msg);
-
-      const wrap = document.createElement("div");
-      wrap.className = "msg " + (role === "user" ? "user" : "assistant");
-      wrap.dataset.id = msg.id;
-
-      const bubble = document.createElement("div");
-      bubble.className = "bubble";
-      bubble.textContent = msg.text;
-
-      const meta = document.createElement("div");
-      meta.className = "meta";
-      meta.textContent = msg.time;
-
-      const container = document.createElement("div");
-      container.appendChild(bubble);
-      container.appendChild(meta);
-
-      wrap.appendChild(container);
-      chatLog.appendChild(wrap);
-      chatLog.scrollTop = chatLog.scrollHeight;
-
-      return msg.id;
-    }
-
-    function setMessageText(id, newText){
-      const el = chatLog.querySelector('[data-id="' + id + '"] .bubble');
-      if(el){
-        el.textContent = newText;
-        chatLog.scrollTop = chatLog.scrollHeight;
-      }
-    }
-
-    function setTyping(id, on){
-      const el = chatLog.querySelector('[data-id="' + id + '"] .bubble');
-      if(!el) return;
-      if(on){
-        el.innerHTML = '';
-        const span = document.createElement("span");
-        span.className = "typing";
-        span.textContent = "Raheem AI is typing";
-        const dots = document.createElement("span");
-        dots.className = "dots";
-        dots.innerHTML = "<span></span><span></span><span></span>";
-        span.appendChild(dots);
-        el.appendChild(span);
-      } else {
-        el.textContent = "";
-      }
-      chatLog.scrollTop = chatLog.scrollHeight;
-    }
-
-    // Initial assistant message
-    addMessage("assistant",
-      "Welcome to Raheem AI.\n\nSelect an active document on the left, then ask a compliance question in plain language.\nYou will receive a clear answer with references to review in the document."
-    );
 
     function stopActiveStream(){
       try{
@@ -1367,71 +1449,364 @@
       } catch(e){}
     }
 
+    function addMessageDom(role, text, time){
+      const wrap = document.createElement("div");
+      wrap.className = "msg " + (role === "user" ? "user" : "assistant");
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = text || "";
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = time || stamp();
+
+      const container = document.createElement("div");
+      container.appendChild(bubble);
+      container.appendChild(meta);
+
+      wrap.appendChild(container);
+      chatLog.appendChild(wrap);
+      chatLog.scrollTop = chatLog.scrollHeight;
+
+      return {wrap, bubble, meta};
+    }
+
+    function setTyping(bubbleEl, on){
+      if(!bubbleEl) return;
+      if(on){
+        bubbleEl.innerHTML = '';
+        const span = document.createElement("span");
+        span.className = "typing";
+        span.textContent = "Raheem AI is typing";
+        const dots = document.createElement("span");
+        dots.className = "dots";
+        dots.innerHTML = "<span></span><span></span><span></span>";
+        span.appendChild(dots);
+        bubbleEl.appendChild(span);
+      } else {
+        bubbleEl.textContent = "";
+      }
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
     function buildStreamUrl(question){
       const params = new URLSearchParams();
       params.set("q", question);
       params.set("pdf", activePdf);
-      // Stream endpoint from your new backend
       return API_BASE + "/ask_stream?" + params.toString();
     }
+
+    // Local chat history (browser storage)
+    const STORAGE_KEY = "raheem_ai_chats_v1";
+    let chats = [];
+    let activeChatId = null;
+
+    function loadChats(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        chats = raw ? JSON.parse(raw) : [];
+        if(!Array.isArray(chats)) chats = [];
+      } catch(e){
+        chats = [];
+      }
+    }
+
+    function saveChats(){
+      try{
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+      } catch(e){}
+    }
+
+    function newChatTitle(){
+      const d = new Date();
+      const date = d.toLocaleDateString([], {year:"numeric", month:"short", day:"2-digit"});
+      const time = d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+      return "Chat " + date + " " + time;
+    }
+
+    function createChat(){
+      const id = "c_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
+      const chat = {
+        id,
+        title: newChatTitle(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        pdf: activePdf || "",
+        messages: []
+      };
+      chats.unshift(chat);
+      activeChatId = id;
+      saveChats();
+      renderHistory();
+      renderActiveChat();
+      return chat;
+    }
+
+    function getActiveChat(){
+      return chats.find(c => c.id === activeChatId) || null;
+    }
+
+    function setActiveChat(id){
+      const c = chats.find(x => x.id === id);
+      if(!c) return;
+      activeChatId = id;
+
+      // Restore document used for that chat if it still exists
+      if(c.pdf && allDocs.includes(c.pdf)){
+        activePdf = c.pdf;
+        pdfSelect.value = activePdf;
+        setActivePdf(activePdf);
+      }
+
+      renderHistory();
+      renderActiveChat();
+    }
+
+    function persistActiveChat(){
+      const c = getActiveChat();
+      if(!c) return;
+      c.updatedAt = Date.now();
+      c.pdf = activePdf || c.pdf || "";
+      saveChats();
+    }
+
+    function addMsgToChat(role, text){
+      const c = getActiveChat();
+      if(!c) return;
+      c.messages.push({ role, text: text || "", time: stamp() });
+      c.updatedAt = Date.now();
+      c.pdf = activePdf || c.pdf || "";
+      saveChats();
+      renderHistory();
+    }
+
+    function lastMeaningfulPreview(chat){
+      const arr = chat.messages || [];
+      for(let i = arr.length - 1; i >= 0; i--){
+        const t = (arr[i].text || "").trim();
+        if(t) return t;
+      }
+      return "No messages yet.";
+    }
+
+    function formatSmallTime(ts){
+      const d = new Date(ts);
+      return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+    }
+
+    function renderHistory(){
+      historyList.innerHTML = "";
+
+      if(!chats.length){
+        const empty = document.createElement("div");
+        empty.className = "history-item";
+        empty.style.cursor = "default";
+        empty.innerHTML = '<div class="history-name">No saved chats yet</div><div class="history-preview">Start a chat and it will appear here.</div>';
+        historyList.appendChild(empty);
+        return;
+      }
+
+      for(const c of chats){
+        const item = document.createElement("div");
+        item.className = "history-item" + (c.id === activeChatId ? " active" : "");
+        item.tabIndex = 0;
+
+        const preview = lastMeaningfulPreview(c);
+        const meta = formatSmallTime(c.updatedAt || c.createdAt);
+
+        item.innerHTML = `
+          <div class="history-row">
+            <div class="history-name">${escapeHtml(c.title || "Chat")}</div>
+            <div class="history-meta">${meta}</div>
+          </div>
+          <div class="history-preview">${escapeHtml(preview)}</div>
+          <div class="history-controls">
+            <button class="history-btn" data-act="open" data-id="${c.id}">Open</button>
+            <button class="history-btn" data-act="rename" data-id="${c.id}">Rename</button>
+            <button class="history-btn" data-act="delete" data-id="${c.id}">Delete</button>
+          </div>
+        `;
+
+        item.addEventListener("click", (e)=>{
+          const btn = e.target.closest("button");
+          if(btn){
+            const act = btn.getAttribute("data-act");
+            const id = btn.getAttribute("data-id");
+            if(act === "open") setActiveChat(id);
+            if(act === "rename") renameChat(id);
+            if(act === "delete") deleteChat(id);
+            return;
+          }
+          setActiveChat(c.id);
+        });
+
+        item.addEventListener("keydown", (e)=>{
+          if(e.key === "Enter" || e.key === " "){
+            e.preventDefault();
+            setActiveChat(c.id);
+          }
+        });
+
+        historyList.appendChild(item);
+      }
+    }
+
+    function renameChat(id){
+      const c = chats.find(x => x.id === id);
+      if(!c) return;
+      const name = prompt("Rename chat", c.title || "Chat");
+      if(name === null) return;
+      const cleaned = (name || "").trim();
+      if(!cleaned) return;
+      c.title = cleaned;
+      c.updatedAt = Date.now();
+      saveChats();
+      renderHistory();
+    }
+
+    function deleteChat(id){
+      const c = chats.find(x => x.id === id);
+      if(!c) return;
+      const ok = confirm("Delete this chat?");
+      if(!ok) return;
+      chats = chats.filter(x => x.id !== id);
+
+      if(activeChatId === id){
+        activeChatId = chats.length ? chats[0].id : null;
+      }
+      saveChats();
+      renderHistory();
+      renderActiveChat();
+    }
+
+    function clearAllChats(){
+      const ok = confirm("Clear all saved chats? This cannot be undone.");
+      if(!ok) return;
+      chats = [];
+      activeChatId = null;
+      saveChats();
+      renderHistory();
+      renderActiveChat();
+    }
+
+    btnNewChat.addEventListener("click", ()=>{
+      createChat();
+      openChat();
+    });
+    btnClearChats.addEventListener("click", clearAllChats);
+
+    function renderActiveChat(){
+      chatLog.innerHTML = "";
+      const c = getActiveChat();
+
+      if(!c){
+        // Create first chat automatically
+        const created = createChat();
+        // Add welcome only once per new chat
+        created.messages.push({
+          role: "assistant",
+          text: "Welcome to Raheem AI. Select an active document on the left, then ask a compliance question in plain language. Your chats are saved here in Previous Chats.",
+          time: stamp()
+        });
+        saveChats();
+        renderHistory();
+        renderActiveChat();
+        return;
+      }
+
+      // Show messages
+      for(const m of (c.messages || [])){
+        addMessageDom(m.role, m.text, m.time);
+      }
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    // Init chat history
+    loadChats();
+    if(chats.length){
+      activeChatId = chats[0].id;
+    }
+    renderHistory();
+    renderActiveChat();
 
     async function send(){
       const raw = chatInput.value.trim();
       if(!raw) return;
 
       if(!activePdf){
-        addMessage("assistant", "Please select an active document first.");
+        addMsgToChat("assistant", "Please select an active document first.");
+        renderActiveChat();
         return;
       }
 
       stopActiveStream();
 
-      addMessage("user", raw);
+      // Add user message
+      addMsgToChat("user", raw);
+      renderActiveChat();
       chatInput.value = "";
 
-      // Create assistant message and show typing indicator
-      const assistantId = addMessage("assistant", "");
-      setTyping(assistantId, true);
+      // Create assistant placeholder + typing
+      const timeNow = stamp();
+      const assistantDom = addMessageDom("assistant", "", timeNow);
+      setTyping(assistantDom.bubble, true);
 
-      // Start SSE stream
+      // Stream
       const url = buildStreamUrl(raw);
       let buffer = "";
 
       try{
         activeStream = new EventSource(url);
 
-        activeStream.addEventListener("meta", (e) => {
-          // Optional: could display pages/vision used later
-        });
-
         activeStream.addEventListener("error", () => {
           stopActiveStream();
-          setMessageText(assistantId, "The service is currently unavailable. Please try again in a moment.");
+          setTyping(assistantDom.bubble, false);
+          const msg = "The service is currently unavailable. Please try again in a moment.";
+          assistantDom.bubble.textContent = msg;
+          addMsgToChat("assistant", msg);
         });
 
         activeStream.addEventListener("done", () => {
           stopActiveStream();
-          // Final polish: trim
-          setMessageText(assistantId, buffer.trim() || "No response available.");
+          const finalText = (buffer || "").trim() || "No response available.";
+          assistantDom.bubble.textContent = finalText;
+
+          // Save assistant message to history
+          addMsgToChat("assistant", finalText);
+          persistActiveChat();
+          renderHistory();
         });
 
-        // default "message" event gives us chunks
         activeStream.onmessage = (e) => {
           const chunk = (e.data || "").replaceAll("\\n", "\n");
           if(!buffer){
-            // remove typing indicator the moment first token arrives
-            setTyping(assistantId, false);
+            setTyping(assistantDom.bubble, false);
           }
           buffer += chunk;
-          setMessageText(assistantId, buffer);
+          assistantDom.bubble.textContent = buffer;
+          chatLog.scrollTop = chatLog.scrollHeight;
         };
 
       } catch(err){
         stopActiveStream();
-        setMessageText(assistantId, "The service is currently unavailable. Please try again in a moment.");
+        setTyping(assistantDom.bubble, false);
+        const msg = "The service is currently unavailable. Please try again in a moment.";
+        assistantDom.bubble.textContent = msg;
+        addMsgToChat("assistant", msg);
       }
     }
 
+    // Chat events
     btnSend.addEventListener("click", send);
     chatInput.addEventListener("keydown", (e)=>{
       if(e.key === "Enter" && !e.shiftKey){
@@ -1439,6 +1814,19 @@
         send();
       }
     });
+
+    // Keep history in sync with route
+    function onRouteSyncHistory(){
+      const h = location.hash || "#/";
+      if(h === "#/chat"){
+        // Ensure chat exists and is rendered
+        if(!getActiveChat()) createChat();
+        renderHistory();
+        renderActiveChat();
+      }
+    }
+    window.addEventListener("hashchange", onRouteSyncHistory);
+    onRouteSyncHistory();
   </script>
 </body>
 </html>
