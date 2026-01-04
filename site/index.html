@@ -47,7 +47,6 @@
       overflow-x:hidden;
     }
 
-    /* calmer background motion */
     .bg-wrap{
       position:fixed;
       inset:0;
@@ -76,7 +75,6 @@
       75%{ transform: translate3d(-12px,10px,0) scale(1.015); }
     }
 
-    /* particles only as subtle sparkle */
     canvas#particles{
       position:absolute;
       inset:0;
@@ -96,7 +94,6 @@
       canvas#particles{ display:none; }
     }
 
-    /* layout */
     .app{
       position:relative;
       z-index:1;
@@ -128,7 +125,6 @@
       min-height: calc(100vh - 36px);
     }
 
-    /* brand */
     .brand{
       display:flex;
       align-items:center;
@@ -175,7 +171,6 @@
       line-height:1.2;
     }
 
-    /* nav */
     .nav{
       padding: 12px 12px 10px 12px;
       display:flex;
@@ -224,7 +219,6 @@
       background: rgba(80,255,215,.10);
     }
 
-    /* saved chats */
     .chatlist{
       display:none;
       padding: 8px 12px 12px 12px;
@@ -272,7 +266,6 @@
       line-height:1.35;
     }
 
-    /* main topbar */
     .topbar{
       padding: 14px 16px;
       display:flex;
@@ -329,7 +322,6 @@
       box-shadow: 0 0 18px rgba(80,255,215,.08);
     }
 
-    /* views */
     .view{ display:none; padding: 18px; }
     .view.show{ display:block; }
 
@@ -423,7 +415,6 @@
       margin-top:auto;
     }
 
-    /* chat UI */
     .chatwrap{
       display:flex;
       flex-direction:column;
@@ -505,7 +496,6 @@
     }
     .toggle input{ transform: translateY(1px); }
 
-    /* toast */
     .toast{
       position: fixed;
       left: 50%;
@@ -529,7 +519,6 @@
       to{ transform: translateX(-50%) translateY(0); opacity:1; }
     }
 
-    /* footer */
     .footer{
       margin-top: 14px;
       padding: 14px 16px;
@@ -555,11 +544,9 @@
   </div>
 
   <div class="app">
-    <!-- SIDE -->
     <aside class="side">
       <div class="brand">
         <div class="logoMark" aria-hidden="true">
-          <!-- Custom neon "RA" mark -->
           <svg viewBox="0 0 64 64" fill="none">
             <defs>
               <linearGradient id="g1" x1="6" y1="10" x2="58" y2="54" gradientUnits="userSpaceOnUse">
@@ -634,7 +621,6 @@
       </div>
     </aside>
 
-    <!-- MAIN -->
     <main class="main">
       <div class="topbar">
         <div class="crumb">
@@ -647,7 +633,6 @@
         </div>
       </div>
 
-      <!-- OVERVIEW -->
       <section class="view show" id="viewHome">
         <div class="hero">
           <h2>Smart chat for everyday questions and serious compliance checks</h2>
@@ -702,13 +687,13 @@
         </div>
       </section>
 
-      <!-- CHAT -->
       <section class="view" id="viewChat">
         <div class="hero">
           <h2>Chat</h2>
           <p>
             Conversations are saved per chat on the left. Pick one and continue where you left off.
           </p>
+          <div class="quote" id="apiBanner" style="display:none;"></div>
         </div>
 
         <div class="chatwrap">
@@ -738,7 +723,6 @@
         </div>
       </section>
 
-      <!-- FUTURE -->
       <section class="view" id="viewFuture">
         <div class="hero">
           <h2>Future Features</h2>
@@ -848,6 +832,30 @@
   <div class="toast" id="toast"></div>
 
   <script>
+    // =========================
+    // BACKEND ROUTING FIX
+    // =========================
+    // Netlify hosts the frontend; Render hosts the backend.
+    // If you call fetch("/chat_stream") on Netlify, it will fail.
+    // So we use a configurable API base URL.
+    //
+    // Change this ONE line if your backend URL changes:
+    const API_BASE_DEFAULT = "https://complyr.onrender.com";
+
+    // Optional override for testing:
+    // localStorage.setItem("RAHEEM_API_BASE", "http://127.0.0.1:8000");
+    const API_BASE = (localStorage.getItem("RAHEEM_API_BASE") || API_BASE_DEFAULT).replace(/\/+$/, "");
+
+    // Show what backend we’re using (only visible inside Chat page hero)
+    const apiBanner = document.getElementById("apiBanner");
+    apiBanner.style.display = "block";
+    apiBanner.textContent = "Connected to: " + API_BASE;
+
+    function apiUrl(path){
+      if(!path.startsWith("/")) path = "/" + path;
+      return API_BASE + path;
+    }
+
     // Toast
     const toast = document.getElementById("toast");
     let toastTimer = null;
@@ -896,13 +904,19 @@
     document.getElementById("btnStartChat").onclick = ()=>showView("chat");
     document.getElementById("btnOpenFuture").onclick = ()=>showView("future");
 
-    // Swagger + health
-    document.getElementById("btnSwagger").onclick = ()=> window.open("/swagger", "_blank");
+    // Swagger + health (NOW POINTS TO BACKEND)
+    document.getElementById("btnSwagger").onclick = ()=> window.open(apiUrl("/swagger"), "_blank");
     document.getElementById("btnPing").onclick = async ()=>{
       try{
-        const r = await fetch("/health");
-        const j = await r.json();
-        showToast(j.vertex_ready ? "Healthy. Gemini is ready." : "Healthy, but Gemini is not ready yet.");
+        const r = await fetch(apiUrl("/health"));
+        const t = await r.text();
+        let j = {};
+        try{ j = JSON.parse(t); }catch(e){}
+        if(!r.ok){
+          showToast("Health error " + r.status + ": " + (t || "No body"));
+          return;
+        }
+        showToast(j.vertex_ready ? "Healthy. AI is ready." : "Healthy, but AI not ready yet.");
       }catch(e){
         showToast("Health check failed.");
       }
@@ -1024,6 +1038,15 @@
       }
     }
 
+    function escapeHtml(s){
+      return (s||"")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
     function renderChatList(){
       const all = loadAllChats();
       const ids = Object.keys(all).sort((a,b)=>(all[b].updated||0)-(all[a].updated||0));
@@ -1043,15 +1066,6 @@
         };
         chatItemsWrap.appendChild(btn);
       });
-    }
-
-    function escapeHtml(s){
-      return (s||"")
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
     }
 
     function renderChat(){
@@ -1096,7 +1110,9 @@
     ensureActiveChat();
     renderChat();
 
-    // Send message using /chat_stream so server also remembers chat_id
+    // =========================
+    // CHAT SEND (FIXED)
+    // =========================
     async function send(){
       const text = (msgEl.value || "").trim();
       if(!text) return;
@@ -1112,7 +1128,6 @@
 
       addMsg("user", text);
 
-      // placeholder bubble for streaming
       const aiDiv = addMsg("ai", "");
 
       try{
@@ -1122,17 +1137,37 @@
           force_docs: !!forceDocsEl.checked
         };
 
-        const res = await fetch("/chat_stream", {
+        const res = await fetch(apiUrl("/chat_stream"), {
           method: "POST",
           headers: { "Content-Type":"application/json" },
           body: JSON.stringify(payload)
         });
 
+        // If backend returns a normal JSON response (non-stream), handle it
+        const contentType = (res.headers.get("content-type") || "").toLowerCase();
+
         if(!res.ok){
-          aiDiv.textContent = "Something went wrong. Open Swagger and check the error.";
+          const errText = await res.text().catch(()=>"(no error body)");
+          aiDiv.textContent = `Server error ${res.status}: ${errText.slice(0, 800)}`;
           return;
         }
 
+        // If it’s JSON, just parse and show
+        if(contentType.includes("application/json")){
+          const j = await res.json();
+          const reply = (j.answer || j.reply || j.text || JSON.stringify(j)).toString();
+          aiDiv.textContent = reply;
+
+          const all2 = ensureActiveChat();
+          const c2 = all2[activeChatId];
+          c2.messages.push({ role:"assistant", content: reply });
+          c2.updated = Date.now();
+          saveAllChats(all2);
+          renderChatList();
+          return;
+        }
+
+        // Otherwise assume SSE stream
         const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
         let buffer = "";
@@ -1143,7 +1178,6 @@
           if(done) break;
           buffer += decoder.decode(value, { stream:true });
 
-          // SSE chunks separated by \n\n
           const parts = buffer.split("\n\n");
           buffer = parts.pop() || "";
 
@@ -1163,16 +1197,17 @@
           }
         }
 
-        // store assistant message
+        const finalText = full.trim() || " ";
         const all2 = ensureActiveChat();
         const c2 = all2[activeChatId];
-        c2.messages.push({ role:"assistant", content: full.trim() || " " });
+        c2.messages.push({ role:"assistant", content: finalText });
         c2.updated = Date.now();
         saveAllChats(all2);
         renderChatList();
 
       }catch(e){
-        aiDiv.textContent = "Something broke. Check Swagger for errors.";
+        aiDiv.textContent = "Connection error. Check Console + Network for details.";
+        console.error("Chat send error:", e);
       }
     }
 
