@@ -450,7 +450,6 @@
     }
     .msg.ai{ background: rgba(255,255,255,.06); }
 
-    /* Typing indicator */
     .typing{
       display:inline-flex;
       align-items:center;
@@ -898,6 +897,7 @@
         viewHint.textContent  = "Saved chats · continuous context";
         chatList.classList.add("show");
         renderChatList();
+        renderChat(); // ✅ important: load the active chat immediately
       }
       if(which==="future"){
         viewFuture.classList.add("show");
@@ -913,7 +913,7 @@
     document.getElementById("btnStartChat").onclick = ()=>showView("chat");
     document.getElementById("btnOpenFuture").onclick = ()=>showView("future");
 
-    // Top bar buttons (professional labels)
+    // Top bar buttons
     document.getElementById("btnDocs").onclick = ()=> window.open(apiUrl("/swagger"), "_blank");
     document.getElementById("btnStatus").onclick = async ()=>{
       try{
@@ -987,7 +987,9 @@
       tick();
     }
 
-    // Chat memory per saved chat
+    // =========================
+    // CHAT STATE (FIXED)
+    // =========================
     const chatBox = document.getElementById("chatBox");
     const msgEl = document.getElementById("msg");
     const sendBtn = document.getElementById("send");
@@ -997,6 +999,7 @@
     const chatItemsWrap = document.getElementById("chatItems");
 
     const STORAGE_KEY = "raheem_ai_chats_v3";
+    const ACTIVE_CHAT_KEY = "raheem_active_chat_id"; // ✅ persistent active chat id
 
     function loadAllChats(){
       try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
@@ -1019,21 +1022,32 @@
       }
     }
 
-    let activeChatId = null;
+    let activeChatId = (localStorage.getItem(ACTIVE_CHAT_KEY) || "").trim() || null;
+
+    function persistActiveChatId(){
+      if(activeChatId) localStorage.setItem(ACTIVE_CHAT_KEY, activeChatId);
+    }
 
     function ensureActiveChat(){
       const all = loadAllChats();
-      if(!activeChatId || !all[activeChatId]){
-        activeChatId = newChatId();
-        all[activeChatId] = {
-          title: "New chat",
-          updated: Date.now(),
-          messages: [
-            { role:"assistant", content:"Hi. I am Raheem. What are we working on today?" }
-          ]
-        };
-        saveAllChats(all);
+
+      // ✅ If we have a saved active chat, use it
+      if(activeChatId && all[activeChatId]){
+        persistActiveChatId();
+        return all;
       }
+
+      // ✅ Otherwise create one new chat once
+      activeChatId = newChatId();
+      all[activeChatId] = {
+        title: "New chat",
+        updated: Date.now(),
+        messages: [
+          { role:"assistant", content:"Hi. I am Raheem. What are we working on today?" }
+        ]
+      };
+      saveAllChats(all);
+      persistActiveChatId();
       return all;
     }
 
@@ -1057,7 +1071,7 @@
     }
 
     function renderChatList(){
-      const all = loadAllChats();
+      const all = ensureActiveChat();
       const ids = Object.keys(all).sort((a,b)=>(all[b].updated||0)-(all[a].updated||0));
       chatItemsWrap.innerHTML = "";
       ids.forEach(id=>{
@@ -1070,6 +1084,7 @@
         btn.innerHTML = `<div class="t">${escapeHtml(title)}</div><div class="s"><span>${escapeHtml(time)}</span><span style="opacity:.7">•</span><span>${(c.messages||[]).length} msgs</span></div>`;
         btn.onclick = ()=>{
           activeChatId = id;
+          persistActiveChatId();     // ✅ persist selection
           renderChatList();
           renderChat();
         };
@@ -1116,19 +1131,26 @@
     btnClear.onclick = clearChat;
 
     btnNewChat.onclick = ()=>{
-      activeChatId = null;
-      ensureActiveChat();
-      renderChat();
+      const all = loadAllChats();
+      activeChatId = newChatId(); // ✅ create a new stable id
+      all[activeChatId] = {
+        title: "New chat",
+        updated: Date.now(),
+        messages: [{ role:"assistant", content:"Hi. I am Raheem. What are we working on today?" }]
+      };
+      saveAllChats(all);
+      persistActiveChatId();      // ✅ persist it
       renderChatList();
+      renderChat();
       showToast("New chat created.");
     };
 
-    // Start default chat
+    // Start default chat (restores last active chat now)
     ensureActiveChat();
     renderChat();
 
     // =========================
-    // CHAT SEND — STREAM FIXED (includes message!)
+    // CHAT SEND — STREAM (keeps same chat_id always)
     // =========================
     async function send(){
       const text = (msgEl.value || "").trim();
@@ -1152,11 +1174,10 @@
       let gotAnyToken = false;
 
       try{
-        // ✅ IMPORTANT: backend needs "message" (or "q") or it returns "No message provided."
         const payload = {
-          chat_id: activeChatId,
+          chat_id: activeChatId,     // ✅ stable chat id (persistent)
           message: text,
-          messages: c.messages,
+          messages: c.messages,      // ✅ full client context
           force_docs: !!forceDocsEl.checked
         };
 
@@ -1175,7 +1196,6 @@
           return;
         }
 
-        // Fallback if server ever returns JSON
         if(contentType.includes("application/json")){
           const j = await res.json();
           const reply = (j.answer || j.reply || j.text || JSON.stringify(j)).toString();
@@ -1191,7 +1211,6 @@
           return;
         }
 
-        // SSE stream parsing
         const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
         let buffer = "";
