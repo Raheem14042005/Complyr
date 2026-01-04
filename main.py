@@ -44,9 +44,12 @@ GCP_LOCATION = _raw_location.strip()
 GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON", "").strip()
 
 # Models (cost-aware)
-MODEL_CHAT = os.getenv("GEMINI_MODEL_CHAT", "gemini-2.0-flash")
-MODEL_COMPLIANCE = os.getenv("GEMINI_MODEL_COMPLIANCE", "gemini-2.0-flash")
+MODEL_CHAT = os.getenv("GEMINI_MODEL_CHAT", "gemini-2.0-flash-001")
+MODEL_COMPLIANCE = os.getenv("GEMINI_MODEL_COMPLIANCE", "gemini-2.0-flash-001")
 
+# safety: strip env vars (prevents hidden whitespace bugs)
+MODEL_CHAT = MODEL_CHAT.strip()
+MODEL_COMPLIANCE = MODEL_COMPLIANCE.strip()
 
 # App
 app = FastAPI(docs_url="/swagger", redoc_url=None)
@@ -675,6 +678,7 @@ def ask(payload: Dict[str, Any] = Body(...)):
         if out.startswith("data: "):
             chunks.append(out.replace("data: ", "").replace("\\n", "\n"))
     return {"answer": "".join(chunks).strip() or "No response."}
+
 
 
 
