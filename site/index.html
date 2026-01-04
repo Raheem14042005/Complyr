@@ -1152,122 +1152,129 @@
     // =========================
     // CHAT SEND — STREAM (keeps same chat_id always)
     // =========================
-    async function send(){
-      const text = (msgEl.value || "").trim();
-      if(!text) return;
-      msgEl.value = "";
+async function send(){
+  const text = (msgEl.value || "").trim();
+  if(!text) return;
+  msgEl.value = "";
 
-      const all = ensureActiveChat();
-      const c = all[activeChatId];
+  const all = ensureActiveChat();
+  const c = all[activeChatId];
 
-      c.messages.push({ role:"user", content:text });
-      c.updated = Date.now();
-      setChatTitleFromFirstUser(all, activeChatId);
-      saveAllChats(all);
+  // ✅ Save the USER message into chat history FIRST
+  c.messages.push({ role: "user", content: text });
+  c.updated = Date.now();
+  setChatTitleFromFirstUser(all, activeChatId);
+  saveAllChats(all);
 
-      addMsg("user", text);
+  // UI
+  addMsg("user", text);
 
-      const aiDiv = addMsg("ai", "");
-      const typing = addTypingIndicator(aiDiv);
+  const aiDiv = addMsg("ai", "");
+  const typing = addTypingIndicator(aiDiv);
 
-      let full = "";
-      let gotAnyToken = false;
+  let full = "";
+  let gotAnyToken = false;
 
-      try{
-        const payload = {
-          chat_id: activeChatId,     // ✅ stable chat id (persistent)
-          message: text,
-          messages: c.messages,      // ✅ full client context
-          force_docs: !!forceDocsEl.checked
-        };
+  try{
+    const payload = {
+      chat_id: activeChatId,
+      message: text,
+      messages: c.messages,         // ✅ now includes the user turn
+      force_docs: !!forceDocsEl.checked
+    };
 
-        const res = await fetch(apiUrl("/chat_stream"), {
-          method: "POST",
-          headers: { "Content-Type":"application/json" },
-          body: JSON.stringify(payload)
-        });
+    const res = await fetch(apiUrl("/chat_stream"), {
+      method: "POST",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify(payload)
+    });
 
-        const contentType = (res.headers.get("content-type") || "").toLowerCase();
+    const contentType = (res.headers.get("content-type") || "").toLowerCase();
 
-        if(!res.ok){
-          const errText = await res.text().catch(()=>"(no error body)");
-          aiDiv.textContent = `Server error ${res.status}: ${errText.slice(0, 800)}`;
-          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-          return;
+    if(!res.ok){
+      const errText = await res.text().catch(()=>"(no error body)");
+      aiDiv.textContent = `Server error ${res.status}: ${errText.slice(0, 800)}`;
+      if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+      return;
+    }
+
+    // If server ever returns JSON
+    if(contentType.includes("application/json")){
+      const j = await res.json();
+      const reply = (j.answer || j.reply || j.text || JSON.stringify(j)).toString();
+      aiDiv.textContent = reply;
+      if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+
+      const all2 = ensureActiveChat();
+      const c2 = all2[activeChatId];
+      c2.messages.push({ role:"assistant", content: reply });  // ✅ correct
+      c2.updated = Date.now();
+      saveAllChats(all2);
+      renderChatList();
+      return;
+    }
+
+    // SSE streaming
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let buffer = "";
+
+    while(true){
+      const { value, done } = await reader.read();
+      if(done) break;
+
+      buffer += decoder.decode(value, { stream:true });
+
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() || "";
+
+      for(const chunk of parts){
+        if(chunk.startsWith("event: meta")) continue;
+
+        if(chunk.startsWith("event: error")){
+          const line = chunk.split("\n").find(x=>x.startsWith("data: "));
+          const msg = (line ? line.replace("data: ","") : "Error");
+          aiDiv.textContent = msg;
+          continue;
         }
 
-        if(contentType.includes("application/json")){
-          const j = await res.json();
-          const reply = (j.answer || j.reply || j.text || JSON.stringify(j)).toString();
-          aiDiv.textContent = reply;
-          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+        if(chunk.startsWith("data: ")){
+          const dataLine = chunk.replace("data: ","");
+          const delta = dataLine.replaceAll("\\n","\n");
 
-          const all2 = ensureActiveChat();
-          const c2 = all2[activeChatId];
-          c2.messages.push({ role:"assistant", content: reply });
-          c2.updated = Date.now();
-          saveAllChats(all2);
-          renderChatList();
-          return;
-        }
+          if(delta){
+            gotAnyToken = true;
+            if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
 
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let buffer = "";
-
-        while(true){
-          const { value, done } = await reader.read();
-          if(done) break;
-
-          buffer += decoder.decode(value, { stream:true });
-
-          const parts = buffer.split("\n\n");
-          buffer = parts.pop() || "";
-
-          for(const chunk of parts){
-            if(chunk.startsWith("event: meta")) continue;
-
-            if(chunk.startsWith("event: error")){
-              const line = chunk.split("\n").find(x=>x.startsWith("data: "));
-              const msg = (line ? line.replace("data: ","") : "Error");
-              aiDiv.textContent = msg;
-              continue;
-            }
-
-            if(chunk.startsWith("data: ")){
-              const dataLine = chunk.replace("data: ","");
-              const delta = dataLine.replaceAll("\\n","\n");
-
-              if(delta){
-                gotAnyToken = true;
-                if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-
-                full += delta;
-                aiDiv.textContent = full;
-                chatBox.scrollTop = chatBox.scrollHeight;
-              }
-            }
+            full += delta;
+            aiDiv.textContent = full;
+            chatBox.scrollTop = chatBox.scrollHeight;
           }
         }
-
-        if(!gotAnyToken && typing && typing.parentNode){
-          typing.parentNode.removeChild(typing);
-        }
-
-        const finalText = full.trim() || " ";
-        const all2 = ensureActiveChat();
-        const c2 = all2[activeChatId];
-        c2.messages.push({ role:"assistant", content: finalText });
-        c2.updated = Date.now();
-        saveAllChats(all2);
-        renderChatList();
-
-      }catch(e){
-        if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-        aiDiv.textContent = "Connection error. Check Console + Network for details.";
-        console.error("Chat send error:", e);
       }
     }
+
+    if(!gotAnyToken && typing && typing.parentNode){
+      typing.parentNode.removeChild(typing);
+    }
+
+    const finalText = full.trim() || " ";
+
+    // ✅ Save assistant response AFTER stream completes
+    const all2 = ensureActiveChat();
+    const c2 = all2[activeChatId];
+    c2.messages.push({ role:"assistant", content: finalText });
+    c2.updated = Date.now();
+    saveAllChats(all2);
+    renderChatList();
+
+  }catch(e){
+    if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+    aiDiv.textContent = "Connection error. Check Console + Network for details.";
+    console.error("Chat send error:", e);
+  }
+}
+
 
     sendBtn.onclick = send;
     msgEl.addEventListener("keydown", (e)=>{
@@ -1279,3 +1286,4 @@
   </script>
 </body>
 </html>
+
