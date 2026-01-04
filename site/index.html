@@ -460,11 +460,7 @@
       margin-top: 6px;
       user-select:none;
     }
-    .dots{
-      display:inline-flex;
-      gap:4px;
-      transform: translateY(1px);
-    }
+    .dots{ display:inline-flex; gap:4px; transform: translateY(1px); }
     .dot{
       width:6px;height:6px;border-radius:999px;
       background: rgba(244,247,255,.55);
@@ -472,7 +468,6 @@
     }
     .dot:nth-child(2){ animation-delay: .12s; }
     .dot:nth-child(3){ animation-delay: .24s; }
-
     @keyframes bounce{
       0%, 80%, 100%{ transform: translateY(0); opacity:.55; }
       40%{ transform: translateY(-4px); opacity:1; }
@@ -617,7 +612,7 @@
             <span class="tag live">Live</span>
             <div style="min-width:0">
               <div style="font-weight:900">Chat</div>
-              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Saved conversations · seamless continuity</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Saved chats · continuous context</div>
             </div>
           </div>
           <span class="tag">↗</span>
@@ -918,7 +913,7 @@
     document.getElementById("btnStartChat").onclick = ()=>showView("chat");
     document.getElementById("btnOpenFuture").onclick = ()=>showView("future");
 
-    // Status + Docs buttons (professional labels)
+    // Top bar buttons (professional labels)
     document.getElementById("btnDocs").onclick = ()=> window.open(apiUrl("/swagger"), "_blank");
     document.getElementById("btnStatus").onclick = async ()=>{
       try{
@@ -992,7 +987,7 @@
       tick();
     }
 
-    // Chat memory per saved chat (frontend) — unchanged logic
+    // Chat memory per saved chat
     const chatBox = document.getElementById("chatBox");
     const msgEl = document.getElementById("msg");
     const sendBtn = document.getElementById("send");
@@ -1133,7 +1128,7 @@
     renderChat();
 
     // =========================
-    // CHAT SEND — STREAM FIRST UX
+    // CHAT SEND — STREAM FIXED (includes message!)
     // =========================
     async function send(){
       const text = (msgEl.value || "").trim();
@@ -1150,17 +1145,17 @@
 
       addMsg("user", text);
 
-      // AI container (we’ll stream into this)
       const aiDiv = addMsg("ai", "");
       const typing = addTypingIndicator(aiDiv);
 
-      // Make it feel alive immediately, even before first tokens arrive
       let full = "";
       let gotAnyToken = false;
 
       try{
+        // ✅ IMPORTANT: backend needs "message" (or "q") or it returns "No message provided."
         const payload = {
           chat_id: activeChatId,
+          message: text,
           messages: c.messages,
           force_docs: !!forceDocsEl.checked
         };
@@ -1176,14 +1171,16 @@
         if(!res.ok){
           const errText = await res.text().catch(()=>"(no error body)");
           aiDiv.textContent = `Server error ${res.status}: ${errText.slice(0, 800)}`;
+          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
           return;
         }
 
-        // If it’s JSON for any reason, show it (fallback)
+        // Fallback if server ever returns JSON
         if(contentType.includes("application/json")){
           const j = await res.json();
           const reply = (j.answer || j.reply || j.text || JSON.stringify(j)).toString();
           aiDiv.textContent = reply;
+          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
 
           const all2 = ensureActiveChat();
           const c2 = all2[activeChatId];
@@ -1194,7 +1191,7 @@
           return;
         }
 
-        // STREAM: parse SSE-ish chunks from fetch body
+        // SSE stream parsing
         const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
         let buffer = "";
@@ -1209,7 +1206,6 @@
           buffer = parts.pop() || "";
 
           for(const chunk of parts){
-            // ignore meta lines completely (they are useful for dev only)
             if(chunk.startsWith("event: meta")) continue;
 
             if(chunk.startsWith("event: error")){
@@ -1225,11 +1221,7 @@
 
               if(delta){
                 gotAnyToken = true;
-
-                // remove typing indicator once first token arrives
-                if(typing && typing.parentNode){
-                  typing.parentNode.removeChild(typing);
-                }
+                if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
 
                 full += delta;
                 aiDiv.textContent = full;
@@ -1239,12 +1231,8 @@
           }
         }
 
-        // End of stream
-        if(!gotAnyToken){
-          // If nothing streamed, still remove typing indicator
-          if(typing && typing.parentNode){
-            typing.parentNode.removeChild(typing);
-          }
+        if(!gotAnyToken && typing && typing.parentNode){
+          typing.parentNode.removeChild(typing);
         }
 
         const finalText = full.trim() || " ";
@@ -1256,9 +1244,7 @@
         renderChatList();
 
       }catch(e){
-        if(typing && typing.parentNode){
-          typing.parentNode.removeChild(typing);
-        }
+        if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
         aiDiv.textContent = "Connection error. Check Console + Network for details.";
         console.error("Chat send error:", e);
       }
