@@ -1165,13 +1165,12 @@ async function send(){
   const all = ensureActiveChat();
   const c = all[activeChatId];
 
-  // ✅ Save the USER message into chat history FIRST
-  c.messages.push({ role: "user", content: text });
+  // ✅ Save USER message first
+  c.messages.push({ role:"user", content:text });
   c.updated = Date.now();
   setChatTitleFromFirstUser(all, activeChatId);
   saveAllChats(all);
 
-  // UI
   addMsg("user", text);
 
   const aiDiv = addMsg("ai", "");
@@ -1180,13 +1179,73 @@ async function send(){
   let full = "";
   let gotAnyToken = false;
 
-  try{
-    const payload = {
-      chat_id: activeChatId,
-      message: text,
-      force_docs: !!forceDocsEl.checked
-    };
+  const payload = {
+    chat_id: activeChatId,
+    message: text,
+    messages: c.messages,                 // keep memory
+    force_docs: !!forceDocsEl.checked
+  };
 
+  // -----------------------------
+  // Fallback: EventSource (SSE GET)
+  // -----------------------------
+  const runEventSourceFallback = () => {
+    try {
+      if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+
+      // Send the message + context via POST first (so server stores memory),
+      // then open GET stream for the reply.
+      // (This keeps your current backend design and avoids Android fetch-stream issues.)
+
+      fetch(apiUrl("/chat_stream"), {
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify(payload)
+      }).then(res => {
+        // If backend actually streams on POST, some browsers still choke.
+        // So we open GET stream to receive the answer reliably.
+        const q = encodeURIComponent(text);
+        const chat_id = encodeURIComponent(activeChatId);
+        const force_docs = forceDocsEl.checked ? "1" : "0";
+        const esUrl = apiUrl(`/chat_stream?q=${q}&chat_id=${chat_id}&force_docs=${force_docs}`);
+
+        const es = new EventSource(esUrl);
+
+        es.onmessage = (ev) => {
+          gotAnyToken = true;
+          full += (ev.data || "").replaceAll("\\n","\n");
+          aiDiv.textContent = full;
+          chatBox.scrollTop = chatBox.scrollHeight;
+        };
+
+        es.addEventListener("error", (ev) => {
+          // Some servers send "event: error" frames; EventSource exposes as generic error too.
+          // We’ll just close and show whatever we have.
+          es.close();
+          if(!gotAnyToken){
+            aiDiv.textContent = "Connection error (mobile streaming). Try again or check backend logs.";
+          }
+        });
+
+        es.addEventListener("done", () => {
+          es.close();
+        });
+      }).catch(e => {
+        aiDiv.textContent = "Connection error. Try again.";
+        console.error(e);
+      });
+
+    } catch(e){
+      if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+      aiDiv.textContent = "Connection error. Try again.";
+      console.error(e);
+    }
+  };
+
+  // -----------------------------
+  // Primary: fetch streaming (desktop/Chrome)
+  // -----------------------------
+  try{
     const res = await fetch(apiUrl("/chat_stream"), {
       method: "POST",
       headers: { "Content-Type":"application/json" },
@@ -1211,14 +1270,20 @@ async function send(){
 
       const all2 = ensureActiveChat();
       const c2 = all2[activeChatId];
-      c2.messages.push({ role:"assistant", content: reply });  // ✅ correct
+      c2.messages.push({ role:"assistant", content: reply });
       c2.updated = Date.now();
       saveAllChats(all2);
       renderChatList();
       return;
     }
 
-    // SSE streaming
+    // If this browser can’t stream the body, fallback
+    if(!res.body || !res.body.getReader){
+      runEventSourceFallback();
+      return;
+    }
+
+    // Streaming reader
     const reader = res.body.getReader();
     const decoder = new TextDecoder("utf-8");
     let buffer = "";
@@ -1264,7 +1329,7 @@ async function send(){
 
     const finalText = full.trim() || " ";
 
-    // ✅ Save assistant response AFTER stream completes
+    // Save assistant response AFTER stream completes
     const all2 = ensureActiveChat();
     const c2 = all2[activeChatId];
     c2.messages.push({ role:"assistant", content: finalText });
@@ -1273,11 +1338,12 @@ async function send(){
     renderChatList();
 
   }catch(e){
-    if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-    aiDiv.textContent = "Connection error. Check Console + Network for details.";
+    // If streaming fails on mobile, fallback
     console.error("Chat send error:", e);
+    runEventSourceFallback();
   }
 }
+
 
 
     sendBtn.onclick = send;
@@ -1290,6 +1356,7 @@ async function send(){
   </script>
 </body>
 </html>
+
 
 
 
