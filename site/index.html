@@ -218,6 +218,11 @@
       color: rgba(230,255,240,.92);
       background: rgba(80,255,215,.10);
     }
+    .tag.new{
+      border-color: rgba(199,165,255,.35);
+      color: rgba(244,247,255,.92);
+      background: rgba(199,165,255,.10);
+    }
 
     .chatlist{
       display:none;
@@ -366,6 +371,14 @@
       background: linear-gradient(135deg, rgba(80,255,215,.16), rgba(101,183,255,.10));
       box-shadow: 0 0 18px rgba(80,255,215,.08);
     }
+    .btn.ghost{
+      border-color: rgba(255,255,255,.14);
+      background: rgba(0,0,0,.14);
+    }
+    .btn.danger{
+      border-color: rgba(255,79,216,.32);
+      background: rgba(255,79,216,.10);
+    }
 
     .view{ display:none; padding: 18px; }
     .view.show{ display:block; }
@@ -460,108 +473,316 @@
       margin-top:auto;
     }
 
-    .chatwrap{
-      display:flex;
-      flex-direction:column;
-      gap: 12px;
-      height: calc(100vh - 170px);
-      min-height: 540px;
+    /* =========================
+       FIRE CERT WIZARD (NEW)
+       ========================= */
+    .fcwrap{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 14px;
+      margin-top: 14px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .fcwrap{ grid-template-columns: 1fr; }
     }
 
-    .chatbox{
-      flex: 1;
+    .panel{
       border-radius: var(--r);
       border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.14);
-      padding: 14px;
-      overflow:auto;
+      background: rgba(0,0,0,.16);
+      box-shadow: var(--shadow2);
+      overflow:hidden;
     }
-
-    .msg{
-      max-width: 78%;
-      padding: 12px 12px;
-      border-radius: 18px;
-      margin: 10px 0;
-      line-height:1.55;
-      border: 1px solid rgba(255,255,255,.12);
-      white-space: pre-wrap;
-      word-wrap: break-word;
-    }
-    .msg.user{
-      margin-left:auto;
-      background: linear-gradient(135deg, rgba(80,255,215,.18), rgba(101,183,255,.12));
-      border-color: rgba(80,255,215,.30);
-      box-shadow: 0 0 14px rgba(80,255,215,.06);
-    }
-    .msg.ai{ background: rgba(255,255,255,.06); }
-
-    .typing{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      color: var(--muted2);
-      font-size: 12px;
-      margin-top: 6px;
-      user-select:none;
-    }
-    .dots{ display:inline-flex; gap:4px; transform: translateY(1px); }
-    .dot{
-      width:6px;height:6px;border-radius:999px;
-      background: rgba(244,247,255,.55);
-      animation: bounce 1.1s infinite ease-in-out;
-    }
-    .dot:nth-child(2){ animation-delay: .12s; }
-    .dot:nth-child(3){ animation-delay: .24s; }
-    @keyframes bounce{
-      0%, 80%, 100%{ transform: translateY(0); opacity:.55; }
-      40%{ transform: translateY(-4px); opacity:1; }
-    }
-
-    .composer{
+    .panelHead{
+      padding: 14px 14px 12px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
       display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
       gap: 10px;
-      align-items:flex-end;
+      background: rgba(0,0,0,.12);
+    }
+    .panelHead h3{
+      margin:0;
+      font-size: 15px;
+      letter-spacing:.2px;
+      font-weight: 900;
+    }
+    .panelHead .sub{
+      margin-top:4px;
+      font-size: 12px;
+      color: var(--muted2);
+      line-height:1.35;
+      max-width: 560px;
     }
 
-    textarea{
-      flex:1;
-      min-height: 46px;
-      max-height: 150px;
-      resize: vertical;
-      padding: 12px 12px;
-      border-radius: 16px;
+    .panelBody{ padding: 14px; }
+
+    .stepper{
+      display:flex;
+      gap: 8px;
+      flex-wrap:wrap;
+      margin-bottom: 12px;
+    }
+    .stepChip{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      padding: 9px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.16);
+      color: rgba(244,247,255,.90);
+      cursor:pointer;
+      user-select:none;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+      font-weight: 800;
+      font-size: 12px;
+      white-space:nowrap;
+    }
+    .stepChip:hover{
+      transform: translateY(-1px);
+      border-color: rgba(101,183,255,.36);
+      background: rgba(0,0,0,.20);
+    }
+    .stepChip.active{
+      border-color: rgba(80,255,215,.36);
+      background: linear-gradient(135deg, rgba(80,255,215,.14), rgba(101,183,255,.10));
+      box-shadow: 0 0 16px rgba(80,255,215,.06);
+    }
+    .stepChip .n{
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      display:grid;
+      place-items:center;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      font-weight: 900;
+    }
+    .stepChip.active .n{
+      border-color: rgba(80,255,215,.34);
+      background: rgba(80,255,215,.10);
+    }
+
+    .formGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 980px){
+      .formGrid{ grid-template-columns: 1fr; }
+    }
+
+    .field{
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.14);
+      padding: 12px;
+    }
+    .field.full{ grid-column: 1 / -1; }
+
+    .labelRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    label{
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing:.25px;
+      color: rgba(244,247,255,.92);
+      display:flex;
+      align-items:center;
+      gap: 8px;
+    }
+
+    .help{
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.06);
+      display:grid;
+      place-items:center;
+      font-size: 12px;
+      font-weight: 900;
+      color: rgba(244,247,255,.92);
+      cursor: pointer;
+      user-select:none;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+    }
+    .help:hover{
+      transform: translateY(-1px);
+      border-color: rgba(199,165,255,.38);
+      background: rgba(255,255,255,.10);
+    }
+
+    .hintBox{
+      margin-top: 10px;
+      padding: 10px 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      color: var(--muted);
+      line-height:1.45;
+      font-size: 12px;
+      display:none;
+    }
+    .hintBox.show{ display:block; }
+
+    input[type="text"], input[type="number"], select, textarea.fcText{
+      width:100%;
+      padding: 11px 11px;
+      border-radius: 14px;
       border: 1px solid rgba(255,255,255,.14);
       background: rgba(0,0,0,.20);
       color: var(--text);
       outline:none;
       line-height:1.45;
+      font-size: 13px;
     }
-
-    textarea:focus{
+    input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea.fcText:focus{
       border-color: rgba(101,183,255,.40);
       box-shadow: 0 0 0 3px rgba(101,183,255,.12);
     }
 
-    .row{
+    .seg{
+      display:flex;
+      gap: 8px;
+      flex-wrap:wrap;
+      margin-top: 8px;
+    }
+    .seg button{
+      padding: 10px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(244,247,255,.92);
+      cursor:pointer;
+      font-weight: 900;
+      font-size: 12px;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+    }
+    .seg button:hover{
+      transform: translateY(-1px);
+      border-color: rgba(101,183,255,.36);
+      background: rgba(255,255,255,.10);
+    }
+    .seg button.active{
+      border-color: rgba(80,255,215,.34);
+      background: rgba(80,255,215,.10);
+      color: rgba(230,255,240,.92);
+    }
+    .seg button.na{
+      border-color: rgba(255,79,216,.34);
+      background: rgba(255,79,216,.10);
+    }
+
+    .miniRow{
       display:flex;
       gap: 10px;
       align-items:center;
+      justify-content:space-between;
       flex-wrap:wrap;
+      margin-top: 12px;
     }
 
-    .toggle{
+    .progress{
+      margin-top: 8px;
+      width:100%;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+    }
+    .progress > div{
+      height:100%;
+      width: 0%;
+      background: linear-gradient(90deg, rgba(80,255,215,.75), rgba(101,183,255,.70), rgba(199,165,255,.60));
+      border-radius: 999px;
+      transition: width .18s ease;
+    }
+
+    .summary{
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+    .sumCard{
+      border-radius: var(--r);
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.16);
+      box-shadow: var(--shadow2);
+      padding: 14px;
+    }
+    .sumCard h4{
+      margin:0;
+      font-size: 13px;
+      letter-spacing:.2px;
+      font-weight: 950;
       display:flex;
       align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+    }
+    .sumCard p{
+      margin:8px 0 0 0;
+      color: var(--muted);
+      line-height:1.5;
+      font-size: 12px;
+    }
+    .tiny{
+      font-size: 11px;
+      color: var(--muted2);
+      margin-top: 8px;
+      line-height:1.45;
+    }
+
+    .chipRow{
+      display:flex;
       gap: 8px;
-      padding: 8px 10px;
+      flex-wrap:wrap;
+      margin-top: 10px;
+    }
+    .chip{
+      font-size: 11px;
+      padding: 6px 10px;
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.18);
-      color: var(--muted);
-      font-size: 12px;
-      user-select:none;
+      background: rgba(255,255,255,.06);
+      color: rgba(244,247,255,.86);
+      white-space:nowrap;
     }
-    .toggle input{ transform: translateY(1px); }
+    .chip.good{ border-color: rgba(80,255,215,.34); background: rgba(80,255,215,.10); }
+    .chip.warn{ border-color: rgba(255,199,80,.30); background: rgba(255,199,80,.10); }
+    .chip.bad{ border-color: rgba(255,79,216,.34); background: rgba(255,79,216,.10); }
+
+    .footer{
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-top: 1px solid rgba(255,255,255,.10);
+      color: var(--muted2);
+      font-size: 12px;
+      line-height:1.35;
+      display:flex;
+      justify-content:space-between;
+      gap: 10px;
+      flex-wrap:wrap;
+      background: rgba(0,0,0,.10);
+    }
+    .copy{ color: rgba(244,247,255,.78); }
+
+    .smallHint{
+      margin-top:10px;
+      font-size: 12px;
+      color: var(--muted2);
+      line-height:1.45;
+    }
 
     .toast{
       position: fixed;
@@ -584,28 +805,6 @@
     @keyframes pop{
       from{ transform: translateX(-50%) translateY(8px); opacity:0; }
       to{ transform: translateX(-50%) translateY(0); opacity:1; }
-    }
-
-    .footer{
-      margin-top: 14px;
-      padding: 14px 16px;
-      border-top: 1px solid rgba(255,255,255,.10);
-      color: var(--muted2);
-      font-size: 12px;
-      line-height:1.35;
-      display:flex;
-      justify-content:space-between;
-      gap: 10px;
-      flex-wrap:wrap;
-      background: rgba(0,0,0,.10);
-    }
-    .copy{ color: rgba(244,247,255,.78); }
-
-    .smallHint{
-      margin-top:10px;
-      font-size: 12px;
-      color: var(--muted2);
-      line-height:1.45;
     }
   </style>
 </head>
@@ -664,6 +863,18 @@
             <div style="min-width:0">
               <div style="font-weight:900">Chat</div>
               <div style="font-size:12px;color:var(--muted2);margin-top:2px">Saved sessions and continuous context</div>
+            </div>
+          </div>
+          <span class="tag">↗</span>
+        </button>
+
+        <!-- NEW: Fire Cert is LIVE -->
+        <button class="navbtn" id="navFireCert" type="button">
+          <div class="left">
+            <span class="tag new">New</span>
+            <div style="min-width:0">
+              <div style="font-weight:900">Fire Cert</div>
+              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Guided Fire Safety Report workflow</div>
             </div>
           </div>
           <span class="tag">↗</span>
@@ -743,17 +954,17 @@
           <article class="card">
             <div class="cardhead">
               <div class="cardtitle">
-                <div class="icon">+</div>
+                <div class="icon">FCS</div>
                 <div>
-                  <h4>Roadmap</h4>
-                  <p>Structured reports, BIM review helpers, manufacturer search, and automated workflows.</p>
+                  <h4>Fire Cert</h4>
+                  <p>Answer guided questions, attach diagrams, and generate a Fire Safety Report draft in one click.</p>
                 </div>
               </div>
-              <span class="pill">Preview</span>
+              <span class="pill" style="border-color: rgba(199,165,255,.35); background: rgba(199,165,255,.10); color: rgba(244,247,255,.92)">New</span>
             </div>
             <div class="cta">
-              <span class="pill">Planned modules</span>
-              <button class="btn" id="btnOpenFuture" type="button">View</button>
+              <span class="pill">TGD B Volume 1</span>
+              <button class="btn primary" id="btnStartFireCert" type="button">Start Fire Cert</button>
             </div>
           </article>
         </div>
@@ -803,6 +1014,114 @@
         </div>
       </section>
 
+      <!-- =========================
+           NEW: FIRE CERT VIEW
+           ========================= -->
+      <section class="view" id="viewFireCert">
+        <div class="hero">
+          <h2>Fire Cert — Fire Safety Report Generator</h2>
+          <p>
+            A guided workflow aligned to <b>TGD B 2024 Volume 1</b>. Answer only what applies. Add diagrams where helpful.
+            Hard terms have an <b>i</b> icon with a plain-language explanation.
+          </p>
+          <div class="quote">
+            Tip: you can mark items <b>Not assessed</b> for early drafts. This helps keep the report honest while inputs are still pending.
+          </div>
+        </div>
+
+        <div class="fcwrap">
+          <!-- LEFT: Wizard -->
+          <div class="panel">
+            <div class="panelHead">
+              <div>
+                <h3>Fire Cert Wizard</h3>
+                <div class="sub">Step-by-step. Saved locally in your browser while you work.</div>
+              </div>
+              <div class="chipRow" style="margin-top:0">
+                <span class="chip good" id="chipAutoNA">Auto-NA enabled</span>
+                <span class="chip warn" id="chipDraftState">Draft</span>
+              </div>
+            </div>
+
+            <div class="panelBody">
+              <div class="stepper" id="fcStepper"></div>
+
+              <div class="formGrid" id="fcForm"></div>
+
+              <div class="miniRow">
+                <div style="min-width:220px; flex:1;">
+                  <div class="progress" aria-label="Progress"><div id="fcProgress"></div></div>
+                  <div class="tiny" id="fcProgressText">Progress: 0%</div>
+                </div>
+
+                <div class="row" style="justify-content:flex-end;">
+                  <button class="btn ghost" id="fcBack" type="button">Back</button>
+                  <button class="btn primary" id="fcNext" type="button">Next</button>
+                </div>
+              </div>
+
+              <div class="miniRow" style="margin-top:10px; justify-content:space-between;">
+                <div class="row">
+                  <button class="btn" id="fcSave" type="button">Save</button>
+                  <button class="btn danger" id="fcReset" type="button">Reset</button>
+                </div>
+
+                <div class="row">
+                  <button class="btn" id="fcExportJson" type="button">Export JSON</button>
+                  <button class="btn primary" id="fcGenerate" type="button">Generate Report (later)</button>
+                </div>
+              </div>
+
+              <div class="smallHint">
+                <b>Generate Report (later)</b> is a placeholder button for now (HTML-only stage). When we wire the backend,
+                it will call a single endpoint and return a DOCX/PDF draft.
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT: Summary -->
+          <div class="summary">
+            <div class="sumCard">
+              <h4>
+                Project Summary
+                <span class="tag">Auto</span>
+              </h4>
+              <p id="sumProject">Start by selecting the purpose group and completing Step 0. This panel updates as you go.</p>
+              <div class="chipRow" id="sumChips"></div>
+              <div class="tiny" id="sumTips">Plain-language help is available on every field via the <b>i</b> icon.</div>
+            </div>
+
+            <div class="sumCard">
+              <h4>
+                Completion & Flags
+                <span class="tag">Live</span>
+              </h4>
+              <p id="sumFlags">No flags yet. As you fill details, we’ll show likely triggers (e.g., smoke control, existing building).</p>
+              <div class="tiny">
+                Outcome states used in the final report:
+                ✅ Compliant • ⚠️ Compensatory • ❌ Alternative solution • ⏳ Not assessed
+              </div>
+            </div>
+
+            <div class="sumCard">
+              <h4>
+                Attachments
+                <span class="tag">Later</span>
+              </h4>
+              <p>
+                In the next build step we will add a “Diagram uploads” panel per section (escape routes, compartments, smoke zones, etc.).
+                For now, you can track what you intend to upload using the “Attachments notes” field in Step 0.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
+          <div>Fire Cert Module (Live UI)</div>
+        </div>
+      </section>
+
       <section class="view" id="viewFuture">
         <div class="hero">
           <h2>Future Features</h2>
@@ -846,23 +1165,6 @@
             <div class="cta">
               <span class="pill">Access and use</span>
               <button class="btn" data-soon="DAC Report Generator">Preview</button>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="cardhead">
-              <div class="cardtitle">
-                <div class="icon">FCS</div>
-                <div>
-                  <h4>Fire Safety Report Generator</h4>
-                  <p>Produce consistent report drafts with traceable checks and repeatable structure.</p>
-                </div>
-              </div>
-              <span class="pill">Roadmap</span>
-            </div>
-            <div class="cta">
-              <span class="pill">Fire safety workflow</span>
-              <button class="btn" data-soon="Fire Safety Report Generator">Preview</button>
             </div>
           </article>
 
@@ -927,7 +1229,6 @@
     // Safety: prevent arbitrary API_BASE overrides (protects users and prevents broken configs)
     if (!API_BASE.startsWith("https://complyr.onrender.com")) {
       localStorage.removeItem("RAHEEM_API_BASE");
-      // Samsung Internet safety: do not force reload
       if (!navigator.userAgent.toLowerCase().includes("samsungbrowser")) {
         location.reload();
       }
@@ -948,11 +1249,12 @@
     const viewHint  = document.getElementById("viewHint");
     const viewHome  = document.getElementById("viewHome");
     const viewChat  = document.getElementById("viewChat");
+    const viewFireCert = document.getElementById("viewFireCert");
     const viewFuture= document.getElementById("viewFuture");
     const chatList  = document.getElementById("chatList");
 
     function showView(which){
-      [viewHome, viewChat, viewFuture].forEach(v=>v.classList.remove("show"));
+      [viewHome, viewChat, viewFireCert, viewFuture].forEach(v=>v.classList.remove("show"));
       chatList.classList.remove("show");
 
       if(which==="home"){
@@ -968,6 +1270,13 @@
         renderChatList();
         renderChat();
       }
+      if(which==="firecert"){
+        viewFireCert.classList.add("show");
+        viewTitle.textContent = "Fire Cert";
+        viewHint.textContent  = "Guided Fire Safety Report workflow";
+        // Fire Cert is local-only for now
+        fcInitOnce();
+      }
       if(which==="future"){
         viewFuture.classList.add("show");
         viewTitle.textContent = "Future Features";
@@ -977,10 +1286,11 @@
 
     document.getElementById("navHome").onclick  = ()=>showView("home");
     document.getElementById("navChat").onclick  = ()=>showView("chat");
+    document.getElementById("navFireCert").onclick = ()=>showView("firecert");
     document.getElementById("navFuture").onclick= ()=>showView("future");
 
     document.getElementById("btnStartChat").onclick = ()=>showView("chat");
-    document.getElementById("btnOpenFuture").onclick = ()=>showView("future");
+    document.getElementById("btnStartFireCert").onclick = ()=>showView("firecert");
 
     // Top bar buttons
     document.getElementById("btnDocs").onclick = ()=> window.open(apiUrl("/swagger"), "_blank");
@@ -1000,7 +1310,7 @@
       }
     };
 
-    // Future feature buttons (professional)
+    // Future feature buttons
     document.querySelectorAll("[data-soon]").forEach(btn=>{
       btn.addEventListener("click", ()=>{
         const name = btn.getAttribute("data-soon");
@@ -1057,7 +1367,7 @@
     }
 
     // =========================
-    // CHAT STATE
+    // CHAT STATE (unchanged)
     // =========================
     const chatBox = document.getElementById("chatBox");
     const msgEl = document.getElementById("msg");
@@ -1129,15 +1439,6 @@
       }
     }
 
-    function escapeHtml(s){
-      return (s||"")
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
-    }
-
     function deleteChat(chatId){
       const all = loadAllChats();
       if(!all[chatId]) return;
@@ -1166,6 +1467,15 @@
       renderChatList();
       renderChat();
       showToast("Chat deleted.");
+    }
+
+    function escapeHtml(s){
+      return (s||"")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
     }
 
     function renderChatList(){
@@ -1284,7 +1594,7 @@
     renderChat();
 
     // =========================
-    // Samsung Internet fixes for streaming
+    // Samsung Internet fixes for streaming (unchanged)
     // =========================
     function isSamsungInternet(){
       try{
@@ -1318,7 +1628,7 @@
     }
 
     // =========================
-    // CHAT SEND
+    // CHAT SEND (unchanged)
     // =========================
     async function send(){
       const text = (msgEl.value || "").trim();
@@ -1509,7 +1819,665 @@
         send();
       }
     });
+
+    // =========================
+    // FIRE CERT WIZARD (HTML-ONLY)
+    // =========================
+    const FC_KEY = "raheem_firecert_draft_v1";
+    let fcState = null;
+    let fcStepIndex = 0;
+    let fcInited = false;
+
+    const fcSteps = [
+      { id:"s0", name:"Step 0 — Setup" },
+      { id:"b1", name:"B1 — Escape" },
+      { id:"b2", name:"B2 — Linings" },
+      { id:"b3", name:"B3 — Structure" },
+      { id:"b4", name:"B4 — External" },
+      { id:"b5", name:"B5 — Fire Service" },
+      { id:"b6", name:"B6 — Smoke" },
+      { id:"b12", name:"B12 — Handover" },
+    ];
+
+    // Purpose groups shown to user (friendly)
+    const purposeGroups = [
+      { id:"1c", name:"1(c) Flats / Apartments", chip:"Residential" },
+      { id:"2a", name:"2(a)(ii) Residential care (non-hospital)", chip:"Care" },
+      { id:"2b", name:"2(b) Hotel / Hostel / Student Accommodation", chip:"Sleeping" },
+      { id:"3",  name:"3 Office", chip:"Office" },
+      { id:"4a", name:"4(a) Shop", chip:"Retail" },
+      { id:"4b", name:"4(b) Shopping centre", chip:"Mall" },
+      { id:"5a", name:"5(a) Assembly (incl. café/restaurant/pub)", chip:"Assembly" },
+      { id:"5b", name:"5(b) Day centre (creche/clinic)", chip:"Day" },
+      { id:"6a", name:"6(a) Industrial (normal)", chip:"Industrial" },
+      { id:"6b", name:"6(b) Industrial (high hazard)", chip:"High hazard" },
+      { id:"7a", name:"7(a) Storage (normal)", chip:"Storage" },
+      { id:"7b", name:"7(b) Storage (high hazard)", chip:"High hazard" },
+      { id:"7c", name:"7(c) Car park", chip:"Car park" },
+      { id:"8",  name:"8 Other non-residential", chip:"Other" },
+    ];
+
+    const HELP = {
+      scope_vol1: "Volume 1 applies to most buildings other than houses. If your building is very unusual or complex, a fire engineering approach may be needed.",
+      topmost_floor: "The topmost occupied floor level measured above ground. If it exceeds the scope limit, a bespoke approach may be required.",
+      building_height: "‘Height of building’ is a defined term in the guidance. Enter your project’s building height used for fire safety tables.",
+      separated_parts: "A ‘separated part’ is a part of a building separated by fire-resisting construction so it can be treated similarly to a separate building for some checks.",
+      travel_distance: "Travel distance is how far a person must travel to reach a place of relative safety (like an exit or protected stair).",
+      basis_single_dual: "Single direction means only one way out for part of the route. Dual direction means two independent directions are available.",
+      exit_capacity: "Exit capacity is the total clear width of exits/stairs needed for the number of people expected to use them.",
+      protected_lobby: "A protected lobby/corridor is enclosed in fire-resisting construction to help keep smoke out of escape stairs.",
+      notional_boundary: "A notional boundary is an assumed boundary line used for space separation checks, often on larger or shared sites.",
+      en12101: "EN 12101 is a family of standards used for smoke and heat control systems (SHEVS).",
+      b12_logbook: "A fire safety logbook records testing, maintenance and key fire safety information for building management.",
+      not_assessed: "Use Not assessed when information is not available yet. This avoids claiming compliance without evidence."
+    };
+
+    function fcLoad(){
+      try{
+        const raw = localStorage.getItem(FC_KEY);
+        if(raw) return JSON.parse(raw);
+      }catch(e){}
+      return {
+        purpose_group: "",
+        // Step 0
+        fsc_app: "",
+        topmost_floor_le_60: "",
+        scope_vol1: "",
+        alt_solution: "",
+        alt_solution_desc: "",
+        external_standards: "",
+        external_standards_list: "",
+        works_type: "New building",
+        existing_reasonably_achievable: "",
+        building_height_m: "",
+        topmost_storey_height_m: "",
+        storeys_above: "",
+        storeys_basement: "",
+        separated_parts: "",
+        atrium: "",
+        car_park: "None",
+        building_desc: "",
+        notional_boundary: "",
+        notional_boundary_desc: "",
+        attachments_notes: "",
+
+        // B1
+        b1_design_occupancy: "",
+        b1_sleeping: "",
+        b1_strategy: "",
+        b1_max_travel_m: "",
+        b1_travel_basis: "",
+        b1_travel_ref: "",
+        b1_storey_exits: "",
+        b1_final_exits: "",
+        b1_exit_width_req_mm: "",
+        b1_exit_width_prov_mm: "",
+        b1_stairs_count: "",
+        b1_stair_width_mm: "",
+        b1_stair_persons: "",
+        b1_single_stair: "",
+        b1_stair_smoke: "",
+        b1_inner_rooms: "",
+        b1_detect_access: "",
+        b1_vision_panel: "",
+        b1_fire_doors: "",
+        b1_hold_open: "",
+        b1_elec_locks: "",
+        b1_unlock_alarm_power: "",
+        b1_refuge: "",
+        b1_refuge_location: "",
+        b1_refuge_comm: "",
+        b1_evac_lift: "",
+        b1_alarm: "",
+        b1_alarm_cat: "",
+        b1_emergency_lighting: "",
+        b1_signage: "",
+
+        // B2
+        b2_class_escape: "",
+        b2_class_rooms: "",
+        b2_class_circ: "",
+        b2_table_ref: "",
+        b2_deviation: "",
+        b2_comp_measures: "",
+        b2_special_risk: "",
+        b2_thermo_rooflights: "",
+        b2_thermo_diffusers: "",
+        b2_plastic_glazing: "",
+
+        // B3
+        b3_struct_system: "",
+        b3_req_fr_mins: "",
+        b3_req_fr_ref: "",
+        b3_prop_fr_frame: "",
+        b3_prop_fr_floors: "",
+        b3_prop_fr_comp_walls: "",
+        b3_comp_areas_heights: "",
+        b3_comp_max_perm: "",
+        b3_comp_ref: "",
+        b3_comp_compliant: "",
+        b3_separated_parts_desc: "",
+        b3_special_rooms_list: "",
+        b3_special_rooms_enclosed: "",
+        b3_junction_strategy: "",
+        b3_cavities: "",
+        b3_cavity_barriers: "",
+        b3_services_penetrate: "",
+        b3_fire_stopping: "",
+        b3_dampers: "",
+
+        // B4
+        b4_wall_system: "",
+        b4_facade_class: "",
+        b4_combustible: "",
+        b4_test_evidence: "",
+        b4_boundary_dist: "",
+        b4_unprotected_pct: "",
+        b4_table_used: "",
+        b4_attachments: "",
+        b4_roof_class: "",
+        b4_roof_req: "",
+        b4_roof_ref: "",
+        b4_rooflights: "",
+        b4_pv_plant: "",
+        b4_pv_plant_desc: "",
+
+        // B5
+        b5_appliance_route: "",
+        b5_dist_parking_m: "",
+        b5_top_storey_vs_access_m: "",
+        b5_main_required: "",
+        b5_main_type: "",
+        b5_main_locations: "",
+        b5_ff_shaft_required: "",
+        b5_ff_shaft_count_loc: "",
+        b5_ff_storeys_served: "",
+        b5_hydrants: "",
+        b5_hydrant_dist_m: "",
+        b5_flow_known: "",
+        b5_boiler_fuel: "",
+        b5_elec_isolation: "",
+
+        // B6
+        b6_basements: "",
+        b6_atria: "",
+        b6_protected_lobbies: "",
+        b6_car_parks: "",
+        b6_system_type: "",
+        b6_standard: "",
+        b6_vent_sizes_defined: "",
+        b6_zones_defined: "",
+        b6_emergency_power: "",
+        b6_fail_safe: "",
+
+        // B12
+        b12_systems: "",
+        b12_commissioning: "",
+        b12_om: "",
+        b12_as_built: "",
+        b12_logbook: "",
+        b12_standards_per_system: "",
+
+        // outcomes (per section)
+        out_b1: "Not assessed",
+        out_b2: "Not assessed",
+        out_b3: "Not assessed",
+        out_b4: "Not assessed",
+        out_b5: "Not assessed",
+        out_b6: "Not assessed",
+        out_b12:"Not assessed"
+      };
+    }
+
+    function fcSave(){
+      localStorage.setItem(FC_KEY, JSON.stringify(fcState));
+      showToast("Fire Cert draft saved.");
+      fcUpdateSummary();
+    }
+
+    function fcReset(){
+      const ok = confirm("Reset Fire Cert draft? This clears local progress.");
+      if(!ok) return;
+      localStorage.removeItem(FC_KEY);
+      fcState = fcLoad();
+      fcStepIndex = 0;
+      fcRenderAll();
+      showToast("Fire Cert draft reset.");
+    }
+
+    function setDefaultForPurposeGroup(pg){
+      // Defaults only (no magic compliance)
+      if(pg==="2b"){ fcState.b1_sleeping = "Yes"; }
+      if(pg==="1c"){ fcState.b1_sleeping = "Yes"; }
+      if(pg==="2a"){ fcState.b1_strategy = "Progressive horizontal"; }
+      if(pg==="7c"){ fcState.b6_car_parks = "Yes"; } // likely smoke control gate
+      if(pg==="4b"){ fcState.b6_atria = fcState.b6_atria || "Unknown"; } // common
+    }
+
+    function field(label, key, type="text", helpKey=null, opts=null, full=false){
+      const id = "fc_" + key;
+      const val = (fcState[key] ?? "");
+      const isSelect = type==="select";
+      const isTextArea = type==="textarea";
+      const isNumber = type==="number";
+
+      let inputHtml = "";
+      if(isSelect){
+        inputHtml = `<select id="${id}">
+          ${(opts||[]).map(o=>`<option value="${escapeHtml(o)}" ${val===o?"selected":""}>${escapeHtml(o)}</option>`).join("")}
+        </select>`;
+      }else if(isTextArea){
+        inputHtml = `<textarea class="fcText" id="${id}" rows="4" placeholder="Type here...">${escapeHtml(val)}</textarea>`;
+      }else{
+        inputHtml = `<input id="${id}" type="${isNumber?"number":"text"}" value="${escapeHtml(val)}" placeholder="${isNumber?"0":"Type here..."}" />`;
+      }
+
+      const helpBtn = helpKey ? `<div class="help" data-help="${escapeHtml(helpKey)}" title="Explain">i</div>` : "";
+
+      return `
+        <div class="field ${full ? "full" : ""}">
+          <div class="labelRow">
+            <label for="${id}">${escapeHtml(label)}</label>
+            ${helpBtn}
+          </div>
+          ${inputHtml}
+          <div class="hintBox" id="${id}_hint"></div>
+        </div>
+      `;
+    }
+
+    function outcomeField(sectionKey){
+      const key = "out_" + sectionKey;
+      const id = "fc_" + key;
+      const val = fcState[key] || "Not assessed";
+      const opts = ["Not assessed","Compliant (TGD tables)","Compliant (compensatory)","Non-compliant (alt solution)"];
+      return field("Section outcome", key, "select", "not_assessed", opts, true);
+    }
+
+    function fcStepFields(stepId){
+      // Show/Hide by gates (auto-NA not fully implemented yet - HTML-only)
+      if(stepId==="s0"){
+        return [
+          field("Purpose group (Table 1)", "purpose_group", "select", null, purposeGroups.map(p=>p.id + " — " + p.name), true),
+          field("Fire Safety Certificate application?", "fsc_app", "select", null, ["","Yes","No"], false),
+          field("Topmost floor height ≤ 60 m?", "topmost_floor_le_60", "select", "topmost_floor", ["","Yes","No","Unknown"], false),
+          field("Within TGD B Volume 1 scope?", "scope_vol1", "select", "scope_vol1", ["","Yes","No","Unknown"], false),
+          field("Alternative / performance-based approach?", "alt_solution", "select", null, ["","No","Yes"], false),
+          field("Describe alternative approach (if Yes)", "alt_solution_desc", "textarea", null, null, true),
+
+          field("External standards used in addition to TGD B?", "external_standards", "select", null, ["","No","Yes","Unknown"], false),
+          field("List standards (e.g. EN 12101, BS 9999)", "external_standards_list", "text", null, null, false),
+
+          field("Works type", "works_type", "select", null, ["New building","Extension","Material alteration","Material change of use","Combination"], false),
+          field("If existing works: Sections 1–6 reasonably achievable?", "existing_reasonably_achievable", "select", null, ["","Yes","No","Unknown"], false),
+
+          field("Height of building (m)", "building_height_m", "number", "building_height", null, false),
+          field("Height of topmost storey (m)", "topmost_storey_height_m", "number", "topmost_floor", null, false),
+          field("Storeys above ground", "storeys_above", "number", null, null, false),
+          field("Basement storeys", "storeys_basement", "number", null, null, false),
+
+          field("Separated parts (3.4.2)?", "separated_parts", "select", "separated_parts", ["","No","Yes","Unknown"], false),
+          field("Atrium present?", "atrium", "select", null, ["","No","Yes","Unknown"], false),
+          field("Car park", "car_park", "select", null, ["None","Open","Enclosed"], false),
+
+          field("Notional boundary used?", "notional_boundary", "select", "notional_boundary", ["","No","Yes","Unknown"], false),
+          field("Notional boundary description", "notional_boundary_desc", "textarea", "notional_boundary", null, true),
+
+          field("Brief building description", "building_desc", "textarea", null, null, true),
+          field("Attachments notes (what you plan to upload later)", "attachments_notes", "textarea", null, null, true),
+        ];
+      }
+
+      if(stepId==="b1"){
+        return [
+          field("Design occupancy (per storey/compartment)", "b1_design_occupancy", "text", null, null, true),
+          field("Sleeping accommodation present?", "b1_sleeping", "select", null, ["","No","Yes","Unknown"], false),
+          field("Evacuation strategy", "b1_strategy", "select", null, ["","Simultaneous","Phased","Progressive horizontal","Unknown"], false),
+
+          field("Max travel distance (m)", "b1_max_travel_m", "number", "travel_distance", null, false),
+          field("Travel distance basis", "b1_travel_basis", "select", "basis_single_dual", ["","Single direction","Dual direction","Unknown"], false),
+          field("Table reference used for travel distance", "b1_travel_ref", "text", null, null, false),
+
+          field("Number of storey exits (per storey)", "b1_storey_exits", "text", null, null, false),
+          field("Number of final exits", "b1_final_exits", "text", null, null, false),
+          field("Required exit width (mm)", "b1_exit_width_req_mm", "number", "exit_capacity", null, false),
+          field("Provided exit width (mm)", "b1_exit_width_prov_mm", "number", "exit_capacity", null, false),
+
+          field("Number of escape stairs", "b1_stairs_count", "number", null, null, false),
+          field("Clear width of each stair (mm)", "b1_stair_width_mm", "text", null, null, false),
+          field("Persons served by each stair", "b1_stair_persons", "text", null, null, false),
+          field("Single stair building?", "b1_single_stair", "select", null, ["","No","Yes","Unknown"], false),
+          field("Stair smoke ventilation/control provided?", "b1_stair_smoke", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Inner rooms present?", "b1_inner_rooms", "select", null, ["","No","Yes","Unknown"], false),
+          field("Detection in access room?", "b1_detect_access", "select", null, ["","No","Yes","Unknown"], false),
+          field("Vision panel/glazing provided?", "b1_vision_panel", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Fire doors on escape routes?", "b1_fire_doors", "select", null, ["","No","Yes","Unknown"], false),
+          field("Hold-open devices provided?", "b1_hold_open", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Electronically locked doors on escape routes?", "b1_elec_locks", "select", null, ["","No","Yes","Unknown"], false),
+          field("Unlock on fire alarm + power failure?", "b1_unlock_alarm_power", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Refuge areas provided?", "b1_refuge", "select", null, ["","No","Yes","Unknown"], false),
+          field("Refuge location", "b1_refuge_location", "text", null, null, false),
+          field("Refuge communication provided?", "b1_refuge_comm", "select", null, ["","No","Yes","Unknown"], false),
+          field("Evacuation lift provided?", "b1_evac_lift", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Fire detection & alarm provided?", "b1_alarm", "select", null, ["","No","Yes","Unknown"], false),
+          field("Alarm category (if known)", "b1_alarm_cat", "text", null, null, false),
+          field("Emergency lighting provided?", "b1_emergency_lighting", "select", null, ["","No","Yes","Unknown"], false),
+          field("Fire safety signage provided?", "b1_signage", "select", null, ["","No","Yes","Unknown"], false),
+
+          outcomeField("b1")
+        ];
+      }
+
+      if(stepId==="b2"){
+        return [
+          field("Reaction-to-fire class (escape routes)", "b2_class_escape", "text", null, null, false),
+          field("Reaction-to-fire class (rooms)", "b2_class_rooms", "text", null, null, false),
+          field("Reaction-to-fire class (circulation)", "b2_class_circ", "text", null, null, false),
+          field("Table reference used", "b2_table_ref", "text", null, null, false),
+
+          field("Any deviations from tabulated classes?", "b2_deviation", "select", null, ["","No","Yes","Unknown"], false),
+          field("Compensatory measures (if Yes)", "b2_comp_measures", "textarea", null, null, true),
+
+          field("Places of special fire risk present?", "b2_special_risk", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Thermoplastic rooflights present?", "b2_thermo_rooflights", "select", null, ["","No","Yes","Unknown"], false),
+          field("Thermoplastic lighting diffusers present?", "b2_thermo_diffusers", "select", null, ["","No","Yes","Unknown"], false),
+          field("Plastic glazing on escape routes?", "b2_plastic_glazing", "select", null, ["","No","Yes","Unknown"], false),
+
+          outcomeField("b2")
+        ];
+      }
+
+      if(stepId==="b3"){
+        return [
+          field("Structural system type", "b3_struct_system", "text", null, null, false),
+
+          field("Required fire resistance (mins)", "b3_req_fr_mins", "text", null, null, false),
+          field("Table reference used (required)", "b3_req_fr_ref", "text", null, null, false),
+
+          field("Proposed fire resistance — frame (mins)", "b3_prop_fr_frame", "text", null, null, false),
+          field("Proposed fire resistance — floors (mins)", "b3_prop_fr_floors", "text", null, null, false),
+          field("Proposed fire resistance — compartment walls (mins)", "b3_prop_fr_comp_walls", "text", null, null, false),
+
+          field("Compartment areas and heights", "b3_comp_areas_heights", "textarea", null, null, true),
+          field("Max permitted compartment size", "b3_comp_max_perm", "text", null, null, false),
+          field("Table reference used (compartments)", "b3_comp_ref", "text", null, null, false),
+          field("Compartment compliance achieved?", "b3_comp_compliant", "select", null, ["","Yes","No","Unknown"], false),
+
+          field("Separated parts description (if any)", "b3_separated_parts_desc", "textarea", null, null, true),
+
+          field("List special risk rooms (plant, boiler, kitchen, store)", "b3_special_rooms_list", "textarea", null, null, true),
+          field("Special risk rooms enclosed + fire doors provided?", "b3_special_rooms_enclosed", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Junction strategy (compartment floor/external wall)", "b3_junction_strategy", "text", null, null, false),
+          field("Cavities present?", "b3_cavities", "select", null, ["","No","Yes","Unknown"], false),
+          field("Cavity barriers provided?", "b3_cavity_barriers", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Services penetrate fire-resisting elements?", "b3_services_penetrate", "select", null, ["","No","Yes","Unknown"], false),
+          field("Fire stopping strategy defined?", "b3_fire_stopping", "select", null, ["","No","Yes","Unknown"], false),
+          field("Fire dampers in ducts?", "b3_dampers", "select", null, ["","No","Yes","Unknown"], false),
+
+          outcomeField("b3")
+        ];
+      }
+
+      if(stepId==="b4"){
+        return [
+          field("External wall system type", "b4_wall_system", "text", null, null, false),
+          field("Façade reaction-to-fire classification", "b4_facade_class", "text", null, null, false),
+
+          field("Combustible insulation/cladding present?", "b4_combustible", "select", null, ["","No","Yes","Unknown"], false),
+          field("Fire test / evidence available?", "b4_test_evidence", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Boundary distances per elevation (m)", "b4_boundary_dist", "textarea", null, null, true),
+          field("Unprotected area % per elevation", "b4_unprotected_pct", "textarea", null, null, true),
+          field("Table/diagram used for space separation", "b4_table_used", "text", null, null, false),
+
+          field("Elements fixed to external wall (balconies/PV/green walls)?", "b4_attachments", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Roof covering classification", "b4_roof_class", "text", null, null, false),
+          field("Required roof classification", "b4_roof_req", "text", null, null, false),
+          field("Table reference used (roof)", "b4_roof_ref", "text", null, null, false),
+
+          field("Plastic rooflights present?", "b4_rooflights", "select", null, ["","No","Yes","Unknown"], false),
+          field("Roof-mounted PV/plant present?", "b4_pv_plant", "select", null, ["","No","Yes","Unknown"], false),
+          field("PV/plant construction/fire resistance notes", "b4_pv_plant_desc", "textarea", null, null, true),
+
+          outcomeField("b4")
+        ];
+      }
+
+      if(stepId==="b5"){
+        return [
+          field("Fire appliance access route provided?", "b5_appliance_route", "select", null, ["","No","Yes","Unknown"], false),
+          field("Distance from appliance parking to access level (m)", "b5_dist_parking_m", "number", null, null, false),
+          field("Height of topmost storey relative to access (m)", "b5_top_storey_vs_access_m", "number", null, null, false),
+
+          field("Internal fire main required?", "b5_main_required", "select", null, ["","No","Yes","Unknown"], false),
+          field("Fire main type", "b5_main_type", "select", null, ["","Dry riser","Wet riser","Unknown"], false),
+          field("Fire main locations (shafts/cores)", "b5_main_locations", "textarea", null, null, true),
+
+          field("Firefighting shaft required?", "b5_ff_shaft_required", "select", null, ["","No","Yes","Unknown"], false),
+          field("Shafts: number + locations", "b5_ff_shaft_count_loc", "textarea", null, null, true),
+          field("Storeys served", "b5_ff_storeys_served", "text", null, null, false),
+
+          field("External hydrants provided?", "b5_hydrants", "select", null, ["","No","Yes","Unknown"], false),
+          field("Distance to nearest hydrant (m)", "b5_hydrant_dist_m", "number", null, null, false),
+          field("Flow/pressure known?", "b5_flow_known", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Boiler rooms/fuel stores present?", "b5_boiler_fuel", "select", null, ["","No","Yes","Unknown"], false),
+          field("Electrical isolation for firefighting provided?", "b5_elec_isolation", "select", null, ["","No","Yes","Unknown"], false),
+
+          outcomeField("b5")
+        ];
+      }
+
+      if(stepId==="b6"){
+        return [
+          field("Basements present?", "b6_basements", "select", null, ["","No","Yes","Unknown"], false),
+          field("Atria present?", "b6_atria", "select", null, ["","No","Yes","Unknown"], false),
+          field("Protected lobbies/corridors present?", "b6_protected_lobbies", "select", "protected_lobby", ["","No","Yes","Unknown"], false),
+          field("Car parks present?", "b6_car_parks", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Smoke control system type per zone", "b6_system_type", "textarea", null, null, true),
+          field("Design standard used", "b6_standard", "text", "en12101", null, false),
+          field("Vent sizes and locations defined?", "b6_vent_sizes_defined", "select", null, ["","No","Yes","Unknown"], false),
+          field("Smoke zones defined?", "b6_zones_defined", "select", null, ["","No","Yes","Unknown"], false),
+
+          field("Emergency power supply provided?", "b6_emergency_power", "select", null, ["","No","Yes","Unknown"], false),
+          field("Fail-safe operation on power loss/alarm?", "b6_fail_safe", "select", null, ["","No","Yes","Unknown"], false),
+
+          outcomeField("b6")
+        ];
+      }
+
+      if(stepId==="b12"){
+        return [
+          field("Fire safety systems installed (list)", "b12_systems", "textarea", null, null, true),
+          field("Commissioning certificates to be provided?", "b12_commissioning", "select", null, ["","No","Yes","Unknown"], false),
+          field("O&M manuals to be provided?", "b12_om", "select", null, ["","No","Yes","Unknown"], false),
+          field("As-built fire safety drawings/report to be provided?", "b12_as_built", "select", null, ["","No","Yes","Unknown"], false),
+          field("Fire safety logbook/management plan provided?", "b12_logbook", "select", "b12_logbook", ["","No","Yes","Unknown"], false),
+          field("System design standards (optional)", "b12_standards_per_system", "textarea", null, null, true),
+          outcomeField("b12")
+        ];
+      }
+
+      return [];
+    }
+
+    function fcRenderStepper(){
+      const el = document.getElementById("fcStepper");
+      el.innerHTML = "";
+      fcSteps.forEach((s, idx)=>{
+        const b = document.createElement("div");
+        b.className = "stepChip" + (idx===fcStepIndex ? " active" : "");
+        b.innerHTML = `<span class="n">${idx+1}</span><span>${s.name}</span>`;
+        b.addEventListener("click", ()=>{
+          fcStepIndex = idx;
+          fcRenderAll();
+        });
+        el.appendChild(b);
+      });
+    }
+
+    function fcRenderForm(){
+      const step = fcSteps[fcStepIndex];
+      const fields = fcStepFields(step.id);
+      const form = document.getElementById("fcForm");
+      form.innerHTML = fields.join("");
+
+      // Hook change events
+      form.querySelectorAll("input, select, textarea").forEach(inp=>{
+        inp.addEventListener("input", ()=>{
+          const key = inp.id.replace("fc_","");
+          fcState[key] = inp.value;
+          // If purpose group changed, set defaults
+          if(key==="purpose_group"){
+            const pg = (inp.value || "").split(" — ")[0].trim();
+            fcState.purpose_group = inp.value;
+            setDefaultForPurposeGroup(pg);
+          }
+          fcUpdateSummary();
+          fcUpdateProgress();
+        });
+      });
+
+      // Help toggles
+      form.querySelectorAll(".help").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          const hk = btn.getAttribute("data-help");
+          const fieldWrap = btn.closest(".field");
+          const input = fieldWrap ? fieldWrap.querySelector("input, select, textarea") : null;
+          if(!input) return;
+          const hintEl = document.getElementById(input.id + "_hint");
+          if(!hintEl) return;
+          const msg = HELP[hk] || "Explanation not available.";
+          hintEl.textContent = msg;
+          hintEl.classList.toggle("show");
+        });
+      });
+    }
+
+    function fcUpdateProgress(){
+      // crude progress: count non-empty fields in current step
+      const step = fcSteps[fcStepIndex];
+      const keys = (fcStepFields(step.id).join("").match(/fc_([a-z0-9_]+)/gi) || [])
+        .map(x=>x.replace("fc_","").replace(/[^a-z0-9_]/gi,""))
+        .filter((v,i,a)=>a.indexOf(v)===i);
+
+      let filled = 0;
+      keys.forEach(k=>{
+        if((fcState[k]||"").toString().trim() !== "") filled++;
+      });
+      const pct = keys.length ? Math.round((filled/keys.length)*100) : 0;
+      document.getElementById("fcProgress").style.width = pct + "%";
+      document.getElementById("fcProgressText").textContent = "Progress: " + pct + "%";
+    }
+
+    function fcUpdateSummary(){
+      // Project summary
+      const pg = (fcState.purpose_group || "").trim();
+      const desc = (fcState.building_desc || "").trim();
+      const storeys = (fcState.storeys_above || "").toString().trim();
+      const basements = (fcState.storeys_basement || "").toString().trim();
+      const carpark = (fcState.car_park || "").trim();
+
+      const sum = [];
+      if(pg) sum.push("Purpose group: " + pg);
+      if(storeys) sum.push("Storeys above ground: " + storeys);
+      if(basements) sum.push("Basements: " + basements);
+      if(carpark && carpark!=="None") sum.push("Car park: " + carpark);
+      if(desc) sum.push("Description: " + desc);
+
+      document.getElementById("sumProject").textContent = sum.length ? sum.join(" • ") : "Start by selecting the purpose group and completing Step 0. This panel updates as you go.";
+
+      // Chips
+      const chips = document.getElementById("sumChips");
+      chips.innerHTML = "";
+      const chipData = [];
+      if(fcState.scope_vol1 === "No") chipData.push({t:"Outside Vol 1 scope", c:"bad"});
+      if(fcState.alt_solution === "Yes") chipData.push({t:"Alt solution", c:"warn"});
+      if(fcState.b6_basements === "Yes" || (parseInt(fcState.storeys_basement||"0",10) > 0)) chipData.push({t:"Basement", c:"warn"});
+      if(fcState.atrium === "Yes" || fcState.b6_atria === "Yes") chipData.push({t:"Atrium", c:"warn"});
+      if(fcState.car_park !== "None" || fcState.b6_car_parks === "Yes") chipData.push({t:"Smoke control likely", c:"warn"});
+
+      chipData.forEach(x=>{
+        const sp = document.createElement("span");
+        sp.className = "chip " + (x.c==="bad"?"bad":x.c==="warn"?"warn":"good");
+        sp.textContent = x.t;
+        chips.appendChild(sp);
+      });
+
+      // Flags text
+      const flags = [];
+      if(fcState.scope_vol1 === "No") flags.push("Project may be outside Volume 1 scope → consider alternative / performance-based approach.");
+      if(fcState.alt_solution === "Yes") flags.push("Alternative approach declared → report should explicitly describe the method and standards.");
+      if(fcState.b6_car_parks === "Yes" || fcState.car_park !== "None") flags.push("Car park indicated → smoke control/ventilation section likely applicable.");
+      if(fcState.b6_basements === "Yes" || (parseInt(fcState.storeys_basement||"0",10) > 0)) flags.push("Basements indicated → smoke ventilation considerations likely.");
+      if(fcState.atrium === "Yes" || fcState.b6_atria === "Yes") flags.push("Atrium indicated → smoke zone definition and system standard required.");
+
+      document.getElementById("sumFlags").textContent = flags.length ? flags.join(" ") : "No flags yet. As you fill details, we’ll show likely triggers (e.g., smoke control, existing building).";
+    }
+
+    function fcRenderAll(){
+      fcRenderStepper();
+      fcRenderForm();
+      fcUpdateSummary();
+      fcUpdateProgress();
+
+      // Step buttons state
+      document.getElementById("fcBack").disabled = (fcStepIndex===0);
+      document.getElementById("fcNext").textContent = (fcStepIndex===fcSteps.length-1) ? "Finish" : "Next";
+    }
+
+    function fcInitOnce(){
+      if(fcInited) return;
+      fcInited = true;
+
+      fcState = fcLoad();
+      fcStepIndex = 0;
+      fcRenderAll();
+
+      document.getElementById("fcBack").onclick = ()=>{
+        if(fcStepIndex>0){ fcStepIndex--; fcRenderAll(); }
+      };
+      document.getElementById("fcNext").onclick = ()=>{
+        if(fcStepIndex < fcSteps.length-1){ fcStepIndex++; fcRenderAll(); }
+        else showToast("Wizard complete. Export JSON or generate report (when backend is wired).");
+      };
+      document.getElementById("fcSave").onclick = fcSave;
+      document.getElementById("fcReset").onclick = fcReset;
+
+      document.getElementById("fcExportJson").onclick = ()=>{
+        const blob = new Blob([JSON.stringify(fcState, null, 2)], {type:"application/json"});
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "firecert_draft.json";
+        a.click();
+        URL.revokeObjectURL(a.href);
+        showToast("Exported JSON.");
+      };
+
+      document.getElementById("fcGenerate").onclick = ()=>{
+        showToast("Backend wiring next: /firecert/generate (DOCX/PDF).");
+      };
+
+      // initial defaults if purpose group already set
+      if(fcState.purpose_group){
+        const pg = (fcState.purpose_group || "").split(" — ")[0].trim();
+        setDefaultForPurposeGroup(pg);
+        fcUpdateSummary();
+      }
+    }
+
+    // default view
+    showView("home");
   </script>
 </body>
 </html>
-
