@@ -232,6 +232,10 @@
       font-weight:800;
       letter-spacing:.35px;
       text-transform:uppercase;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
     }
 
     .chatitem{
@@ -245,6 +249,10 @@
       cursor:pointer;
       margin-bottom: 8px;
       transition: border-color .15s ease, transform .15s ease, background .15s ease;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
     }
     .chatitem:hover{
       transform: translateY(-1px);
@@ -255,8 +263,46 @@
       border-color: rgba(101,183,255,.34);
       background: rgba(0,0,0,.22);
     }
-    .chatitem .t{ font-weight:850; font-size: 13px; }
+    .chatitem .metaWrap{ min-width:0; flex:1; }
+    .chatitem .t{ font-weight:850; font-size: 13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .chatitem .s{ margin-top:4px; font-size: 11px; color: var(--muted2); display:flex; gap:8px; align-items:center; }
+
+    /* Professional chat actions (only affects saved chats area) */
+    .chatActions{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-shrink:0;
+      margin-top:1px;
+    }
+    .iconBtn{
+      width:30px;
+      height:30px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(244,247,255,.92);
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+      font-weight: 900;
+      line-height:1;
+      user-select:none;
+    }
+    .iconBtn:hover{
+      transform: translateY(-1px);
+      border-color: rgba(101,183,255,.36);
+      background: rgba(255,255,255,.10);
+    }
+    .iconBtn.danger{
+      border-color: rgba(255,79,216,.30);
+      background: rgba(255,79,216,.08);
+    }
+    .iconBtn.danger:hover{
+      border-color: rgba(255,79,216,.45);
+      background: rgba(255,79,216,.12);
+    }
 
     .sideFoot{
       padding: 12px 16px 14px 16px;
@@ -630,7 +676,10 @@
       </div>
 
       <div class="chatlist" id="chatList">
-        <h3>Saved chats</h3>
+        <h3>
+          <span>Saved chats</span>
+          <button class="iconBtn danger" id="btnDeleteAllChats" type="button" title="Delete all chats">!</button>
+        </h3>
         <div id="chatItems"></div>
         <button class="btn" id="btnNewChat" type="button" style="width:100%; margin-top:6px;">New chat</button>
       </div>
@@ -657,10 +706,10 @@
 
       <section class="view show" id="viewHome">
         <div class="hero">
-          <h2>Smart chat for everyday questions — and serious compliance checks</h2>
+          <h2>Smart chat for everyday questions and serious compliance checks</h2>
           <p>
             Talk normally. When your question becomes technical (TGDs, BER/DEAP, fire safety, accessibility),
-            Raheem automatically shifts into evidence-based answers.
+            Raheem automatically shifts into evidence based answers.
           </p>
           <div class="quote">
             Clear replies, calm tone, and when it matters: traceable evidence.
@@ -697,7 +746,7 @@
               <span class="pill">Preview</span>
             </div>
             <div class="cta">
-              <span class="pill">What’s next</span>
+              <span class="pill">Whats next</span>
               <button class="btn" id="btnOpenFuture" type="button">View</button>
             </div>
           </article>
@@ -720,7 +769,7 @@
         <div class="chatwrap">
           <div class="row" style="justify-content:space-between;">
             <div class="row">
-              <label class="toggle" title="Prefer evidence + citations when available">
+              <label class="toggle" title="Prefer evidence and citations when available">
                 <input type="checkbox" id="forceDocs"/>
                 Evidence mode
               </label>
@@ -733,7 +782,7 @@
           <div class="chatbox" id="chatBox"></div>
 
           <div class="composer">
-            <textarea id="msg" placeholder="Type a message… (Shift + Enter for a new line)"></textarea>
+            <textarea id="msg" placeholder="Type a message... (Shift + Enter for a new line)"></textarea>
             <button class="btn primary" id="send" type="button">Send</button>
           </div>
         </div>
@@ -748,7 +797,7 @@
         <div class="hero">
           <h2>Future Features</h2>
           <p>
-            This is the roadmap. Each feature will be built properly — not rushed.
+            This is the roadmap. Each feature will be built properly, not rushed.
           </p>
           <div class="quote">
             If you click something and it is not live yet, be nice. Raheem is still cooking.
@@ -813,7 +862,7 @@
                 <div class="icon">MFG</div>
                 <div>
                   <h4>Manufacturer and Spec Search</h4>
-                  <p>Auto-search local manufacturers and specs using element parameters and project context.</p>
+                  <p>Auto search local manufacturers and specs using element parameters and project context.</p>
                 </div>
               </div>
               <span class="pill">Roadmap</span>
@@ -830,7 +879,7 @@
                 <div class="icon">BER</div>
                 <div>
                   <h4>BER Report Generator</h4>
-                  <p>Learn DEAP logic, import a Revit model, auto-fill what proves out, manual input for the rest.</p>
+                  <p>Learn DEAP logic, import a Revit model, auto fill what proves out, manual input for the rest.</p>
                 </div>
               </div>
               <span class="pill">Roadmap</span>
@@ -862,7 +911,6 @@
       localStorage.removeItem("RAHEEM_API_BASE");
       location.reload();
     }
-      
 
     function apiUrl(path){
       if(!path.startsWith("/")) path = "/" + path;
@@ -902,7 +950,7 @@
         viewHint.textContent  = "Saved chats · continuous context";
         chatList.classList.add("show");
         renderChatList();
-        renderChat(); // ✅ important: load the active chat immediately
+        renderChat();
       }
       if(which==="future"){
         viewFuture.classList.add("show");
@@ -944,7 +992,7 @@
           name + " is coming soon. Let it cook.",
           "Not live yet. Patience please, this one needs to be perfect.",
           "Soon. If you keep clicking, it still will not appear. Nice try though.",
-          "Coming soon. I am building it properly, not speed-running it."
+          "Coming soon. I am building it properly, not speed running it."
         ];
         showToast(lines[Math.floor(Math.random()*lines.length)]);
       });
@@ -993,7 +1041,7 @@
     }
 
     // =========================
-    // CHAT STATE (FIXED)
+    // CHAT STATE
     // =========================
     const chatBox = document.getElementById("chatBox");
     const msgEl = document.getElementById("msg");
@@ -1002,9 +1050,10 @@
     const btnClear = document.getElementById("btnClear");
     const btnNewChat = document.getElementById("btnNewChat");
     const chatItemsWrap = document.getElementById("chatItems");
+    const btnDeleteAllChats = document.getElementById("btnDeleteAllChats");
 
     const STORAGE_KEY = "raheem_ai_chats_v3";
-    const ACTIVE_CHAT_KEY = "raheem_active_chat_id"; // ✅ persistent active chat id
+    const ACTIVE_CHAT_KEY = "raheem_active_chat_id";
 
     function loadAllChats(){
       try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
@@ -1036,13 +1085,11 @@
     function ensureActiveChat(){
       const all = loadAllChats();
 
-      // ✅ If we have a saved active chat, use it
       if(activeChatId && all[activeChatId]){
         persistActiveChatId();
         return all;
       }
 
-      // ✅ Otherwise create one new chat once
       activeChatId = newChatId();
       all[activeChatId] = {
         title: "New chat",
@@ -1059,10 +1106,10 @@
     function setChatTitleFromFirstUser(all, chatId){
       const c = all[chatId];
       if(!c) return;
-      const firstUser = c.messages.find(m=>m.role==="user");
+      const firstUser = (c.messages || []).find(m=>m.role==="user");
       if(firstUser && (c.title==="New chat" || !c.title)){
-        const s = firstUser.content.trim();
-        c.title = s.slice(0, 44) + (s.length>44 ? "…" : "");
+        const s = (firstUser.content || "").trim();
+        c.title = s.slice(0, 44) + (s.length>44 ? "..." : "");
       }
     }
 
@@ -1075,25 +1122,83 @@
         .replaceAll("'","&#039;");
     }
 
+    function deleteChat(chatId){
+      const all = loadAllChats();
+      if(!all[chatId]) return;
+
+      const title = all[chatId].title || "this chat";
+      const ok = confirm("Delete " + title + "?");
+      if(!ok) return;
+
+      delete all[chatId];
+
+      // If we deleted the active chat, pick another or create new
+      if(chatId === activeChatId){
+        const remaining = Object.keys(all).sort((a,b)=>(all[b].updated||0)-(all[a].updated||0));
+        activeChatId = remaining[0] || null;
+        if(!activeChatId){
+          saveAllChats(all);
+          localStorage.removeItem(ACTIVE_CHAT_KEY);
+          ensureActiveChat();
+        }else{
+          persistActiveChatId();
+          saveAllChats(all);
+        }
+      }else{
+        saveAllChats(all);
+      }
+
+      renderChatList();
+      renderChat();
+      showToast("Chat deleted.");
+    }
+
     function renderChatList(){
       const all = ensureActiveChat();
       const ids = Object.keys(all).sort((a,b)=>(all[b].updated||0)-(all[a].updated||0));
       chatItemsWrap.innerHTML = "";
+
       ids.forEach(id=>{
         const c = all[id];
-        const btn = document.createElement("button");
-        btn.className = "chatitem" + (id===activeChatId ? " active" : "");
-        btn.type = "button";
+
+        const row = document.createElement("button");
+        row.className = "chatitem" + (id===activeChatId ? " active" : "");
+        row.type = "button";
+
         const title = c.title || "New chat";
         const time = fmtTime(c.updated || Date.now());
-        btn.innerHTML = `<div class="t">${escapeHtml(title)}</div><div class="s"><span>${escapeHtml(time)}</span><span style="opacity:.7">•</span><span>${(c.messages||[]).length} msgs</span></div>`;
-        btn.onclick = ()=>{
+        const msgCount = (c.messages||[]).length;
+
+        row.innerHTML = `
+          <div class="metaWrap">
+            <div class="t">${escapeHtml(title)}</div>
+            <div class="s"><span>${escapeHtml(time)}</span><span style="opacity:.7">•</span><span>${msgCount} msgs</span></div>
+          </div>
+          <div class="chatActions">
+            <div class="iconBtn danger" title="Delete chat" aria-label="Delete chat">×</div>
+          </div>
+        `;
+
+        // Selecting chat (click anywhere except delete button)
+        row.addEventListener("click", (ev)=>{
+          const target = ev.target;
+          const isDelete = target && target.classList && target.classList.contains("iconBtn");
+          if(isDelete) return;
           activeChatId = id;
-          persistActiveChatId();     // ✅ persist selection
+          persistActiveChatId();
           renderChatList();
           renderChat();
-        };
-        chatItemsWrap.appendChild(btn);
+        });
+
+        // Delete button
+        const delBtn = row.querySelector(".iconBtn.danger");
+        delBtn.addEventListener("click", (ev)=>{
+          ev.preventDefault();
+          ev.stopPropagation();
+          deleteChat(id);
+        });
+
+        chatItemsWrap.appendChild(row);
       });
     }
 
@@ -1137,214 +1242,257 @@
 
     btnNewChat.onclick = ()=>{
       const all = loadAllChats();
-      activeChatId = newChatId(); // ✅ create a new stable id
+      activeChatId = newChatId();
       all[activeChatId] = {
         title: "New chat",
         updated: Date.now(),
         messages: [{ role:"assistant", content:"Hi. I am Raheem. What are we working on today?" }]
       };
       saveAllChats(all);
-      persistActiveChatId();      // ✅ persist it
+      persistActiveChatId();
       renderChatList();
       renderChat();
       showToast("New chat created.");
     };
 
-    // Start default chat (restores last active chat now)
+    btnDeleteAllChats.onclick = ()=>{
+      const ok = confirm("Delete all chats?");
+      if(!ok) return;
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(ACTIVE_CHAT_KEY);
+      activeChatId = null;
+      ensureActiveChat();
+      renderChatList();
+      renderChat();
+      showToast("All chats deleted.");
+    };
+
+    // Start default chat (restore last active chat)
     ensureActiveChat();
     renderChat();
 
     // =========================
-    // CHAT SEND — STREAM (keeps same chat_id always)
+    // Samsung Internet fixes for streaming
     // =========================
-async function send(){
-  const text = (msgEl.value || "").trim();
-  if(!text) return;
-  msgEl.value = "";
-
-  const all = ensureActiveChat();
-  const c = all[activeChatId];
-
-  // ✅ Save USER message first
-  c.messages.push({ role:"user", content:text });
-  c.updated = Date.now();
-  setChatTitleFromFirstUser(all, activeChatId);
-  saveAllChats(all);
-
-  addMsg("user", text);
-
-  const aiDiv = addMsg("ai", "");
-  const typing = addTypingIndicator(aiDiv);
-
-  let full = "";
-  let gotAnyToken = false;
-
-  const payload = {
-    chat_id: activeChatId,
-    message: text,
-    messages: c.messages,                 // keep memory
-    force_docs: !!forceDocsEl.checked
-  };
-
-  // -----------------------------
-  // Fallback: EventSource (SSE GET)
-  // -----------------------------
-  const runEventSourceFallback = () => {
-    try {
-      if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-
-      // Send the message + context via POST first (so server stores memory),
-      // then open GET stream for the reply.
-      // (This keeps your current backend design and avoids Android fetch-stream issues.)
-
-      fetch(apiUrl("/chat_stream"), {
-        method: "POST",
-        headers: { "Content-Type":"application/json" },
-        body: JSON.stringify(payload)
-      }).then(res => {
-        // If backend actually streams on POST, some browsers still choke.
-        // So we open GET stream to receive the answer reliably.
-        const q = encodeURIComponent(text);
-        const chat_id = encodeURIComponent(activeChatId);
-        const force_docs = forceDocsEl.checked ? "1" : "0";
-        const esUrl = apiUrl(`/chat_stream?q=${q}&chat_id=${chat_id}&force_docs=${force_docs}`);
-
-        const es = new EventSource(esUrl);
-
-        es.onmessage = (ev) => {
-          gotAnyToken = true;
-          full += (ev.data || "").replaceAll("\\n","\n");
-          aiDiv.textContent = full;
-          chatBox.scrollTop = chatBox.scrollHeight;
-        };
-
-        es.addEventListener("error", (ev) => {
-          // Some servers send "event: error" frames; EventSource exposes as generic error too.
-          // We’ll just close and show whatever we have.
-          es.close();
-          if(!gotAnyToken){
-            aiDiv.textContent = "Connection error (mobile streaming). Try again or check backend logs.";
-          }
-        });
-
-        es.addEventListener("done", () => {
-          es.close();
-        });
-      }).catch(e => {
-        aiDiv.textContent = "Connection error. Try again.";
-        console.error(e);
-      });
-
-    } catch(e){
-      if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-      aiDiv.textContent = "Connection error. Try again.";
-      console.error(e);
-    }
-  };
-
-  // -----------------------------
-  // Primary: fetch streaming (desktop/Chrome)
-  // -----------------------------
-  try{
-    const res = await fetch(apiUrl("/chat_stream"), {
-      method: "POST",
-      headers: { "Content-Type":"application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    const contentType = (res.headers.get("content-type") || "").toLowerCase();
-
-    if(!res.ok){
-      const errText = await res.text().catch(()=>"(no error body)");
-      aiDiv.textContent = `Server error ${res.status}: ${errText.slice(0, 800)}`;
-      if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-      return;
-    }
-
-    // If server ever returns JSON
-    if(contentType.includes("application/json")){
-      const j = await res.json();
-      const reply = (j.answer || j.reply || j.text || JSON.stringify(j)).toString();
-      aiDiv.textContent = reply;
-      if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-
-      const all2 = ensureActiveChat();
-      const c2 = all2[activeChatId];
-      c2.messages.push({ role:"assistant", content: reply });
-      c2.updated = Date.now();
-      saveAllChats(all2);
-      renderChatList();
-      return;
-    }
-
-    // If this browser can’t stream the body, fallback
-    if(!res.body || !res.body.getReader){
-      runEventSourceFallback();
-      return;
-    }
-
-    // Streaming reader
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder("utf-8");
-    let buffer = "";
-
-    while(true){
-      const { value, done } = await reader.read();
-      if(done) break;
-
-      buffer += decoder.decode(value, { stream:true });
-
-      const parts = buffer.split("\n\n");
-      buffer = parts.pop() || "";
-
-      for(const chunk of parts){
-        if(chunk.startsWith("event: meta")) continue;
-
-        if(chunk.startsWith("event: error")){
-          const line = chunk.split("\n").find(x=>x.startsWith("data: "));
-          const msg = (line ? line.replace("data: ","") : "Error");
-          aiDiv.textContent = msg;
-          continue;
-        }
-
-        if(chunk.startsWith("data: ")){
-          const dataLine = chunk.replace("data: ","");
-          const delta = dataLine.replaceAll("\\n","\n");
-
-          if(delta){
-            gotAnyToken = true;
-            if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-
-            full += delta;
-            aiDiv.textContent = full;
-            chatBox.scrollTop = chatBox.scrollHeight;
-          }
-        }
+    function isSamsungInternet(){
+      try{
+        const ua = (navigator.userAgent || "").toLowerCase();
+        return ua.includes("samsungbrowser");
+      }catch(e){
+        return false;
       }
     }
 
-    if(!gotAnyToken && typing && typing.parentNode){
-      typing.parentNode.removeChild(typing);
+    function parseSSETextToAnswer(sseText){
+      let out = "";
+      const frames = (sseText || "").split("\n\n");
+      for(const frame of frames){
+        const f = frame.trim();
+        if(!f) continue;
+        if(f.startsWith("event: meta")) continue;
+
+        if(f.startsWith("event: error")){
+          const line = f.split("\n").find(x => x.startsWith("data: "));
+          const msg = line ? line.slice(6) : "Error";
+          return msg.replaceAll("\\n","\n");
+        }
+
+        if(f.startsWith("data: ")){
+          const dataLine = f.slice(6);
+          out += dataLine.replaceAll("\\n","\n");
+        }
+      }
+      return out.trim();
     }
 
-    const finalText = full.trim() || " ";
+    // =========================
+    // CHAT SEND
+    // =========================
+    async function send(){
+      const text = (msgEl.value || "").trim();
+      if(!text) return;
+      msgEl.value = "";
 
-    // Save assistant response AFTER stream completes
-    const all2 = ensureActiveChat();
-    const c2 = all2[activeChatId];
-    c2.messages.push({ role:"assistant", content: finalText });
-    c2.updated = Date.now();
-    saveAllChats(all2);
-    renderChatList();
+      const all = ensureActiveChat();
+      const c = all[activeChatId];
 
-  }catch(e){
-    // If streaming fails on mobile, fallback
-    console.error("Chat send error:", e);
-    runEventSourceFallback();
-  }
-}
+      c.messages.push({ role:"user", content:text });
+      c.updated = Date.now();
+      setChatTitleFromFirstUser(all, activeChatId);
+      saveAllChats(all);
 
+      addMsg("user", text);
 
+      const aiDiv = addMsg("ai", "");
+      const typing = addTypingIndicator(aiDiv);
+
+      let full = "";
+      let gotAnyToken = false;
+
+      const payload = {
+        chat_id: activeChatId,
+        message: text,
+        messages: c.messages,
+        force_docs: !!forceDocsEl.checked
+      };
+
+      const runEventSourceFallback = () => {
+        try {
+          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+
+          fetch(apiUrl("/chat_stream"), {
+            method: "POST",
+            headers: { "Content-Type":"application/json" },
+            body: JSON.stringify(payload)
+          }).then(() => {
+            const q = encodeURIComponent(text);
+            const chat_id = encodeURIComponent(activeChatId);
+            const force_docs = forceDocsEl.checked ? "1" : "0";
+            const esUrl = apiUrl(`/chat_stream?q=${q}&chat_id=${chat_id}&force_docs=${force_docs}`);
+
+            const es = new EventSource(esUrl);
+
+            es.onmessage = (ev) => {
+              gotAnyToken = true;
+              full += (ev.data || "").replaceAll("\\n","\n");
+              aiDiv.textContent = full;
+              chatBox.scrollTop = chatBox.scrollHeight;
+            };
+
+            es.addEventListener("error", () => {
+              es.close();
+              if(!gotAnyToken){
+                aiDiv.textContent = "Connection error. Try again.";
+              }
+            });
+
+            es.addEventListener("done", () => {
+              es.close();
+            });
+          }).catch(e => {
+            aiDiv.textContent = "Connection error. Try again.";
+            console.error(e);
+          });
+
+        } catch(e){
+          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+          aiDiv.textContent = "Connection error. Try again.";
+          console.error(e);
+        }
+      };
+
+      try{
+        const res = await fetch(apiUrl("/chat_stream"), {
+          method: "POST",
+          headers: { "Content-Type":"application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const contentType = (res.headers.get("content-type") || "").toLowerCase();
+
+        if(!res.ok){
+          const errText = await res.text().catch(()=>"(no error body)");
+          aiDiv.textContent = "Server error " + res.status + ": " + (errText || "").slice(0, 800);
+          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+          return;
+        }
+
+        // JSON response support
+        if(contentType.includes("application/json")){
+          const j = await res.json();
+          const reply = (j.answer || j.reply || j.text || JSON.stringify(j)).toString();
+          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+          aiDiv.textContent = reply;
+
+          const all2 = ensureActiveChat();
+          const c2 = all2[activeChatId];
+          c2.messages.push({ role:"assistant", content: reply });
+          c2.updated = Date.now();
+          saveAllChats(all2);
+          renderChatList();
+          return;
+        }
+
+        // Samsung Internet path: no streaming
+        if(isSamsungInternet()){
+          const raw = await res.text();
+          const reply = parseSSETextToAnswer(raw) || " ";
+          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+          aiDiv.textContent = reply;
+
+          const all2 = ensureActiveChat();
+          const c2 = all2[activeChatId];
+          c2.messages.push({ role:"assistant", content: reply });
+          c2.updated = Date.now();
+          saveAllChats(all2);
+          renderChatList();
+          return;
+        }
+
+        // If browser cannot stream body, fallback
+        if(!res.body || !res.body.getReader){
+          runEventSourceFallback();
+          return;
+        }
+
+        // Streaming reader
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+
+        while(true){
+          const { value, done } = await reader.read();
+          if(done) break;
+
+          buffer += decoder.decode(value, { stream:true });
+
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() || "";
+
+          for(const chunk of parts){
+            if(chunk.startsWith("event: meta")) continue;
+
+            if(chunk.startsWith("event: error")){
+              const line = chunk.split("\n").find(x=>x.startsWith("data: "));
+              const msg = (line ? line.replace("data: ","") : "Error");
+              aiDiv.textContent = msg;
+              continue;
+            }
+
+            if(chunk.startsWith("data: ")){
+              const dataLine = chunk.replace("data: ","");
+              const delta = dataLine.replaceAll("\\n","\n");
+
+              if(delta){
+                gotAnyToken = true;
+                if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+
+                full += delta;
+                aiDiv.textContent = full;
+                chatBox.scrollTop = chatBox.scrollHeight;
+              }
+            }
+          }
+        }
+
+        if(!gotAnyToken && typing && typing.parentNode){
+          typing.parentNode.removeChild(typing);
+        }
+
+        const finalText = full.trim() || " ";
+
+        const all2 = ensureActiveChat();
+        const c2 = all2[activeChatId];
+        c2.messages.push({ role:"assistant", content: finalText });
+        c2.updated = Date.now();
+        saveAllChats(all2);
+        renderChatList();
+
+      }catch(e){
+        console.error("Chat send error:", e);
+        runEventSourceFallback();
+      }
+    }
 
     sendBtn.onclick = send;
     msgEl.addEventListener("keydown", (e)=>{
@@ -1356,7 +1504,3 @@ async function send(){
   </script>
 </body>
 </html>
-
-
-
-
