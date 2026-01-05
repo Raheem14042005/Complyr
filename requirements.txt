@@ -41,6 +41,8 @@ pypdfium2==5.2.0
 pillow==12.0.0
 pytesseract==0.3.13
 tqdm==4.67.1
+python-docx==1.1.2
+
 
 # ---------------------------
 # Cryptography (used indirectly)
@@ -64,3 +66,4 @@ google-cloud-documentai==2.27.0        # Document AI (Layout Parser)
 openai==2.14.0
 annotated-doc==0.0.4
 annotated-types==0.7.0
+
