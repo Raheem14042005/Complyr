@@ -907,6 +907,12 @@
     // =========================
     const API_BASE_DEFAULT = "https://complyr.onrender.com";
     const API_BASE = (localStorage.getItem("RAHEEM_API_BASE") || API_BASE_DEFAULT).replace(/\/+$/, "");
+    function apiUrl(path){
+  if(!path) path = "/";
+  if(!path.startsWith("/")) path = "/" + path;
+  return API_BASE + path;
+}
+
     if (!API_BASE.startsWith("https://complyr.onrender.com")) {
       localStorage.removeItem("RAHEEM_API_BASE");
 
@@ -1504,4 +1510,5 @@
   </script>
 </body>
 </html>
+
 
