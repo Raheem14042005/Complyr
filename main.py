@@ -52,6 +52,9 @@ GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON", "").strip()
 MODEL_CHAT = (os.getenv("GEMINI_MODEL_CHAT", "gemini-2.0-flash-001") or "").strip()
 MODEL_COMPLIANCE = (os.getenv("GEMINI_MODEL_COMPLIANCE", "gemini-2.0-flash-001") or "").strip()
 
+# Verification pass toggle (default ON)
+VERIFY_NUMERIC = (os.getenv("VERIFY_NUMERIC", "true") or "true").strip().lower() in ("1", "true", "yes", "y", "on")
+
 app = FastAPI(docs_url="/swagger", redoc_url=None)
 
 app.add_middleware(
@@ -119,6 +122,14 @@ def get_generation_config(is_compliance: bool) -> GenerationConfig:
         temperature=0.85,
         top_p=0.9,
         max_output_tokens=900,
+    )
+
+
+def get_verify_generation_config() -> GenerationConfig:
+    return GenerationConfig(
+        temperature=0.1,
+        top_p=0.6,
+        max_output_tokens=450,
     )
 
 
@@ -238,6 +249,26 @@ Proof rule (critical):
 - Never mention page numbers in the quote.
 """.strip()
 
+VERIFY_PROMPT = f"""
+You are a strict verifier for Irish TGD compliance answers.
+
+Rules:
+- You ONLY use the SOURCES text provided.
+- If an answer includes any numeric requirement (mm, m, %, W/m²K, etc.), the exact number with its unit must be explicitly present in SOURCES.
+- If the answer cites a section or table, the cited section/table label must be visible in SOURCES. If not visible, it must be removed or the answer must say it cannot confirm.
+- If the answer gives numbers but does not include a 1–2 line verbatim quote from SOURCES that contains the number, it is NOT allowed.
+- Output MUST be valid JSON only. No markdown.
+
+Output JSON schema:
+{{
+  "ok": true/false,
+  "reason": "short reason",
+  "safe_answer": "a corrected safe answer that follows the formatting rules, includes quote: if numeric"
+}}
+
+{FORMAT_RULES}
+""".strip()
+
 
 def build_gemini_contents(history: List[Dict[str, str]], user_message: str, sources_text: str) -> List[Content]:
     contents: List[Content] = []
@@ -259,7 +290,7 @@ def build_gemini_contents(history: List[Dict[str, str]], user_message: str, sour
         contents.append(Content(role="user", parts=[Part.from_text(final_user)]))
     else:
         if contents[-1].role == "user":
-            contents[-1] = Content(role="user", parts=[Part.from_text(final_user)])
+            contents[-1] = Content(role="user", parts=[Part.from_text(final_user)]))
         else:
             contents.append(Content(role="user", parts=[Part.from_text(final_user)]))
 
@@ -301,6 +332,44 @@ def list_pdfs() -> List[str]:
             files.append(p.name)
     files.sort()
     return files
+
+
+def auto_pin_pdf(question: str) -> Optional[str]:
+    q = (question or "").lower()
+    pdfs = set(list_pdfs())
+
+    def pick_any(cands: List[str]) -> Optional[str]:
+        for c in cands:
+            if c in pdfs:
+                return c
+        return None
+
+    if any(w in q for w in ["stairs", "stair", "staircase", "riser", "rise", "going", "pitch", "headroom", "handrail", "balustrade", "landing"]):
+        return pick_any([
+            "Technical Guidance Document K.pdf",
+            "TGD K.pdf",
+            "Technical Guidance Document K (2020).pdf",
+            "Technical Guidance Document K.pdf".replace("  ", " ")
+        ])
+
+    if any(w in q for w in ["fire", "escape", "means of escape", "travel distance", "sprinkler", "smoke", "compartment", "car park", "corridor", "protected route"]):
+        return pick_any([
+            "Technical Guidance Document B Non Dwellings.pdf",
+            "Technical Guidance Document B Dwellings.pdf",
+        ])
+
+    if any(w in q for w in ["u-value", "u value", "y-value", "thermal", "insulation", "ber", "deap", "energy", "renovation", "major renovation"]):
+        return pick_any([
+            "Technical Guidance Document L Dwellings.pdf",
+            "Technical Guidance Document L Non Dwellings.pdf",
+        ])
+
+    if any(w in q for w in ["access", "accessible", "wheelchair", "ramp", "dac", "part m"]):
+        return pick_any([
+            "Technical Guidance Document M.pdf",
+        ])
+
+    return None
 
 
 def _docai_chunk_files_for(pdf_name: str) -> List[Path]:
@@ -456,7 +525,7 @@ def search_pages(pdf_name: str, question: str, k: int = 5) -> List[int]:
     return [i for i, _ in scored[:k]]
 
 
-def extract_pages_text(pdf_path: Path, pages: List[int], max_chars_per_page: int = 1800) -> str:
+def extract_pages_text(pdf_path: Path, pages: List[int], max_chars_per_page: int = 2200) -> str:
     doc = fitz.open(pdf_path)
     try:
         chunks = []
@@ -466,7 +535,6 @@ def extract_pages_text(pdf_path: Path, pages: List[int], max_chars_per_page: int
             txt = clean_text(doc.load_page(p).get_text("text") or "")
             if len(txt) > max_chars_per_page:
                 txt = txt[:max_chars_per_page] + "..."
-            # IMPORTANT: no page labels, no "p.X"
             chunks.append(f"[{pdf_path.name} excerpt]\n{txt}")
         return "\n\n".join(chunks).strip()
     finally:
@@ -495,8 +563,8 @@ def build_sources_bundle(selected: List[Tuple[str, Union[List[int], List[Tuple[i
                         break
                 if txt:
                     clipped = txt.strip()
-                    if len(clipped) > 4500:
-                        clipped = clipped[:4500] + "..."
+                    if len(clipped) > 6500:
+                        clipped = clipped[:6500] + "..."
                     pieces.append(f"[{pdf_name} excerpt]\n{clipped}")
         else:
             pages = items  # type: ignore
@@ -517,7 +585,6 @@ def select_sources(
         return []
 
     chosen: List[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]] = []
-
     know_docai = {name for name in pdfs if _docai_chunk_files_for(name)}
 
     def pick_for_pdf(pdf_name: str) -> Optional[Tuple[str, Union[List[int], List[Tuple[int, int]]], str]]:
@@ -574,44 +641,38 @@ NUMERIC_COMPLIANCE_TRIGGERS = [
     "minimum", "maximum", "max", "min", "limit", "limits",
     "distance", "width", "widths", "lengths", "length", "height", "u-value", "y-value",
     "rise", "riser", "going", "pitch",
-    "stairs", "stair", "staircase",
-    "dimension", "dimensions", 
+    "stairs", "stair", "staircase", "landing", "headroom",
+    "dimension", "dimensions",
     "escape", "travel distance"
 ]
 
-
-
-def should_use_docs(q: str, force_docs: bool = False) -> bool:
-    if force_docs:
-        return True
-
-    ql = (q or "").lower()
-
-    # If it's a "numeric compliance style" question, always use docs.
-    # This stops the “I need a TGD” problem for stairs/width/rise/etc.
-    if is_numeric_compliance_question(ql):
-        return True
-
-    if PART_PATTERN.search(ql):
-        return True
-    if TECH_PATTERN.search(ql):
-        return True
-    return any(k in ql for k in COMPLIANCE_KEYWORDS)
 
 def is_numeric_compliance_question(q: str) -> bool:
     ql = (q or "").lower()
     return any(k in ql for k in NUMERIC_COMPLIANCE_TRIGGERS)
 
 
+def should_use_docs(q: str, force_docs: bool = False) -> bool:
+    if force_docs:
+        return True
+    ql = (q or "").lower()
+    if is_numeric_compliance_question(ql):
+        return True
+    if PART_PATTERN.search(ql):
+        return True
+    if TECH_PATTERN.search(ql):
+        return True
+    return any(k in ql for k in COMPLIANCE_KEYWORDS)
+
+
 # ----------------------------
-# Output sanitizers (no bullets, no pages, no fake refs)
+# Output sanitizers
 # ----------------------------
 
 PAGE_MENTION_RE = re.compile(r"\bpage\s*\d+\b", re.I)
 BULLET_RE = re.compile(r"(^|\n)\s*(\*|-|•|\d+\.)\s+", re.M)
 REF_RE = re.compile(r"\b(Section|Table|Clause|Figure|Diagram)\s*[A-Za-z0-9][A-Za-z0-9\.\-]*\b", re.I)
 
-# Numeric patterns for grounding
 ANY_NUMBER_RE = re.compile(r"\b\d+(\.\d+)?\b")
 NUM_WITH_UNIT_RE = re.compile(r"\b\d+(\.\d+)?\s*(mm|m|metre|meter|w/m²k|w\/m2k|%)\b", re.I)
 
@@ -630,11 +691,7 @@ def _looks_like_numeric_answer(text: str) -> bool:
 
 def postprocess_final_answer(final_text: str, sources_text: str, compliance: bool) -> str:
     t = final_text or ""
-
-    # Remove page mentions always
     t = PAGE_MENTION_RE.sub("", t)
-
-    # Remove markdown bullets always
     t = BULLET_RE.sub(lambda m: m.group(1), t)
 
     if compliance:
@@ -643,13 +700,81 @@ def postprocess_final_answer(final_text: str, sources_text: str, compliance: boo
             if ("section" not in src) and ("table" not in src) and ("clause" not in src) and ("diagram" not in src) and ("figure" not in src):
                 if REF_RE.search(t):
                     t = REF_RE.sub("", t).strip()
-                    t = (t + "\n\nI can’t confidently point to the exact section or table from the extracted text I have right now, but I can re-check if you tell me the exact TGD and topic or upload a clearer extract.").strip()
+                    t = (t + "\n\nI can’t confidently point to the exact section or table from the extracted text I have right now. If you re-upload a clearer extract, I’ll re-check and cite it properly.").strip()
         else:
             t = REF_RE.sub("", t).strip()
 
     t = re.sub(r"[ \t]+", " ", t)
     t = re.sub(r"\n{3,}", "\n\n", t).strip()
     return t
+
+
+# ----------------------------
+# Verification (silent double-check)
+# ----------------------------
+
+def _run_verifier(user_msg: str, draft_answer: str, sources_text: str) -> Tuple[bool, str]:
+    """
+    Returns (ok, safe_answer). If verifier fails, safe_answer is a corrected safe output.
+    """
+    if not VERIFY_NUMERIC:
+        return True, draft_answer
+
+    # Only verify when we have sources
+    if not (sources_text and sources_text.strip()):
+        return True, draft_answer
+
+    # Only verify when answer contains numbers OR question is numeric compliance
+    needs = is_numeric_compliance_question(user_msg) or _looks_like_numeric_answer(draft_answer) or bool(ANY_NUMBER_RE.search(draft_answer or ""))
+    if not needs:
+        return True, draft_answer
+
+    try:
+        ensure_vertex_ready()
+        if not _VERTEX_READY:
+            return True, draft_answer
+
+        verifier = get_model(MODEL_COMPLIANCE, VERIFY_PROMPT)
+
+        verify_input = (
+            "USER QUESTION:\n" + (user_msg or "").strip() + "\n\n"
+            "DRAFT ANSWER:\n" + (draft_answer or "").strip() + "\n\n"
+            "SOURCES:\n" + (sources_text or "").strip()
+        )
+
+        resp = verifier.generate_content(
+            [Content(role="user", parts=[Part.from_text(verify_input)])],
+            generation_config=get_verify_generation_config(),
+            stream=False
+        )
+
+        raw = (getattr(resp, "text", "") or "").strip()
+
+        # Try to extract JSON object from any surrounding text (just in case)
+        m = re.search(r"\{.*\}", raw, re.S)
+        if m:
+            raw = m.group(0)
+
+        data = json.loads(raw)
+        ok = bool(data.get("ok", False))
+        safe_answer = (data.get("safe_answer") or "").strip()
+
+        if ok and safe_answer:
+            return True, safe_answer
+
+        # If not ok, enforce a safe fallback message
+        if safe_answer:
+            return False, safe_answer
+
+        fallback = (
+            "I can’t safely confirm that numeric requirement from the extracted TGD text I have available right now.\n\n"
+            "If you upload a clearer copy or tell me the exact table or section you want checked, I’ll answer directly from the text and include a short quote."
+        )
+        return False, fallback
+
+    except Exception:
+        # If verifier fails for any reason, don't break the app; just return draft.
+        return True, draft_answer
 
 
 # ----------------------------
@@ -675,6 +800,7 @@ def health():
         "docai_helper": _DOCAI_HELPER_AVAILABLE,
         "docai_processor_id_present": bool((os.getenv("DOCAI_PROCESSOR_ID") or "").strip()),
         "docai_location_present": bool((os.getenv("DOCAI_LOCATION") or "").strip()),
+        "verify_numeric": VERIFY_NUMERIC,
     }
 
 
@@ -799,55 +925,13 @@ def _stream_answer(
         # Decide compliance intent
         use_docs_intent = should_use_docs(user_msg, force_docs=force_docs)
         numeric_compliance = use_docs_intent and is_numeric_compliance_question(user_msg)
-        
-def auto_pin_pdf(question: str) -> Optional[str]:
-    q = (question or "").lower()
-    pdfs = set(list_pdfs())
-
-    def pick_any(cands: List[str]) -> Optional[str]:
-        for c in cands:
-            if c in pdfs:
-                return c
-        return None
-
-    # Stairs / fall protection
-    if any(w in q for w in ["stairs", "stair", "staircase", "riser", "rise", "going", "pitch", "headroom", "handrail", "balustrade"]):
-        return pick_any([
-            "Technical Guidance Document K.pdf",
-            "TGD K.pdf",
-            "Technical Guidance Document K (2020).pdf"
-        ])
-
-    # Fire safety / means of escape
-    if any(w in q for w in ["fire", "escape", "means of escape", "travel distance", "sprinkler", "smoke", "compartment", "car park"]):
-        return pick_any([
-            "Technical Guidance Document B Non Dwellings.pdf",
-            "Technical Guidance Document B Dwellings.pdf",
-        ])
-
-    # Energy / fabric
-    if any(w in q for w in ["u-value", "u value", "y-value", "thermal", "insulation", "ber", "deap", "energy", "renovation", "major renovation"]):
-        return pick_any([
-            "Technical Guidance Document L Dwellings.pdf",
-            "Technical Guidance Document L Non Dwellings.pdf",
-        ])
-
-    # Access
-    if any(w in q for w in ["access", "accessible", "wheelchair", "ramp", "dac", "part m"]):
-        return pick_any([
-            "Technical Guidance Document M.pdf",
-        ])
-
-    return None
 
         sources_text = ""
         if use_docs_intent and list_pdfs():
-        
             auto_pdf = pdf or auto_pin_pdf(user_msg)
-            
             selected = select_sources(
                 user_msg,
-                pdf_pin=pdf,
+                pdf_pin=auto_pdf,   # IMPORTANT: use auto-pinned PDF
                 max_docs=3,
                 pages_per_doc=3,
                 docai_chunks_per_doc=2
@@ -864,8 +948,8 @@ def auto_pin_pdf(question: str) -> Optional[str]:
         if numeric_compliance:
             if (not used_docs_flag) or (not _sources_contain_any_number(sources_text)):
                 refusal = (
-                    "I can’t confirm the exact numeric limit from the extracted TGD text I have available right now. "
-                    "If you upload a clearer copy or tell me the exact clause or table you want checked, I’ll answer from the text and include a short quote."
+                    "I can’t confirm the exact numeric limit from the extracted TGD text I have available right now.\n\n"
+                    "If you upload a clearer copy or tell me the exact clause or table you want checked, I’ll answer directly from the text and include a short quote."
                 )
                 if chat_id:
                     remember(chat_id, "assistant", refusal)
@@ -894,7 +978,6 @@ def auto_pin_pdf(question: str) -> Optional[str]:
             delta = getattr(chunk, "text", None)
             if not delta:
                 continue
-
             delta_clean = strip_bullets_streaming(delta)
             full.append(delta_clean)
             safe = delta_clean.replace("\r", "").replace("\n", "\\n")
@@ -903,17 +986,21 @@ def auto_pin_pdf(question: str) -> Optional[str]:
         final_text = "".join(full).strip()
         final_text = postprocess_final_answer(final_text, sources_text, compliance=is_compliance)
 
-        # FINAL HARD CHECK: if it's numeric compliance and the model output contains numbers,
-        # it must include a short quote from SOURCES. If not, refuse.
+        # FINAL HARD CHECK: numeric compliance must include a short quote from SOURCES if it outputs numbers
         if numeric_compliance:
             has_numeric_output = _looks_like_numeric_answer(final_text) or bool(ANY_NUMBER_RE.search(final_text or ""))
-            # Require the word "Quote:" to enforce the format without bullets.
             has_quote_marker = ("quote:" in (final_text or "").lower())
             if has_numeric_output and not has_quote_marker:
                 final_text = (
-                    "I can’t safely give you that numeric requirement yet because I don’t have a reliable quoted line from the extracted TGD text to prove it. "
+                    "I can’t safely give you that numeric requirement yet because I don’t have a reliable quoted line from the extracted TGD text to prove it.\n\n"
                     "If you re-upload the PDF (so it re-parses) or tell me the exact clause or table, I’ll answer and include a short quote."
                 )
+
+        # Silent verification pass (prevents wrong table reads / fake section refs)
+        if is_compliance and used_docs_flag:
+            ok, verified = _run_verifier(user_msg, final_text, sources_text)
+            if verified and verified.strip():
+                final_text = postprocess_final_answer(verified.strip(), sources_text, compliance=is_compliance)
 
         if chat_id:
             remember(chat_id, "assistant", final_text)
@@ -955,4 +1042,3 @@ def chat_stream_post(payload: Dict[str, Any] = Body(...)):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
-
