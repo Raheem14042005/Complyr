@@ -1,6 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse, Response
+from fastapi.responses import StreamingResponse, JSONResponse
 from dotenv import load_dotenv
 
 import os
@@ -14,22 +14,8 @@ from collections import Counter
 from datetime import datetime
 from uuid import uuid4
 import base64
-import io
 
 import fitz  # PyMuPDF
-
-# DOCX export (optional)
-DOCX_AVAILABLE = False
-try:
-    from docx import Document
-    from docx.shared import Pt
-    from docx.oxml.ns import qn
-    DOCX_AVAILABLE = True
-except Exception:
-    Document = None
-    Pt = None
-    qn = None
-    DOCX_AVAILABLE = False
 
 import vertexai
 from vertexai.generative_models import (
@@ -76,7 +62,6 @@ VERIFY_NUMERIC = (os.getenv("VERIFY_NUMERIC", "true") or "true").strip().lower()
 
 app = FastAPI(docs_url="/swagger", redoc_url=None)
 
-# NOTE: your original allowed origins are good; keep them explicit for Cloudflare Pages + local dev.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -340,6 +325,16 @@ def _evaluate_show_if(show_if: Dict[str, Any], meta: Dict[str, Any], answers: Di
     return True
 
 
+def _firecert_visible_questions(schema: Dict[str, Any], meta: Dict[str, Any], answers: Dict[str, Any]) -> List[Dict[str, Any]]:
+    visible: List[Dict[str, Any]] = []
+    for step in schema.get("steps", []):
+        for q in step.get("questions", []):
+            show_if = q.get("show_if") or {}
+            if _evaluate_show_if(show_if, meta, answers):
+                visible.append(q)
+    return visible
+
+
 def _firecert_apply_auto_na(schema: Dict[str, Any], project: Dict[str, Any]) -> None:
     """
     Auto-NA any question that is not visible given meta + already-answered values.
@@ -351,14 +346,14 @@ def _firecert_apply_auto_na(schema: Dict[str, Any], project: Dict[str, Any]) -> 
         project["answers"] = {}
         answers = project["answers"]
 
+    # Build a set of visible IDs
     visible = set()
     for step in schema.get("steps", []):
         for q in step.get("questions", []):
             if _evaluate_show_if(q.get("show_if") or {}, meta, answers):
-                qid = q.get("id")
-                if qid:
-                    visible.add(qid)
+                visible.add(q.get("id"))
 
+    # For all questions in schema: if not visible and not answered -> set NA
     for step in schema.get("steps", []):
         for q in step.get("questions", []):
             qid = q.get("id")
@@ -378,11 +373,10 @@ def _firecert_apply_auto_na(schema: Dict[str, Any], project: Dict[str, Any]) -> 
 
 
 # ----------------------------
-# Fire Cert schema (kept as your v1)
+# Fire Cert schema (canonical universal schema + gates)
 # ----------------------------
 
 def firecert_schema_v1() -> Dict[str, Any]:
-    # NOTE: kept exactly your structure, only tiny help wording tweaks are safe.
     return {
         "version": "v1",
         "steps": [
@@ -391,14 +385,14 @@ def firecert_schema_v1() -> Dict[str, Any]:
                 "title": "STEP 0 — PROJECT SETUP & SCOPE",
                 "questions": [
                     {"id": "s0_fsc", "label": "Is this a Fire Safety Certificate application under the Building Control Regulations?", "type": "bool",
-                     "help": "If you are submitting through BCMS as a Fire Safety Certificate (FSC), choose Yes."},
+                     "help": "If you are submitting through BCMS as an FSC application, choose Yes."},
                     {"id": "s0_tgd_edition", "label": "TGD B edition used", "type": "text",
-                     "default": "TGD B 2024 – Volume 1 (Non-Dwellings)", "help": "Set the edition you are basing this draft report on."},
+                     "default": "TGD B 2024 – Volume 1 (Non-Dwellings)", "help": "Set the edition you are basing the report on."},
 
                     {"id": "s0_topmost_60m", "label": "Topmost floor height ≤ 60 m?", "type": "bool",
-                     "help": "This is a high-rise threshold used in guidance context. If the top occupied floor level is above 60m, choose No."},
+                     "help": "If the top occupied floor is above 60m, the building may be outside typical guidance scope."},
                     {"id": "s0_within_scope", "label": "Within scope of TGD B Volume 1 (not very unusual / non-complex)?", "type": "bool",
-                     "help": "If the building is complex/unusual, a performance-based approach may be needed."},
+                     "help": "If the building is complex/unusual you may need a performance-based approach."},
                     {"id": "s0_alt_solution", "label": "If not within scope, is an alternative / performance-based approach proposed?", "type": "bool",
                      "show_if": {"s0_within_scope": False}, "help": "Choose Yes if you will use fire engineering / alternative codes."},
                     {"id": "s0_alt_standard", "label": "If Yes, describe method/standard", "type": "text",
@@ -411,7 +405,7 @@ def firecert_schema_v1() -> Dict[str, Any]:
                      "label": "If existing building works: are Sections 1–6 reasonably achievable?",
                      "type": "bool",
                      "show_if": {"s0_works_type__in": ["Extension", "Material alteration", "Material change of use", "Combination"]},
-                     "help": "If not, compensatory measures may be needed and should be stated clearly."},
+                     "help": "Existing constraints can justify compensatory measures."},
 
                     {"id": "s0_description", "label": "Brief building description", "type": "text",
                      "help": "Short narrative: use, key features, anything unusual."},
@@ -429,15 +423,15 @@ def firecert_schema_v1() -> Dict[str, Any]:
                     {"id": "s0_height_building", "label": "Height of building (per Appendix C definition) (m)", "type": "number",
                      "help": "Use the definition in TGD B Appendix C."},
                     {"id": "s0_height_top_storey", "label": "Height of topmost storey (m)", "type": "number",
-                     "help": "If possible, enter height of top occupied storey above ground level."},
+                     "help": "Height of top occupied storey above ground level."},
 
                     {"id": "s0_separated_parts", "label": "Any separated parts (per 3.4.2)?", "type": "bool",
-                     "help": "Separated parts can be treated as independent parts for compartmentation logic."},
+                     "help": "Separated parts can be treated as independent parts of a building for compartmentation logic."},
                     {"id": "s0_atrium", "label": "Any atrium?", "type": "bool",
                      "help": "Atria often trigger smoke control and special provisions."},
                     {"id": "s0_carpark", "label": "Any car park?", "type": "select",
                      "options": ["None", "Open", "Enclosed"],
-                     "help": "Car parks can trigger smoke ventilation and firefighting access requirements."},
+                     "help": "Car parks can trigger smoke control and firefighting access requirements."},
 
                     {"id": "s0_purpose_groups", "label": "Purpose groups present (Table 1)", "type": "multiselect",
                      "options": [
@@ -466,26 +460,390 @@ def firecert_schema_v1() -> Dict[str, Any]:
                 ],
             },
 
-            # Keep your B1..B12 exactly (same as your file). To keep this response usable in one paste,
-            # I’m not rewriting each question again here — but your original list is preserved in backend behaviour
-            # because you already had them defined.
+            {
+                "id": "B1",
+                "title": "SECTION 1 — MEANS OF WARNING & ESCAPE (B1)",
+                "questions": [
+                    {"id": "b1_occ_storey", "label": "Design occupancy per storey / compartment", "type": "text",
+                     "help": "Provide occupancy assumptions used for exit and stair capacity checks."},
+                    {"id": "b1_sleeping", "label": "Sleeping accommodation present?", "type": "bool",
+                     "help": "Typically Yes for hotels/student accommodation and residential care."},
+                    {"id": "b1_strategy", "label": "Evacuation strategy", "type": "select",
+                     "options": ["Simultaneous", "Phased", "Progressive horizontal"],
+                     "help": "Select the intended evacuation strategy."},
+
+                    {"id": "b1_travel_actual", "label": "Maximum actual travel distance per storey (m)", "type": "number",
+                     "help": "Measured travel distance to an exit / protected route."},
+                    {"id": "b1_travel_basis", "label": "Travel distance basis used (single / dual direction)", "type": "select",
+                     "options": ["Single direction", "Dual direction"],
+                     "help": "Single direction usually has stricter limits."},
+                    {"id": "b1_travel_ref", "label": "Table/paragraph reference used for travel distance check", "type": "text",
+                     "help": "Enter what you relied on, e.g. TGD B Section 1 Table X."},
+
+                    {"id": "b1_storey_exits", "label": "Number of storey exits per storey", "type": "text",
+                     "help": "State exits by storey if it varies."},
+                    {"id": "b1_final_exits", "label": "Number of final exits", "type": "number",
+                     "help": "Total final exits to open air."},
+
+                    {"id": "b1_exit_req_width", "label": "Exit capacity required width (mm)", "type": "number",
+                     "help": "Based on occupancy and guidance references you used."},
+                    {"id": "b1_exit_prov_width", "label": "Exit capacity provided width (mm)", "type": "number",
+                     "help": "Sum of effective exit widths provided."},
+
+                    {"id": "b1_stairs_count", "label": "Number of escape stairs", "type": "number",
+                     "help": "Total escape stairs serving upper storeys."},
+                    {"id": "b1_stairs_widths", "label": "Clear width of each stair (mm)", "type": "text",
+                     "help": "List each stair width, e.g. Stair A 1200; Stair B 1200."},
+                    {"id": "b1_stairs_persons", "label": "Persons served by each stair", "type": "text",
+                     "help": "List how many persons rely on each stair."},
+                    {"id": "b1_single_stair", "label": "Single stair building?", "type": "bool",
+                     "help": "If yes, travel distance/height limits may be stricter."},
+                    {"id": "b1_stair_smoke_control", "label": "Stair smoke ventilation/control provided?", "type": "bool",
+                     "help": "If you have a smoke shaft / AOV / pressurisation, choose Yes."},
+
+                    {"id": "b1_inner_rooms", "label": "Inner rooms present?", "type": "bool",
+                     "help": "An inner room only has escape through another room (access room)."},
+                    {"id": "b1_inner_detect", "label": "If inner rooms: automatic detection in access room?", "type": "bool",
+                     "show_if": {"b1_inner_rooms": True},
+                     "help": "Detection can be a compensatory measure for inner rooms."},
+                    {"id": "b1_inner_vision", "label": "If inner rooms: vision panel / glazing provided?", "type": "bool",
+                     "show_if": {"b1_inner_rooms": True},
+                     "help": "Allows occupants to see if escape route is affected."},
+
+                    {"id": "b1_fire_doors", "label": "Fire doors on escape routes?", "type": "bool",
+                     "help": "Includes doors to protected corridors and stairs."},
+                    {"id": "b1_hold_open", "label": "Hold-open devices provided?", "type": "bool",
+                     "help": "If yes, they should release on alarm."},
+                    {"id": "b1_electronic_locks", "label": "Electronically locked doors on escape routes?", "type": "bool",
+                     "help": "Includes maglocks and access control doors on escape routes."},
+                    {"id": "b1_unlock_alarm_power", "label": "If yes: unlock on fire alarm and power failure?", "type": "bool",
+                     "show_if": {"b1_electronic_locks": True},
+                     "help": "Escape doors must fail-safe / release."},
+
+                    {"id": "b1_refuges", "label": "Refuge areas provided?", "type": "bool",
+                     "help": "Usually expected in multi-storey buildings for assisted evacuation."},
+                    {"id": "b1_refuge_location", "label": "If yes: location of refuges", "type": "text",
+                     "show_if": {"b1_refuges": True},
+                     "help": "Example: At each protected stair lobby level."},
+                    {"id": "b1_refuge_comm", "label": "If yes: refuge communication system provided?", "type": "bool",
+                     "show_if": {"b1_refuges": True},
+                     "help": "Two-way communication may be required depending on strategy."},
+                    {"id": "b1_evac_lift", "label": "Evacuation lift provided?", "type": "bool",
+                     "help": "If yes, describe it in the report."},
+
+                    {"id": "b1_alarm", "label": "Fire detection and alarm system provided?", "type": "bool",
+                     "help": "If yes, describe category/standard if known."},
+                    {"id": "b1_alarm_category", "label": "If yes: alarm category (if known)", "type": "text",
+                     "show_if": {"b1_alarm": True},
+                     "help": "Example: Category L2 (only if you know it)."},
+                    {"id": "b1_emergency_lighting", "label": "Emergency lighting provided?", "type": "bool",
+                     "help": "Emergency lighting on escape routes."},
+                    {"id": "b1_signage", "label": "Fire safety signage provided?", "type": "bool",
+                     "help": "Exit signs, directional signage, fire action notices."},
+
+                    {"id": "b1_outcome", "label": "Section outcome flag", "type": "select",
+                     "options": ["Compliant using TGD tables only", "Compliant with compensatory measures", "Non-compliant (alternative solution required)", "Not assessed (pending info)"],
+                     "help": "Used for report conclusions."},
+                ],
+            },
+
+            {
+                "id": "B2",
+                "title": "SECTION 2 — INTERNAL FIRE SPREAD (LININGS) (B2)",
+                "questions": [
+                    {"id": "b2_linings_escape", "label": "Reaction-to-fire class of wall/ceiling linings on escape routes", "type": "text",
+                     "help": "Enter the Euroclass (e.g. B-s2,d0) if known."},
+                    {"id": "b2_linings_rooms", "label": "Reaction-to-fire class of wall/ceiling linings in rooms", "type": "text",
+                     "help": "Enter the Euroclass if known."},
+                    {"id": "b2_linings_circ", "label": "Reaction-to-fire class of wall/ceiling linings in circulation spaces", "type": "text",
+                     "help": "Enter the Euroclass if known."},
+                    {"id": "b2_table_ref", "label": "Table reference used for linings classification (e.g. Table 13)", "type": "text",
+                     "help": "Enter the table/paragraph you relied on."},
+
+                    {"id": "b2_deviation", "label": "Any deviations from tabulated classes?", "type": "bool",
+                     "help": "Choose Yes if your lining class differs from guidance."},
+                    {"id": "b2_compensatory", "label": "If Yes: compensatory measures proposed", "type": "text",
+                     "show_if": {"b2_deviation": True},
+                     "help": "Describe measures used to justify the deviation."},
+
+                    {"id": "b2_special_risk", "label": "Any places of special fire risk (kitchens, plant, etc.)?", "type": "bool",
+                     "help": "Choose Yes if present anywhere in the building."},
+
+                    {"id": "b2_thermo_rooflights", "label": "Thermoplastic rooflights present?", "type": "bool",
+                     "help": "Rooflights can have specific restrictions."},
+                    {"id": "b2_thermo_diffusers", "label": "Thermoplastic lighting diffusers present?", "type": "bool",
+                     "help": "Diffusers can contribute to internal fire spread."},
+                    {"id": "b2_plastic_glazing_escape", "label": "Plastic glazing on escape routes?", "type": "bool",
+                     "help": "Plastic glazing on escape routes can have restrictions."},
+
+                    {"id": "b2_outcome", "label": "Section outcome flag", "type": "select",
+                     "options": ["Compliant using TGD tables only", "Compliant with compensatory measures", "Non-compliant (alternative solution required)", "Not assessed (pending info)"],
+                     "help": "Used for report conclusions."},
+                ],
+            },
+
+            {
+                "id": "B3",
+                "title": "SECTION 3 — INTERNAL FIRE SPREAD (STRUCTURE) (B3)",
+                "questions": [
+                    {"id": "b3_struct_system", "label": "Structural system type", "type": "text",
+                     "help": "Example: steel frame, RC frame, timber, loadbearing masonry."},
+
+                    {"id": "b3_required_fr", "label": "Required fire resistance (mins) per element (table reference)", "type": "text",
+                     "help": "State required periods and the table/appendix used."},
+                    {"id": "b3_proposed_fr_frame", "label": "Proposed fire resistance (mins) for frame", "type": "number",
+                     "help": "Enter the proposed rating in minutes if known."},
+                    {"id": "b3_proposed_fr_floors", "label": "Proposed fire resistance (mins) for floors", "type": "number",
+                     "help": "Enter the proposed rating in minutes if known."},
+                    {"id": "b3_proposed_fr_comp_walls", "label": "Proposed fire resistance (mins) for compartment walls", "type": "number",
+                     "help": "Enter the proposed rating in minutes if known."},
+
+                    {"id": "b3_compartment_areas", "label": "Compartment areas and heights (actual)", "type": "text",
+                     "help": "List each compartment area/height and its use."},
+                    {"id": "b3_compartment_max_ref", "label": "Maximum permitted compartment sizes (table reference)", "type": "text",
+                     "help": "Enter the table/paragraph reference used."},
+                    {"id": "b3_compartment_compliant", "label": "Compartmentation compliant with guidance?", "type": "bool",
+                     "help": "Choose Yes if compartment sizes and separations match your chosen guidance basis."},
+
+                    {"id": "b3_separated_parts", "label": "Any separated parts?", "type": "bool",
+                     "help": "Choose Yes if separated parts are proposed."},
+                    {"id": "b3_separated_parts_desc", "label": "If yes: describe separated parts strategy", "type": "text",
+                     "show_if": {"b3_separated_parts": True},
+                     "help": "Explain how separated parts are formed and separated."},
+
+                    {"id": "b3_special_risk_rooms", "label": "List high-risk rooms (boilers, plant, stores, kitchens)", "type": "text",
+                     "help": "List rooms considered higher fire risk."},
+                    {"id": "b3_special_risk_enclosure", "label": "Fire-resisting enclosure and fire doors provided for high-risk rooms?", "type": "bool",
+                     "help": "Choose Yes if enclosed in fire-resisting construction with appropriate doors."},
+
+                    {"id": "b3_junction_strategy", "label": "Strategy at compartment floor/external wall junctions", "type": "text",
+                     "help": "Describe approach, e.g. fire-stopping zone, balcony/recess arrangement."},
+
+                    {"id": "b3_cavities_present", "label": "Cavities present?", "type": "bool",
+                     "help": "Cavities can exist in walls, roofs, floors, and service zones."},
+                    {"id": "b3_cavity_barriers", "label": "If cavities: cavity barriers provided?", "type": "bool",
+                     "show_if": {"b3_cavities_present": True},
+                     "help": "Choose Yes if cavity barriers are provided at required locations."},
+
+                    {"id": "b3_services_penetrations", "label": "Services penetrating fire-resisting elements?", "type": "bool",
+                     "help": "Penetrations require suitable fire stopping."},
+                    {"id": "b3_firestopping_strategy", "label": "Fire stopping strategy defined?", "type": "bool",
+                     "show_if": {"b3_services_penetrations": True},
+                     "help": "Choose Yes if a fire stopping specification/strategy exists."},
+                    {"id": "b3_fire_dampers", "label": "Fire dampers in ducts (where required)?", "type": "bool",
+                     "help": "Choose Yes if dampers are included where ducts cross fire-resisting elements."},
+
+                    {"id": "b3_outcome", "label": "Section outcome flag", "type": "select",
+                     "options": ["Compliant using TGD tables only", "Compliant with compensatory measures", "Non-compliant (alternative solution required)", "Not assessed (pending info)"],
+                     "help": "Used for report conclusions."},
+                ],
+            },
+
+            {
+                "id": "B4",
+                "title": "SECTION 4 — EXTERNAL FIRE SPREAD (B4)",
+                "questions": [
+                    {"id": "b4_wall_system", "label": "External wall system type", "type": "text",
+                     "help": "Describe façade build-up in plain terms."},
+                    {"id": "b4_facade_class", "label": "Reaction-to-fire classification of façade system", "type": "text",
+                     "help": "Enter classification/test basis if known."},
+                    {"id": "b4_combustible_cladding", "label": "Combustible insulation or cladding present?", "type": "bool",
+                     "help": "Choose Yes if any combustible insulation/cladding is proposed."},
+                    {"id": "b4_test_evidence", "label": "Fire test / evidence available?", "type": "bool",
+                     "show_if": {"b4_combustible_cladding": True},
+                     "help": "Choose Yes if you have test evidence/assessment for the façade system."},
+
+                    {"id": "b4_boundary_distances", "label": "Boundary distances per elevation (m)", "type": "text",
+                     "help": "List each elevation and its distance to boundary."},
+                    {"id": "b4_unprotected_area", "label": "Percentage of unprotected area per elevation", "type": "text",
+                     "help": "List glazing/openings proportion per elevation."},
+                    {"id": "b4_space_sep_ref", "label": "Table/diagram used for space separation assessment", "type": "text",
+                     "help": "Enter the reference used."},
+
+                    {"id": "b4_attachments", "label": "Elements fixed to external wall present (balconies, PV, green walls)?", "type": "bool",
+                     "help": "Choose Yes if any attachments could affect external spread."},
+                    {"id": "b4_attachments_desc", "label": "If yes: describe external attachments", "type": "text",
+                     "show_if": {"b4_attachments": True},
+                     "help": "Describe balconies/PV supports/green walls etc."},
+
+                    {"id": "b4_roof_covering_class", "label": "Roof covering classification", "type": "text",
+                     "help": "Enter roof covering class if known."},
+                    {"id": "b4_roof_required_class_ref", "label": "Required roof classification (table reference)", "type": "text",
+                     "help": "Enter the guidance reference you used."},
+                    {"id": "b4_plastic_rooflights", "label": "Plastic rooflights present?", "type": "bool",
+                     "help": "Rooflights can affect external spread/performance."},
+                    {"id": "b4_roof_pv_plant", "label": "Roof-mounted PV or plant present?", "type": "bool",
+                     "help": "Choose Yes if PV/plant/amenity on roof is present."},
+                    {"id": "b4_roof_pv_plant_desc", "label": "If yes: describe construction/fire resistance provisions", "type": "text",
+                     "show_if": {"b4_roof_pv_plant": True},
+                     "help": "Describe enclosures, separation, materials."},
+
+                    {"id": "b4_outcome", "label": "Section outcome flag", "type": "select",
+                     "options": ["Compliant using TGD tables only", "Compliant with compensatory measures", "Non-compliant (alternative solution required)", "Not assessed (pending info)"],
+                     "help": "Used for report conclusions."},
+                ],
+            },
+
+            {
+                "id": "B5",
+                "title": "SECTION 5 — ACCESS & FACILITIES FOR FIRE SERVICE (B5)",
+                "questions": [
+                    {"id": "b5_access_route", "label": "Fire appliance access route provided?", "type": "bool",
+                     "help": "Choose Yes if fire appliance access/turning is provided."},
+                    {"id": "b5_appliance_distance", "label": "Distance from appliance parking to fire service access level (m)", "type": "number",
+                     "help": "Measure from appliance hardstanding to access point."},
+                    {"id": "b5_top_storey_vs_access", "label": "Height of topmost storey relative to access (m)", "type": "number",
+                     "help": "Height above fire service access level."},
+
+                    {"id": "b5_fire_main_required", "label": "Internal fire main required?", "type": "bool",
+                     "help": "Choose Yes if a rising main is required/provided."},
+                    {"id": "b5_fire_main_type", "label": "Type of internal fire main", "type": "select",
+                     "show_if": {"b5_fire_main_required": True},
+                     "options": ["Dry riser", "Wet riser"],
+                     "help": "Select dry/wet riser type."},
+                    {"id": "b5_fire_main_locations", "label": "Location of fire mains (per shaft)", "type": "text",
+                     "show_if": {"b5_fire_main_required": True},
+                     "help": "Describe where risers are located."},
+
+                    {"id": "b5_ff_shaft_required", "label": "Firefighting shaft required?", "type": "bool",
+                     "help": "Choose Yes if firefighting shafts are required/provided."},
+                    {"id": "b5_ff_shaft_count", "label": "Number and location of firefighting shafts", "type": "text",
+                     "show_if": {"b5_ff_shaft_required": True},
+                     "help": "Describe shafts and their locations."},
+                    {"id": "b5_ff_shaft_storeys", "label": "Storeys served by firefighting shafts", "type": "text",
+                     "show_if": {"b5_ff_shaft_required": True},
+                     "help": "List which storeys are served."},
+
+                    {"id": "b5_hydrants", "label": "External hydrants provided?", "type": "bool",
+                     "help": "Choose Yes if hydrants are present/available."},
+                    {"id": "b5_hydrant_distance", "label": "Distance to nearest hydrant (m)", "type": "number",
+                     "show_if": {"b5_hydrants": True},
+                     "help": "Approximate distance to nearest hydrant."},
+                    {"id": "b5_hydrant_flow_known", "label": "Hydrant flow/pressure known?", "type": "bool",
+                     "show_if": {"b5_hydrants": True},
+                     "help": "Choose Yes if flow/pressure data is available."},
+
+                    {"id": "b5_boiler_fuel", "label": "Boiler rooms / fuel stores present?", "type": "bool",
+                     "help": "Choose Yes if boiler/fuel store exists."},
+                    {"id": "b5_elec_isolation", "label": "Electrical isolation for firefighting provided?", "type": "bool",
+                     "help": "Choose Yes if firefighting electrical isolation is provided."},
+
+                    {"id": "b5_outcome", "label": "Section outcome flag", "type": "select",
+                     "options": ["Compliant using TGD tables only", "Compliant with compensatory measures", "Non-compliant (alternative solution required)", "Not assessed (pending info)"],
+                     "help": "Used for report conclusions."},
+                ],
+            },
+
+            {
+                "id": "B6",
+                "title": "SECTION 6 — SMOKE CONTROL SYSTEMS",
+                "questions": [
+                    {"id": "b6_basements", "label": "Basements present?", "type": "bool",
+                     "help": "Choose Yes if any basement storeys exist."},
+                    {"id": "b6_atria", "label": "Atria present?", "type": "bool",
+                     "help": "Choose Yes if atrium exists."},
+                    {"id": "b6_lobbies_corridors", "label": "Protected lobbies/corridors present?", "type": "bool",
+                     "help": "Choose Yes if protected lobbies/corridors exist."},
+                    {"id": "b6_carparks", "label": "Car parks present?", "type": "bool",
+                     "help": "Choose Yes if car parks exist (open or enclosed)."},
+                    {"id": "b6_system_type", "label": "Smoke control system type per zone", "type": "text",
+                     "show_if": {"b6_basements__in": [True, "true", "yes", "1"]},
+                     "help": "Describe smoke control per zone (exhaust, pressurisation, AOV, etc.)."},
+                    {"id": "b6_standard", "label": "Design standard used (EN 12101 / other)", "type": "text",
+                     "help": "Enter standard/guide used for smoke control design."},
+                    {"id": "b6_vent_defined", "label": "Vent sizes and locations defined?", "type": "bool",
+                     "help": "Choose Yes if vents are sized and located."},
+                    {"id": "b6_zones_defined", "label": "Smoke zones defined?", "type": "bool",
+                     "help": "Choose Yes if smoke zones are defined."},
+                    {"id": "b6_emergency_power", "label": "Emergency power supply provided?", "type": "bool",
+                     "help": "Choose Yes if smoke control has emergency power."},
+                    {"id": "b6_fail_safe", "label": "Fail-safe operation on power loss/alarm?", "type": "bool",
+                     "help": "Choose Yes if vents/fans default to safe position on failure."},
+
+                    {"id": "b6_outcome", "label": "Section outcome flag", "type": "select",
+                     "options": ["Compliant using TGD tables only", "Compliant with compensatory measures", "Non-compliant (alternative solution required)", "Not assessed (pending info)"],
+                     "help": "Used for report conclusions."},
+                ],
+            },
+
+            {
+                "id": "B7",
+                "title": "SECTION 7 — EXISTING BUILDINGS (IF APPLICABLE)",
+                "questions": [
+                    {"id": "b7_existing_fsc", "label": "Existing Fire Safety Certificate available?", "type": "bool",
+                     "show_if": {"s0_works_type__in": ["Extension", "Material alteration", "Material change of use", "Combination"]},
+                     "help": "Choose Yes if an existing FSC exists."},
+                    {"id": "b7_existing_drawings", "label": "Existing fire safety drawings available?", "type": "bool",
+                     "show_if": {"s0_works_type__in": ["Extension", "Material alteration", "Material change of use", "Combination"]},
+                     "help": "Choose Yes if legacy fire strategy drawings exist."},
+                    {"id": "b7_existing_fire_eng", "label": "Existing fire engineering / alternative solution retained?", "type": "bool",
+                     "show_if": {"s0_works_type__in": ["Extension", "Material alteration", "Material change of use", "Combination"]},
+                     "help": "Choose Yes if an existing alternative approach is being retained."},
+                    {"id": "b7_comp_measures", "label": "Compensatory measures proposed? (Describe)", "type": "text",
+                     "show_if": {"s0_works_type__in": ["Extension", "Material alteration", "Material change of use", "Combination"]},
+                     "help": "Describe compensatory measures due to constraints."},
+
+                    {"id": "b7_outcome", "label": "Section outcome flag", "type": "select",
+                     "show_if": {"s0_works_type__in": ["Extension", "Material alteration", "Material change of use", "Combination"]},
+                     "options": ["Compliant using TGD tables only", "Compliant with compensatory measures", "Non-compliant (alternative solution required)", "Not assessed (pending info)"],
+                     "help": "Used for report conclusions."},
+                ],
+            },
+
+            {
+                "id": "B8",
+                "title": "SECTION 8 — SPRINKLERS",
+                "questions": [
+                    {"id": "b8_sprinklers", "label": "Sprinklers provided or required?", "type": "bool",
+                     "help": "Choose Yes if sprinklers are included or required."},
+                    {"id": "b8_hazard_class", "label": "Hazard classification (LH/OH/HH or equivalent)", "type": "text",
+                     "show_if": {"b8_sprinklers": True},
+                     "help": "Enter sprinkler hazard class if known."},
+                    {"id": "b8_supply_type", "label": "Water supply type (town main / tank / pumped)", "type": "text",
+                     "show_if": {"b8_sprinklers": True},
+                     "help": "Describe sprinkler supply arrangement."},
+                    {"id": "b8_tank_capacity", "label": "Tank capacity (if applicable)", "type": "number",
+                     "show_if": {"b8_sprinklers": True},
+                     "help": "Enter capacity if a tank is provided."},
+                    {"id": "b8_omitted_heads", "label": "Any omitted areas or heads?", "type": "bool",
+                     "show_if": {"b8_sprinklers": True},
+                     "help": "Choose Yes if any areas are omitted or special."},
+                    {"id": "b8_omitted_desc", "label": "If yes: describe omitted areas/heads", "type": "text",
+                     "show_if": {"b8_omitted_heads": True},
+                     "help": "Describe where sprinklers are omitted and why."},
+
+                    {"id": "b8_outcome", "label": "Section outcome flag", "type": "select",
+                     "options": ["Compliant using TGD tables only", "Compliant with compensatory measures", "Non-compliant (alternative solution required)", "Not assessed (pending info)"],
+                     "help": "Used for report conclusions."},
+                ],
+            },
+
+            {
+                "id": "B12",
+                "title": "B12 — PROVISION OF INFORMATION",
+                "questions": [
+                    {"id": "b12_systems_list", "label": "Fire safety systems installed (list)", "type": "text",
+                     "help": "List systems: alarm, emergency lighting, smoke control, sprinklers, fire mains, etc."},
+                    {"id": "b12_commissioning", "label": "Commissioning certificates to be provided?", "type": "bool",
+                     "help": "Choose Yes if certificates will be provided at handover."},
+                    {"id": "b12_om", "label": "O&M manuals to be provided?", "type": "bool",
+                     "help": "Choose Yes if O&M manuals will be provided."},
+                    {"id": "b12_asbuilt", "label": "As-built fire safety drawings/report to be provided?", "type": "bool",
+                     "help": "Choose Yes if as-built strategy drawings/report will be provided."},
+                    {"id": "b12_logbook", "label": "Fire safety logbook / management plan provided?", "type": "bool",
+                     "help": "Choose Yes if a logbook/management plan will be provided."},
+
+                    {"id": "b12_outcome", "label": "Section outcome flag", "type": "select",
+                     "options": ["Compliant using TGD tables only", "Compliant with compensatory measures", "Non-compliant (alternative solution required)", "Not assessed (pending info)"],
+                     "help": "Used for report conclusions."},
+                ],
+            },
         ],
     }
 
 
 # ----------------------------
-# IMPORTANT:
-# Your original file had full B1..B12 schema after S0.
-# To avoid accidentally changing your question logic, we load it from your original at runtime.
-# If you want, I can re-expand it fully here, but it’s not necessary for the Fire Cert wiring to work.
-# ----------------------------
-
-# If you want FULL schema in this file, uncomment and paste your B1..B12 list under firecert_schema_v1().
-# For now, we enforce that S0 exists, and the rest is optional for testing.
-
-
-# ----------------------------
-# Prompts (chat behaviour unchanged)
+# Prompts (tone stays the same)
 # ----------------------------
 
 FORMAT_RULES = """
@@ -570,7 +928,7 @@ SYSTEM_PROMPT_FIRECERT_REPORT = """
 You are Raheem AI in Fire Safety Report drafting mode for an Irish Fire Safety Certificate (FSC) application.
 
 Goal:
-Draft a professional Fire Safety Report aligned to Part B / TGD B (Non-Domestic, Volume 1) structure.
+Draft a professional Fire Safety Report aligned to Part B / TGD B (Non-Dwellings, Volume 1) structure.
 The report must be suitable for professional review (architect/fire consultant), not a final certified document.
 
 Input you will receive:
@@ -602,8 +960,35 @@ A complete report draft with:
 """.strip()
 
 
+def build_gemini_contents(history: List[Dict[str, str]], user_message: str, sources_text: str) -> List[Content]:
+    contents: List[Content] = []
+    for m in history or []:
+        r = (m.get("role") or "").lower().strip()
+        c = (m.get("content") or "").strip()
+        if not c:
+            continue
+        if r == "user":
+            contents.append(Content(role="user", parts=[Part.from_text(c)]))
+        elif r == "assistant":
+            contents.append(Content(role="model", parts=[Part.from_text(c)]))
+
+    final_user = (user_message or "").strip()
+    if sources_text and sources_text.strip():
+        final_user = (final_user + "\n\nSOURCES (use for evidence):\n" + sources_text).strip()
+
+    if not contents:
+        contents.append(Content(role="user", parts=[Part.from_text(final_user)]))
+    else:
+        if contents[-1].role == "user":
+            contents[-1] = Content(role="user", parts=[Part.from_text(final_user)]))
+        else:
+            contents.append(Content(role="user", parts=[Part.from_text(final_user)]))
+
+    return contents
+
+
 # ----------------------------
-# Retrieval helpers (unchanged style)
+# Retrieval helpers
 # ----------------------------
 
 STOPWORDS = {
@@ -654,6 +1039,7 @@ def auto_pin_pdf(question: str) -> Optional[str]:
             "Technical Guidance Document K.pdf",
             "TGD K.pdf",
             "Technical Guidance Document K (2020).pdf",
+            "Technical Guidance Document K.pdf".replace("  ", " ")
         ])
 
     if any(w in q for w in ["fire", "escape", "means of escape", "travel distance", "sprinkler", "smoke", "compartment", "car park", "corridor", "protected route"]):
@@ -715,6 +1101,7 @@ def ensure_docai_indexed(pdf_name: str) -> None:
         toks = tokenize(txt.lower())
         tf = Counter(toks)
         df.update(set(tf.keys()))
+
         chunks.append({"range": rng, "text": txt, "tf": tf, "len": len(toks)})
 
     if not chunks:
@@ -984,6 +1371,10 @@ def strip_bullets_streaming(delta: str) -> str:
     return BULLET_RE.sub(lambda m: m.group(1), delta)
 
 
+def _sources_contain_any_number(sources_text: str) -> bool:
+    return bool(ANY_NUMBER_RE.search(sources_text or ""))
+
+
 def _looks_like_numeric_answer(text: str) -> bool:
     return bool(NUM_WITH_UNIT_RE.search(text or ""))
 
@@ -991,8 +1382,6 @@ def _looks_like_numeric_answer(text: str) -> bool:
 def postprocess_final_answer(final_text: str, sources_text: str, compliance: bool) -> str:
     t = final_text or ""
     t = PAGE_MENTION_RE.sub("", t)
-
-    # Kill bullets if model tries
     t = BULLET_RE.sub(lambda m: m.group(1), t)
 
     if compliance:
@@ -1015,12 +1404,17 @@ def postprocess_final_answer(final_text: str, sources_text: str, compliance: boo
 # ----------------------------
 
 def _run_verifier(user_msg: str, draft_answer: str, sources_text: str) -> Tuple[bool, str]:
+    """
+    Returns (ok, safe_answer). If verifier fails, safe_answer is a corrected safe output.
+    """
     if not VERIFY_NUMERIC:
         return True, draft_answer
 
+    # Only verify when we have sources
     if not (sources_text and sources_text.strip()):
         return True, draft_answer
 
+    # Only verify when answer contains numbers OR question is numeric compliance
     needs = is_numeric_compliance_question(user_msg) or _looks_like_numeric_answer(draft_answer) or bool(ANY_NUMBER_RE.search(draft_answer or ""))
     if not needs:
         return True, draft_answer
@@ -1045,6 +1439,8 @@ def _run_verifier(user_msg: str, draft_answer: str, sources_text: str) -> Tuple[
         )
 
         raw = (getattr(resp, "text", "") or "").strip()
+
+        # Try to extract JSON object from any surrounding text (just in case)
         m = re.search(r"\{.*\}", raw, re.S)
         if m:
             raw = m.group(0)
@@ -1056,6 +1452,7 @@ def _run_verifier(user_msg: str, draft_answer: str, sources_text: str) -> Tuple[
         if ok and safe_answer:
             return True, safe_answer
 
+        # If not ok, enforce a safe fallback message
         if safe_answer:
             return False, safe_answer
 
@@ -1066,6 +1463,7 @@ def _run_verifier(user_msg: str, draft_answer: str, sources_text: str) -> Tuple[
         return False, fallback
 
     except Exception:
+        # If verifier fails for any reason, don't break the app; just return draft.
         return True, draft_answer
 
 
@@ -1107,58 +1505,6 @@ def _fc_build_report_input(project: Dict[str, Any]) -> str:
             lines.append(f"[IMAGE {img.get('id')} | {img.get('name')} | {img.get('mime')}]")
 
     return "\n".join(lines).strip()
-
-
-import html
-
-def _doc_fallback_from_report_text(report_text: str, title: str) -> bytes:
-    """
-    Word-compatible .doc download without python-docx.
-    It's HTML wrapped in a .doc container, which MS Word opens cleanly.
-    """
-    safe = html.escape(report_text or "").replace("\n", "<br/>")
-    safe_title = html.escape(title or "Fire Safety Report (Draft)")
-    doc_html = f"""<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8"/>
-<title>{safe_title}</title>
-</head>
-<body style="font-family:Calibri,Arial,sans-serif; font-size:11pt; line-height:1.35;">
-<h1 style="font-size:18pt; margin:0 0 12px 0;">{safe_title}</h1>
-<div>{safe}</div>
-</body>
-</html>"""
-    return doc_html.encode("utf-8")
-
-
-def _docx_from_report_text(report_text: str, title: str = "Fire Safety Report (Draft)") -> bytes:
-    """
-    If python-docx is installed -> real .docx.
-    Otherwise -> fallback .doc (HTML).
-    """
-    if not DOCX_AVAILABLE:
-        return _doc_fallback_from_report_text(report_text, title)
-
-    doc = Document()
-
-    style = doc.styles["Normal"]
-    style.font.name = "Calibri"
-    style._element.rPr.rFonts.set(qn("w:eastAsia"), "Calibri")
-    style.font.size = Pt(11)
-
-    doc.add_heading(title, level=1)
-
-    for para in (report_text or "").split("\n"):
-        p = para.rstrip()
-        if not p.strip():
-            doc.add_paragraph("")
-        else:
-            doc.add_paragraph(p)
-
-    bio = io.BytesIO()
-    doc.save(bio)
-    return bio.getvalue()
 
 
 # ----------------------------
@@ -1249,9 +1595,9 @@ def upload_pdf(file: UploadFile = File(...)):
             if (os.getenv("DOCAI_PROCESSOR_ID") or "").strip() and (os.getenv("DOCAI_LOCATION") or "").strip():
                 combined_text, _chunk_ranges = docai_extract_pdf_to_text(str(dest), chunk_pages=15)
                 chunks = _split_docai_combined_to_chunks(combined_text)
-                stem2 = dest.stem
+                stem = dest.stem
                 for (a, b), txt in chunks:
-                    out_path = DOCAI_DIR / f"{stem2}_p{a}-{b}.txt"
+                    out_path = DOCAI_DIR / f"{stem}_p{a}-{b}.txt"
                     out_path.write_text(txt, encoding="utf-8", errors="ignore")
                     docai_chunks_saved += 1
                 docai_ok = docai_chunks_saved > 0
@@ -1272,7 +1618,7 @@ def upload_pdf(file: UploadFile = File(...)):
 
 
 # ----------------------------
-# Fire Cert endpoints (isolated from chat)
+# Fire Cert endpoints (new feature, isolated from chat)
 # ----------------------------
 
 @app.get("/firecert/schema")
@@ -1289,6 +1635,7 @@ def firecert_project_init(payload: Dict[str, Any] = Body(...)):
     if isinstance(meta, dict) and meta:
         p["meta"].update(meta)
 
+    # Auto-NA based on current meta state
     _firecert_apply_auto_na(firecert_schema_v1(), p)
 
     return {"ok": True, "project": {"project_id": project_id, "created_utc": p["created_utc"], "meta": p["meta"]}}
@@ -1329,14 +1676,9 @@ def firecert_save_answer(payload: Dict[str, Any] = Body(...)):
     notes = (payload.get("notes") or "").strip()
     refs = (payload.get("refs") or "").strip()
 
-    p["answers"][qid] = {
-        "value": value,
-        "na": na,
-        "notes": notes,
-        "refs": refs,
-        "updated_utc": datetime.utcnow().isoformat()
-    }
+    p["answers"][qid] = {"value": value, "na": na, "notes": notes, "refs": refs, "updated_utc": datetime.utcnow().isoformat()}
 
+    # Re-run auto-NA after each answer (keeps relevance tight)
     _firecert_apply_auto_na(firecert_schema_v1(), p)
 
     return {"ok": True, "saved": {"qid": qid}, "project_id": project_id}
@@ -1379,10 +1721,13 @@ def firecert_next_question(payload: Dict[str, Any] = Body(...)):
     p = _fc_get_project(project_id)
     schema = firecert_schema_v1()
     meta = _fc_meta(p)
+    answers = p.get("answers") or {}
 
+    # Ensure auto-NA is up-to-date before computing next visible
     _firecert_apply_auto_na(schema, p)
     answers = p.get("answers") or {}
 
+    # Find first visible question that is not answered OR answered but empty and not NA
     for step in schema.get("steps", []):
         for q in step.get("questions", []):
             qid = q.get("id")
@@ -1400,6 +1745,7 @@ def firecert_next_question(payload: Dict[str, Any] = Body(...)):
                 if bool(a.get("na", False)):
                     continue
                 val = a.get("value", None)
+                # treat None/"" as unanswered
                 if val is None:
                     return {"ok": True, "step": step.get("id"), "step_title": step.get("title"), "question": q}
                 if isinstance(val, str) and not val.strip():
@@ -1410,10 +1756,6 @@ def firecert_next_question(payload: Dict[str, Any] = Body(...)):
 
 @app.post("/firecert/generate-report")
 def firecert_generate_report(payload: Dict[str, Any] = Body(...)):
-    """
-    Returns report TEXT (for preview).
-    Your UI can call this then show preview.
-    """
     project_id = (payload.get("project_id") or "").strip()
     if not project_id:
         return JSONResponse({"ok": False, "error": "Missing project_id"}, status_code=400)
@@ -1424,11 +1766,14 @@ def firecert_generate_report(payload: Dict[str, Any] = Body(...)):
 
     project = _fc_get_project(project_id)
 
+    # Optional meta patch-in at generation time
     meta_patch = payload.get("meta") or {}
     if isinstance(meta_patch, dict) and meta_patch:
         project["meta"].update(meta_patch)
 
+    # Ensure auto-NA is applied before drafting
     _firecert_apply_auto_na(firecert_schema_v1(), project)
+
     report_input = _fc_build_report_input(project)
 
     model_name = MODEL_FIRECERT or MODEL_COMPLIANCE
@@ -1451,66 +1796,158 @@ def firecert_generate_report(payload: Dict[str, Any] = Body(...)):
     return {"ok": True, "project_id": project_id, "report": text}
 
 
-@app.post("/firecert/generate")
-def firecert_generate(payload: Dict[str, Any] = Body(...)):
-    """
-    Generate and return a Fire Safety Report file download.
-    Intended for the Fire Cert 'Generate' button where no JSON
-    is shown to the client.
-    """
+# ----------------------------
+# Streaming core
+# ----------------------------
 
-    project_id = (payload.get("project_id") or "").strip()
-    if not project_id:
-        return JSONResponse(
-            {"ok": False, "error": "Missing project_id"},
-            status_code=400
+def _stream_answer(
+    chat_id: str,
+    message: str,
+    force_docs: bool,
+    pdf: Optional[str],
+    page_hint: Optional[int],
+    messages: Optional[List[Dict[str, Any]]] = None
+):
+    try:
+        if not message.strip():
+            yield "event: error\ndata: No message provided.\n\n"
+            yield "event: done\ndata: ok\n\n"
+            return
+
+        chat_id = (chat_id or "").strip()
+        user_msg = (message or "").strip()
+
+        # Canonical history
+        if isinstance(messages, list) and messages:
+            hist = _normalize_incoming_messages(messages)
+            hist = _ensure_last_user_message(hist, user_msg)
+            if chat_id:
+                CHAT_STORE[chat_id] = hist[-CHAT_MAX_MESSAGES:]
+                _trim_chat(chat_id)
+            history_for_prompt = CHAT_STORE.get(chat_id, hist)
+        else:
+            history_for_prompt = get_history(chat_id) if chat_id else []
+            if chat_id:
+                remember(chat_id, "user", user_msg)
+                history_for_prompt = get_history(chat_id)
+
+        # Decide compliance intent
+        use_docs_intent = should_use_docs(user_msg, force_docs=force_docs)
+        numeric_compliance = use_docs_intent and is_numeric_compliance_question(user_msg)
+
+        sources_text = ""
+        if use_docs_intent and list_pdfs():
+            auto_pdf = pdf or auto_pin_pdf(user_msg)
+            selected = select_sources(
+                user_msg,
+                pdf_pin=auto_pdf,
+                max_docs=3,
+                pages_per_doc=3,
+                docai_chunks_per_doc=2
+            )
+            sources_text = build_sources_bundle(selected)
+
+        used_docs_flag = bool(sources_text and sources_text.strip())
+        is_compliance = use_docs_intent
+
+        model_name = MODEL_COMPLIANCE if is_compliance else MODEL_CHAT
+        system_prompt = SYSTEM_PROMPT_COMPLIANCE if is_compliance else SYSTEM_PROMPT_NORMAL
+
+        # HARD RULE: numeric compliance must be grounded in extracted text that contains numbers
+        if numeric_compliance:
+            if (not used_docs_flag) or (not _sources_contain_any_number(sources_text)):
+                refusal = (
+                    "I can’t confirm the exact numeric limit from the extracted TGD text I have available right now.\n\n"
+                    "If you upload a clearer copy or tell me the exact clause or table you want checked, I’ll answer directly from the text and include a short quote."
+                )
+                if chat_id:
+                    remember(chat_id, "assistant", refusal)
+                yield f"data: {refusal}\n\n"
+                yield "event: done\ndata: ok\n\n"
+                return
+
+        ensure_vertex_ready()
+        if not _VERTEX_READY:
+            msg = (_VERTEX_ERR or "Vertex not ready").replace("\n", " ")
+            yield f"event: error\ndata: {msg}\n\n"
+            yield "event: done\ndata: ok\n\n"
+            return
+
+        model = get_model(model_name=model_name, system_prompt=system_prompt)
+        contents = build_gemini_contents(history_for_prompt, user_msg, sources_text)
+
+        stream = model.generate_content(
+            contents,
+            generation_config=get_generation_config(is_compliance),
+            stream=True
         )
 
-    # Generate report text using the same code path as /generate-report
-    gen = firecert_generate_report(payload)
+        full = []
+        for chunk in stream:
+            delta = getattr(chunk, "text", None)
+            if not delta:
+                continue
+            delta_clean = strip_bullets_streaming(delta)
+            full.append(delta_clean)
+            safe = delta_clean.replace("\r", "").replace("\n", "\\n")
+            yield f"data: {safe}\n\n"
 
-    if isinstance(gen, JSONResponse):
-        # Propagate errors directly
-        return gen
+        final_text = "".join(full).strip()
+        final_text = postprocess_final_answer(final_text, sources_text, compliance=is_compliance)
 
-    data = gen
-    if not data.get("ok"):
-        return JSONResponse(
-            {"ok": False, "error": data.get("error", "Unknown error")},
-            status_code=500
-        )
+        # FINAL HARD CHECK: numeric compliance must include a short quote from SOURCES if it outputs numbers
+        if numeric_compliance:
+            has_numeric_output = _looks_like_numeric_answer(final_text) or bool(ANY_NUMBER_RE.search(final_text or ""))
+            has_quote_marker = ("quote:" in (final_text or "").lower())
+            if has_numeric_output and not has_quote_marker:
+                final_text = (
+                    "I can’t safely give you that numeric requirement yet because I don’t have a reliable quoted line from the extracted TGD text to prove it.\n\n"
+                    "If you re-upload the PDF (so it re-parses) or tell me the exact clause or table, I’ll answer and include a short quote."
+                )
 
-    report_text = (data.get("report") or "").strip()
-    if not report_text:
-        return JSONResponse(
-            {"ok": False, "error": "Empty report output"},
-            status_code=500
-        )
+        # Silent verification pass (prevents wrong table reads / fake section refs)
+        if is_compliance and used_docs_flag:
+            ok, verified = _run_verifier(user_msg, final_text, sources_text)
+            if verified and verified.strip():
+                final_text = postprocess_final_answer(verified.strip(), sources_text, compliance=is_compliance)
 
-    title = (payload.get("title") or "Fire Safety Report (Draft)").strip()
+        if chat_id:
+            remember(chat_id, "assistant", final_text)
 
-    file_bytes = _docx_from_report_text(
-        report_text,
-        title=title
+        yield "event: done\ndata: ok\n\n"
+
+    except Exception as e:
+        msg = str(e).replace("\r", "").replace("\n", " ")
+        yield f"event: error\ndata: {msg}\n\n"
+        yield "event: done\ndata: ok\n\n"
+
+
+@app.get("/chat_stream")
+def chat_stream_get(
+    q: str = Query(""),
+    chat_id: str = Query(""),
+    force_docs: bool = Query(False),
+    pdf: Optional[str] = Query(None),
+    page_hint: Optional[int] = Query(None),
+):
+    return StreamingResponse(
+        _stream_answer(chat_id.strip(), q, force_docs, pdf, page_hint),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
 
-    if DOCX_AVAILABLE:
-        filename = f"Fire_Safety_Report_Draft_{project_id[:8]}.docx"
-        media_type = (
-            "application/vnd.openxmlformats-officedocument."
-            "wordprocessingml.document"
-        )
-    else:
-        filename = f"Fire_Safety_Report_Draft_{project_id[:8]}.doc"
-        media_type = "application/msword"
 
-    headers = {
-        "Content-Disposition": f'attachment; filename="{filename}"'
-    }
+@app.post("/chat_stream")
+def chat_stream_post(payload: Dict[str, Any] = Body(...)):
+    chat_id = (payload.get("chat_id") or "").strip()
+    message = (payload.get("message") or payload.get("q") or "").strip()
+    force_docs = bool(payload.get("force_docs", False))
+    pdf = payload.get("pdf")
+    page_hint = payload.get("page_hint")
+    messages = payload.get("messages")
 
-    return Response(
-        content=file_bytes,
-        media_type=media_type,
-        headers=headers
+    return StreamingResponse(
+        _stream_answer(chat_id, message, force_docs, pdf, page_hint, messages=messages),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
-
