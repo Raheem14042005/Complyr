@@ -132,6 +132,13 @@ EVAL_FILE = Path(os.getenv("EVAL_FILE", str(BASE_DIR / "eval_tests.json")))
 
 # Timeouts
 HTTP_TIMEOUT = float(os.getenv("HTTP_TIMEOUT", "18"))
+# ----------------------------
+# Web fetch behaviour (ChatGPT-like)
+# ----------------------------
+
+MAX_WEB_BYTES = int(os.getenv("MAX_WEB_BYTES", str(2_500_000)))  # 2.5 MB safety cap
+WEB_RETRIES = int(os.getenv("WEB_RETRIES", "2"))                 # retry flaky sites
+WEB_RETRY_BACKOFF = float(os.getenv("WEB_RETRY_BACKOFF", "0.6")) # seconds
 
 # Web cache
 WEB_CACHE_TTL_SECONDS = int(os.getenv("WEB_CACHE_TTL_SECONDS", str(12 * 60 * 60)))  # 12h
@@ -295,6 +302,26 @@ SECTION_RE = re.compile(r"^\s*(?:section\s+)?(\d+(?:\.\d+){0,4})\b", re.I)
 TABLE_RE = re.compile(r"\btable\s+([a-z0-9][a-z0-9\.\-]*)\b", re.I)
 DIAGRAM_RE = re.compile(r"\bdiagram\s+([a-z0-9][a-z0-9\.\-]*)\b", re.I)
 
+WEB_CITE_TOKEN_RE = re.compile(r"\[WEB:(\d+)\]\(\s*(https?://[^\s)]+)\s*\)")
+
+def _enforce_web_citations(answer: str, web_pages: List[Dict[str, str]]) -> str:
+    """
+    If the model doesn't include any [WEB:i](URL) token, append a Sources section.
+    """
+    if not web_pages:
+        return answer
+
+    # If it already used at least one token, accept.
+    if WEB_CITE_TOKEN_RE.search(answer or ""):
+        return answer
+
+    sources_lines = ["\n\n---\n\n### Sources (web)"]
+    for i, w in enumerate(web_pages, start=1):
+        url = (w.get("url") or "").strip()
+        if url:
+            sources_lines.append(f"- [WEB:{i}]({url})")
+
+    return (answer or "").rstrip() + "\n" + "\n".join(sources_lines)
 
 def clean_text(s: str) -> str:
     s = (s or "").replace("\u00ad", "")
@@ -333,7 +360,34 @@ def _host_from_url(url: str) -> str:
         return ""
 
 
+# If true, only allow domains in WEB_ALLOWLIST (current behavior).
+# If false, allow most domains except blocked ones.
+WEB_STRICT_ALLOWLIST = os.getenv("WEB_STRICT_ALLOWLIST", "false").lower() in ("1", "true", "yes", "on")
+
+WEB_BLOCKLIST_DEFAULT = [
+    "facebook.com", "instagram.com", "tiktok.com", "x.com", "twitter.com",
+    "pinterest.com", "reddit.com",  # optional; can remove if you want reddit
+]
+WEB_BLOCKLIST = [d.strip().lower() for d in (os.getenv("WEB_BLOCKLIST", "") or "").split(",") if d.strip()]
+if not WEB_BLOCKLIST:
+    WEB_BLOCKLIST = WEB_BLOCKLIST_DEFAULT
+
+def _blocked_url(url: str) -> bool:
+    host = _host_from_url(url)
+    if not host:
+        return True
+    return any(host == d or host.endswith("." + d) for d in WEB_BLOCKLIST)
+
 def _allowed_url(url: str) -> bool:
+    # Blocklist always wins
+    if _blocked_url(url):
+        return False
+
+    # If not strict: allow most domains
+    if not WEB_STRICT_ALLOWLIST:
+        return True
+
+    # Strict mode: allowlist required
     host = _host_from_url(url)
     if not host:
         return False
@@ -457,6 +511,17 @@ def bm25_score(query_toks: List[str], tf: Counter, df: Counter, N: int, dl: int,
         score += idf * (f * (k1 + 1) / (denom or 1.0))
     return score
 
+def page_hint_boost(chunk_page: int, page_hint: Optional[int], radius: int = 2) -> float:
+    if not page_hint or page_hint <= 0:
+        return 0.0
+    try:
+        dist = abs(int(chunk_page) - int(page_hint))
+    except Exception:
+        return 0.0
+    if dist > radius:
+        return 0.0
+    # closer pages rank higher
+    return 3.0 * ((radius - dist + 1) / (radius + 1))
 
 def _pdf_fingerprint(pdf_path: Path) -> str:
     st = pdf_path.stat()
@@ -861,11 +926,17 @@ def _vector_candidates(question: str, pdf_name: str, top_k: int = EMBED_TOPK) ->
     return [cid for _, cid in scored[:top_k]]
 
 
-def search_chunks(question: str, top_k: int = TOP_K_CHUNKS, pinned_pdf: Optional[str] = None) -> List[Chunk]:
+def search_chunks(
+    question: str,
+    top_k: int = TOP_K_CHUNKS,
+    pinned_pdf: Optional[str] = None,
+    page_hint: Optional[int] = None,
+) -> List[Chunk]:
     """
     Retrieval:
       - BM25 everywhere
       - If embeddings exist: boost vector candidates so they rise naturally
+      - Page hint boosts near the hinted page
     """
     pdfs = list_pdfs()
     if not pdfs:
@@ -896,6 +967,8 @@ def search_chunks(question: str, top_k: int = TOP_K_CHUNKS, pinned_pdf: Optional
         scored: List[Tuple[float, Chunk]] = []
         for ch in idx["chunks"]:
             s = bm25_score(qt, ch.tf, df, N, ch.length, avgdl)
+            s += page_hint_boost(ch.page, page_hint)
+
             if vector_set and ch.chunk_id in vector_set:
                 s += 2.5
             if s > 0:
@@ -920,6 +993,7 @@ def search_chunks(question: str, top_k: int = TOP_K_CHUNKS, pinned_pdf: Optional
         if len(out) >= max(24, top_k * 4):
             break
     return out
+
 
 
 def dedupe_chunks_keep_order(chunks: List[Chunk]) -> List[Chunk]:
@@ -1007,6 +1081,27 @@ def docai_search_text(pdf_name: str, question: str, k: int = 2) -> List[Tuple[st
     scored.sort(key=lambda x: x[0], reverse=True)
     return [(lab, ex) for _, lab, ex in scored[:k]]
 
+SMALLTALK_RE = re.compile(r"^(hi|hello|hey|yo|howdy|sup|hiya|evening|morning|afternoon)\b", re.I)
+
+def is_smalltalk(message: str) -> bool:
+    m = (message or "").strip().lower()
+    if not m:
+        return False
+
+    # Very short greeting-like messages
+    if len(m) <= 12 and (m in {"hi", "hey", "hello", "yo", "hiya", "sup"}):
+        return True
+
+    # Greeting at the start, short overall, and NOT a compliance/planning/ber question
+    if SMALLTALK_RE.match(m) and len(m) <= 32:
+        if not is_compliance_question(m) and not is_planning_question(m) and not is_ber_question(m):
+            return True
+
+    # “thanks”, “ok”, etc. (optional)
+    if len(m) <= 12 and m in {"ok", "okay", "thanks", "thank you", "cool", "nice"}:
+        return True
+
+    return False
 
 # ============================================================
 # INTENT DETECTION + DOC TYPE SANITY
@@ -1063,28 +1158,30 @@ def is_numeric_compliance(q: str) -> bool:
 
 def auto_pin_pdf(question: str) -> Optional[str]:
     q = (question or "").lower()
-    pdfs = set(list_pdfs())
+    pdfs = list_pdfs()
 
-    def pick(cands: List[str]) -> Optional[str]:
-        for c in cands:
-            if c in pdfs:
-                return c
+    def pick_by_regex(patterns: List[str]) -> Optional[str]:
+        for pat in patterns:
+            rx = re.compile(pat, re.I)
+            for name in pdfs:
+                if rx.search(name):
+                    return name
         return None
 
     if is_planning_question(q):
-        return pick(["Planning and Development Regulations_June24.pdf"])
+        return pick_by_regex([r"planning.*development", r"regulation"])
 
-    if any(w in q for w in ["stairs", "stair", "staircase", "riser", "going", "pitch", "headroom", "handrail", "balustrade", "landing"]):
-        return pick(["Technical Guidance Document K.pdf", "TGD K.pdf"])
+    if any(w in q for w in ["stairs", "riser", "going", "pitch", "handrail"]):
+        return pick_by_regex([r"\bpart[-_ ]?k\b", r"tgd.*k", r"stairs"])
 
-    if any(w in q for w in ["access", "accessible", "wheelchair", "ramp", "dac", "part m"]):
-        return pick(["Technical Guidance Document M.pdf", "TGD M.pdf"])
+    if any(w in q for w in ["access", "accessible", "wheelchair", "ramp", "dac"]):
+        return pick_by_regex([r"\bpart[-_ ]?m\b", r"tgd.*m", r"access"])
 
-    if any(w in q for w in ["fire", "escape", "travel distance", "means of escape", "compartment", "smoke", "emergency lighting"]):
-        return pick(["Technical Guidance Document B Dwellings.pdf", "Technical Guidance Document B Non Dwellings.pdf"])
+    if any(w in q for w in ["fire", "escape", "travel distance", "emergency lighting"]):
+        return pick_by_regex([r"\bpart[-_ ]?b\b", r"tgd.*b", r"fire"])
 
-    if any(w in q for w in ["u-value", "y-value", "thermal", "ber", "deap", "energy", "nzeb", "primary energy", "lighting controls"]):
-        return pick(["Technical Guidance Document L Dwellings.pdf", "Technical Guidance Document L Non Dwellings.pdf"])
+    if any(w in q for w in ["ber", "u-value", "y-value", "energy", "lighting controls"]):
+        return pick_by_regex([r"\bpart[-_ ]?l\b", r"tgd.*l", r"energy"])
 
     return None
 
@@ -1110,6 +1207,20 @@ def _question_family(q: str) -> str:
     if is_compliance_question(q):
         return "building_regs"
     return "general"
+
+def anchor_from_query(q: str) -> Dict[str, str]:
+    out = {}
+    m = TABLE_RE.search(q)
+    if m:
+        out["table"] = m.group(1)
+    m = DIAGRAM_RE.search(q)
+    if m:
+        out["diagram"] = m.group(1)
+    m = SECTION_RE.search(q)
+    if m:
+        out["section"] = m.group(1)
+    return out
+
 
 
 # ============================================================
@@ -1142,12 +1253,33 @@ async def web_search_serper(query: str, k: int = TOP_K_WEB) -> List[Dict[str, st
 
 def _html_to_text(html: str) -> str:
     html = html or ""
+
+    # Remove junk
     html = re.sub(r"(?is)<script.*?>.*?</script>", " ", html)
     html = re.sub(r"(?is)<style.*?>.*?</style>", " ", html)
+    html = re.sub(r"(?is)<noscript.*?>.*?</noscript>", " ", html)
+
+    # Preserve paragraph-ish breaks before stripping tags
+    html = re.sub(r"(?i)</(p|div|section|article|br|li|h1|h2|h3|h4|h5|tr)>", "\n", html)
+
+    # Drop remaining tags
     html = re.sub(r"(?is)<[^>]+>", " ", html)
-    html = html.replace("&nbsp;", " ").replace("&amp;", "&").replace("&quot;", '"').replace("&#39;", "'")
-    html = re.sub(r"\s+", " ", html).strip()
-    return html
+
+    # Decode common entities
+    html = (
+        html.replace("&nbsp;", " ")
+            .replace("&amp;", "&")
+            .replace("&quot;", '"')
+            .replace("&#39;", "'")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+    )
+
+    # Normalize whitespace but keep line breaks somewhat
+    html = re.sub(r"[ \t]+", " ", html)
+    html = re.sub(r"\n{3,}", "\n\n", html)
+    html = re.sub(r"\s+\n", "\n", html)
+    return html.strip()
 
 
 def _best_excerpts_from_text(q: str, text: str, max_paras: int = 4, max_chars: int = 2200) -> str:
@@ -1208,73 +1340,238 @@ def _load_web_cache(url: str) -> Optional[Dict[str, Any]]:
     except Exception:
         return None
 
-
 def _save_web_cache(url: str, content_type: str, text: str) -> None:
     try:
         p = _web_cache_path(url)
-        p.write_text(json.dumps({"ts": time.time(), "content_type": content_type, "text": text}), encoding="utf-8")
+        p.write_text(json.dumps({"ts": time.time(), "url": url, "content_type": content_type, "text": text}), encoding="utf-8")
     except Exception:
         pass
 
+# ============================================================
+# REDIRECT MAP CACHE (orig_url -> final_url)
+# ============================================================
 
-async def _fetch_one_web(client: httpx.AsyncClient, url: str) -> Tuple[str, str, str, str]:
-    # Never throw; always return a tuple.
+REDIRECT_CACHE_DIR = WEB_CACHE_DIR / "redirects"
+REDIRECT_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+def _redirect_cache_key(url: str) -> str:
+    return hashlib.sha1(url.encode("utf-8", errors="ignore")).hexdigest()[:16]
+
+def _redirect_cache_path(orig_url: str) -> Path:
+    return REDIRECT_CACHE_DIR / f"{_redirect_cache_key(orig_url)}.json"
+
+def _load_redirect_map(orig_url: str) -> Optional[str]:
     try:
-        if not _safe_url(url) or not _allowed_url(url):
-            return ("SKIP", url, "", "")
-        resp = await client.get(url, headers={"User-Agent": "RaheemAI/1.0"})
-        if resp.status_code >= 400:
-            return ("HTTP", url, "", "")
-        ct = (resp.headers.get("content-type") or "")
-        return ("FETCH", url, ct, resp.text or "")
+        p = _redirect_cache_path(orig_url)
+        if not p.exists():
+            return None
+        obj = json.loads(p.read_text(encoding="utf-8"))
+        ts = float(obj.get("ts", 0))
+        if time.time() - ts > WEB_CACHE_TTL_SECONDS:
+            return None
+        final_url = (obj.get("final_url") or "").strip()
+        return final_url or None
     except Exception:
-        return ("ERR", url, "", "")
+        return None
+
+def _save_redirect_map(orig_url: str, final_url: str) -> None:
+    try:
+        orig_url = (orig_url or "").strip()
+        final_url = (final_url or "").strip()
+        if not orig_url or not final_url:
+            return
+        if not _safe_url(orig_url) or not _safe_url(final_url):
+            return
+
+        p = _redirect_cache_path(orig_url)
+        p.write_text(
+            json.dumps({"ts": time.time(), "orig_url": orig_url, "final_url": final_url}),
+            encoding="utf-8",
+        )
+    except Exception:
+        pass
+        
+def _default_headers() -> Dict[str, str]:
+    return {
+        "User-Agent": "Mozilla/5.0 (compatible; RaheemAI/1.0)",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.5",
+        "Accept-Language": "en-IE,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+    }
+
+async def _fetch_one_web_with_final_url(
+    client: httpx.AsyncClient,
+    orig_url: str
+) -> Tuple[str, str, str, str, str]:
+    """
+    Returns: (kind, original_url, content_type, raw_text, final_url)
+
+    kind:
+      - "CACHED" -> raw_text is already cleaned plain text (content_type="text/plain")
+      - "FETCH"  -> raw_text is resp.text (html or plain)
+      - "SKIP" / "HTTP" / "ERR" -> raw_text empty
+    """
+    orig_url = (orig_url or "").strip()
+
+    if not _safe_url(orig_url):
+        return ("SKIP", orig_url, "", "", "")
+
+    headers = _default_headers()
+
+    async def _get_with_retries(url: str) -> Optional[httpx.Response]:
+        for attempt in range(WEB_RETRIES + 1):
+            try:
+                return await client.get(url, headers=headers)
+            except Exception:
+                await asyncio.sleep(WEB_RETRY_BACKOFF * (attempt + 1))
+        return None
+
+    try:
+        # --------------------------------------------------
+        # 1) Try redirect-map cache (NO NETWORK)
+        # --------------------------------------------------
+        mapped_final = (_load_redirect_map(orig_url) or "").strip()
+
+        if mapped_final and _safe_url(mapped_final) and _allowed_url(mapped_final):
+            cached = _load_web_cache(mapped_final)
+            if cached and isinstance(cached.get("text"), str):
+                return ("CACHED", orig_url, "text/plain", cached["text"], mapped_final)
+
+            resp2 = await _get_with_retries(mapped_final)
+            if resp2 and resp2.status_code < 400:
+                ct2 = (resp2.headers.get("content-type") or "")
+                ct2_l = ct2.lower()
+                final2 = (str(resp2.url) if resp2.url else mapped_final).strip()
+
+                if not _allowed_url(final2):
+                    return ("SKIP", orig_url, "", "", final2)
+
+                if ("text/html" not in ct2_l) and ("text/plain" not in ct2_l):
+                    return ("SKIP", orig_url, "", "", final2)
+
+                # size cap (header)
+                try:
+                    content_len = int(resp2.headers.get("content-length") or "0")
+                    if content_len and content_len > MAX_WEB_BYTES:
+                        return ("SKIP", orig_url, "", "", final2)
+                except Exception:
+                    pass
+
+                _save_redirect_map(orig_url, final2)
+
+                text2 = resp2.text or ""
+                if len(text2.encode("utf-8", errors="ignore")) > MAX_WEB_BYTES:
+                    return ("SKIP", orig_url, "", "", final2)
+
+                return ("FETCH", orig_url, ct2, text2, final2)
+
+        # --------------------------------------------------
+        # 2) Fallback: fetch orig_url to discover redirects (ONE NETWORK)
+        # --------------------------------------------------
+        resp = await _get_with_retries(orig_url)
+        if not resp:
+            return ("ERR", orig_url, "", "", "")
+
+        if resp.status_code >= 400:
+            return ("HTTP", orig_url, "", "", "")
+
+        ct = (resp.headers.get("content-type") or "")
+        ct_l = ct.lower()
+        final_url = (str(resp.url) if resp.url else orig_url).strip()
+
+        # Store mapping for next time
+        if _safe_url(final_url):
+            _save_redirect_map(orig_url, final_url)
+
+        if not _allowed_url(final_url):
+            return ("SKIP", orig_url, "", "", final_url)
+
+        # Cache lookup by FINAL URL
+        cached2 = _load_web_cache(final_url)
+        if cached2 and isinstance(cached2.get("text"), str):
+            return ("CACHED", orig_url, "text/plain", cached2["text"], final_url)
+
+        if ("text/html" not in ct_l) and ("text/plain" not in ct_l):
+            return ("SKIP", orig_url, "", "", final_url)
+
+        # size cap (header)
+        try:
+            content_len = int(resp.headers.get("content-length") or "0")
+            if content_len and content_len > MAX_WEB_BYTES:
+                return ("SKIP", orig_url, "", "", final_url)
+        except Exception:
+            pass
+
+        text = resp.text or ""
+        if len(text.encode("utf-8", errors="ignore")) > MAX_WEB_BYTES:
+            return ("SKIP", orig_url, "", "", final_url)
+
+        return ("FETCH", orig_url, ct, text, final_url)
+
+    except Exception:
+        return ("ERR", orig_url, "", "", "")
 
 
-async def web_fetch_and_excerpt(query: str, results: List[Dict[str, str]], max_items: int = TOP_K_WEB) -> List[Dict[str, str]]:
+
+async def web_fetch_and_excerpt(
+    query: str,
+    results: List[Dict[str, str]],
+    max_items: int = TOP_K_WEB
+) -> List[Dict[str, str]]:
     if not WEB_ENABLED:
         return []
 
-    allowed = [r for r in results if _allowed_url(r.get("url", ""))]
-    allowed = allowed[:max_items]
+    cands = [r for r in results if _safe_url(r.get("url", ""))]
+    cands = cands[: max(12, max_items * 4)]
 
     out: List[Dict[str, str]] = []
-    if not allowed:
+    if not cands:
         return out
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT, follow_redirects=True) as client:
-        tasks = []
-        for r in allowed:
-            url = r["url"]
-            cached = _load_web_cache(url)
-            if cached and isinstance(cached.get("text"), str):
-                tasks.append(asyncio.sleep(0, result=("CACHED", url, cached.get("content_type", ""), cached["text"])))
-            else:
-                tasks.append(_fetch_one_web(client, url))
+        tasks = [_fetch_one_web_with_final_url(client, r["url"]) for r in cands]
         responses = await asyncio.gather(*tasks, return_exceptions=True)
 
-    for r, resp in zip(allowed, responses):
+    for r, resp in zip(cands, responses):
         if isinstance(resp, Exception):
             continue
-        try:
-            kind, url, ct, raw_text = resp
-            if not raw_text:
-                continue
-            if "text/html" not in (ct or "").lower() and "text/plain" not in (ct or "").lower():
-                continue
 
-            txt = _html_to_text(raw_text) if "text/html" in (ct or "").lower() else clean_text(raw_text)
-            excerpt = _best_excerpts_from_text(query, txt)
-            if not excerpt:
-                continue
-
-            out.append({"title": r.get("title", "").strip(), "url": url.strip(), "excerpt": excerpt})
-
-            if kind != "CACHED":
-                _save_web_cache(url, ct, raw_text)
-
-        except Exception:
+        kind, _orig_url, ct, raw_text, final_url = resp
+        if not final_url or not _allowed_url(final_url):
             continue
+        if not raw_text:
+            continue
+
+        ct_l = (ct or "").lower()
+        if ("text/html" not in ct_l) and ("text/plain" not in ct_l):
+            continue
+
+        if kind == "CACHED":
+            txt = clean_text(raw_text)
+        else:
+            txt = _html_to_text(raw_text) if ("text/html" in ct_l) else clean_text(raw_text)
+
+        excerpt = _best_excerpts_from_text(query, txt)
+        if not excerpt:
+            continue
+
+        title = (r.get("title") or "").strip()
+        if not title:
+            title = final_url
+
+        out.append({
+            "title": title,
+            "url": final_url.strip(),
+            "excerpt": excerpt,
+        })
+
+        if kind != "CACHED":
+            _save_web_cache(final_url, "text/plain", txt)
+
+        if len(out) >= max_items:
+            break
 
     return out[:max_items]
 
@@ -1339,7 +1636,7 @@ Write like ChatGPT:
   and end with ONE focused follow-up question.
 
 If the user asks about Irish building regulations / TGDs, prefer evidence from supplied SOURCES.
-If web sources are used, cite them as URLs.
+If web sources are used, cite them using: [WEB:i](URL)
 """.strip()
 
 SYSTEM_PROMPT_EVIDENCE = """
@@ -1355,7 +1652,8 @@ Hard rules:
 2) When you give a numeric limit, include a short quote (1–2 lines) copied from SOURCES that contains that number.
 3) Cite evidence:
    - PDFs: (Document: <name>, Section: <section> OR Table: <table> OR p.<page>)
-   - Web: (URL)
+   - Web: you MUST cite using the provided token format exactly: [WEB:i](URL)
+
 4) If SOURCES do not contain the exact limit, say you cannot confirm it from current evidence and ask ONE focused follow-up.
 
 Write in Markdown, but keep it conversational.
@@ -1528,10 +1826,15 @@ def build_sources_block(
     if web_pages:
         parts.append("\nWEB EVIDENCE:")
         for i, w in enumerate(web_pages, start=1):
+            url = (w.get("url") or "").strip()
+            title = (w.get("title") or "").strip()
+            ex = clean_text(w.get("excerpt", ""))
+            # Give the model a stable citation token it can copy verbatim
             parts.append(
-                f"[WEB {i}] {w.get('title','').strip()}\n"
-                f"URL: {w.get('url','').strip()}\n"
-                f"{clean_text(w.get('excerpt',''))}"
+                f"[WEB {i}] {title}\n"
+                f"URL: {url}\n"
+                f"CITE_TOKEN: [WEB:{i}]({url})\n"
+                f"{ex}"
             )
 
     return "\n\n".join([p for p in parts if p]).strip()
@@ -1745,6 +2048,24 @@ def upload_pdf(file: UploadFile = File(...)):
         }
     }
 
+@app.post("/chat")
+async def chat_endpoint(
+    chat_id: str = Query(""),
+    message: str = Body(..., embed=True),
+    force_docs: bool = Query(False),
+    pdf: Optional[str] = Query(None),
+    page_hint: Optional[int] = Query(None),
+    messages: Optional[List[Dict[str, Any]]] = Body(None),
+):
+    return StreamingResponse(
+        _stream_answer_async(chat_id, message, force_docs, pdf, page_hint, messages=messages),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # helpful on nginx
+        },
+    )
 
 @app.get("/pdfs")
 def pdfs():
@@ -1785,55 +2106,7 @@ def health():
 
 
 # ============================================================
-# EVAL HARNESS
-# ============================================================
-
-async def _ask_once(user_msg: str, evidence_mode: bool) -> str:
-    ensure_vertex_ready()
-    if not _VERTEX_READY:
-        return "Vertex not ready"
-
-    model = get_model(
-        MODEL_COMPLIANCE if evidence_mode else MODEL_CHAT,
-        SYSTEM_PROMPT_EVIDENCE if evidence_mode else SYSTEM_PROMPT_NORMAL
-    )
-    resp = model.generate_content(
-        [Content(role="user", parts=[Part.from_text(user_msg)])],
-        generation_config=get_generation_config(evidence_mode),
-        stream=False
-    )
-    return (getattr(resp, "text", "") or "").strip()
-
-
-@app.post("/eval")
-async def eval_run(payload: Dict[str, Any] = Body(default={})):
-    try:
-        tests = payload.get("tests")
-        if not isinstance(tests, list):
-            if EVAL_FILE.exists():
-                tests = json.loads(EVAL_FILE.read_text(encoding="utf-8"))
-            else:
-                tests = []
-        tests = tests[:50]
-
-        started = time.time()
-        outs = []
-        for t in tests:
-            q = (t.get("q") or "").strip()
-            if not q:
-                continue
-            fam = (t.get("family") or "").strip() or _question_family(q)
-            evidence = fam in ("building_regs", "planning", "ber")
-            ans = await _ask_once(q, evidence_mode=evidence)
-            outs.append({"q": q, "family": fam, "answer": ans[:1200]})
-        elapsed = time.time() - started
-        return {"ok": True, "count": len(outs), "seconds": elapsed, "samples": outs}
-    except Exception as e:
-        return JSONResponse({"ok": False, "error": repr(e)}, status_code=500)
-
-
-# ============================================================
-# STREAMING CORE (broad coverage + style + doc diversity + safer web)
+# STREAMING CORE
 # ============================================================
 
 async def _stream_answer_async(
@@ -1842,12 +2115,22 @@ async def _stream_answer_async(
     force_docs: bool,
     pdf: Optional[str],
     page_hint: Optional[int],
-    messages: Optional[List[Dict[str, Any]]] = None
+    messages: Optional[List[Dict[str, Any]]] = None,
 ):
     try:
         user_msg = (message or "").strip()
         if not user_msg:
             yield "event: error\ndata: No message provided.\n\n"
+            yield "event: done\ndata: ok\n\n"
+            return
+
+        # Smalltalk fast-path
+        if is_smalltalk(user_msg):
+            friendly = "Hey — how can I help you today?"
+            if chat_id:
+                remember(chat_id, "user", user_msg)
+                remember(chat_id, "assistant", friendly)
+            yield f"data: {friendly.replace(chr(10), '\\\\n')}\n\n"
             yield "event: done\ndata: ok\n\n"
             return
 
@@ -1899,10 +2182,13 @@ async def _stream_answer_async(
 
             if chat_id:
                 remember(chat_id, "assistant", rendered)
-            yield f"data: {rendered.replace(chr(10),'\\\\n')}\n\n"
+            yield f"data: {rendered.replace(chr(10), '\\\\n')}\n\n"
             yield "event: done\ndata: ok\n\n"
             return
 
+        # ----------------------------
+        # Helpers (MUST stay inside _stream_answer_async)
+        # ----------------------------
         async def get_pdf_chunks() -> List[Chunk]:
             if not list_pdfs():
                 return []
@@ -1915,12 +2201,23 @@ async def _stream_answer_async(
 
                 collected: List[Chunk] = []
                 for q in queries:
-                    collected.extend(search_chunks(q, top_k=max(TOP_K_CHUNKS, 8), pinned_pdf=pinned))
+                    collected.extend(
+                        search_chunks(
+                            q,
+                            top_k=max(TOP_K_CHUNKS, 8),
+                            pinned_pdf=pinned,
+                            page_hint=page_hint,
+                        )
+                    )
 
                 collected = dedupe_chunks_keep_order(collected)
 
                 if RERANK_ENABLED and collected:
-                    collected = await _rerank_candidates(user_msg, collected, max_keep=max(RERANK_TOPK, 10))
+                    collected = await _rerank_candidates(
+                        user_msg,
+                        collected,
+                        max_keep=max(RERANK_TOPK, 10),
+                    )
 
                 collected = diversify_chunks(
                     collected,
@@ -1930,7 +2227,12 @@ async def _stream_answer_async(
                 return collected[: max(RERANK_TOPK, 10)]
 
             # Precise/mixed: normal
-            cands = search_chunks(user_msg, top_k=TOP_K_CHUNKS, pinned_pdf=pinned)
+            cands = search_chunks(
+                user_msg,
+                top_k=TOP_K_CHUNKS,
+                pinned_pdf=pinned,
+                page_hint=page_hint,
+            )
             if RERANK_ENABLED and cands:
                 cands = await _rerank_candidates(user_msg, cands, max_keep=RERANK_TOPK)
             return cands[:RERANK_TOPK]
@@ -1946,13 +2248,16 @@ async def _stream_answer_async(
             if not WEB_ENABLED:
                 return []
             serp = await web_search_serper(user_msg, k=TOP_K_WEB)
-            pages = await web_fetch_and_excerpt(user_msg, serp, max_items=TOP_K_WEB)
-            return pages
+            return await web_fetch_and_excerpt(user_msg, serp, max_items=TOP_K_WEB)
 
         # Only pull web when allowed:
         # - generally OK for general/planning/ber
         # - avoid web when evidence_mode AND numeric_needed (force doc quotes)
-        do_web = WEB_ENABLED and (not evidence_mode or fam in ("planning", "general", "ber") or (evidence_mode and not numeric_needed))
+        do_web = WEB_ENABLED and (
+            (not evidence_mode)
+            or fam in ("planning", "general", "ber")
+            or (evidence_mode and not numeric_needed)
+        )
 
         pdf_chunks, docai_hits, web_pages = await asyncio.gather(
             get_pdf_chunks(),
@@ -1960,22 +2265,29 @@ async def _stream_answer_async(
             get_web_evidence() if do_web else asyncio.sleep(0, result=[]),
         )
 
+        # ----------------------------
         # Doc-family sanity: pinned doc mismatch
+        # ----------------------------
         if pinned:
             pinned_type = _doc_type_from_pdfname(pinned)
             if fam != "general" and pinned_type not in ("general", fam):
                 safe = (
-                    "I think you’re asking about **" + fam.replace("_", " ") + "**, but the document I’m currently using looks like **"
-                    + pinned_type.replace("_", " ") + "**.\n\n"
+                    "I think you’re asking about **"
+                    + fam.replace("_", " ")
+                    + "**, but the document I’m currently using looks like **"
+                    + pinned_type.replace("_", " ")
+                    + "**.\n\n"
                     "Tell me which document to use (or upload the relevant one) and I’ll answer directly from it with a quote."
                 )
                 if chat_id:
                     remember(chat_id, "assistant", safe)
-                yield f"data: {safe.replace(chr(10),'\\\\n')}\n\n"
+                yield f"data: {safe.replace(chr(10), '\\\\n')}\n\n"
                 yield "event: done\ndata: ok\n\n"
                 return
 
+        # ----------------------------
         # Numeric compliance: must have doc evidence
+        # ----------------------------
         if numeric_needed and not pdf_chunks and not docai_hits:
             refusal = (
                 "I can’t confirm the exact numeric requirement yet because I don’t have relevant TGD evidence loaded for this question.\n\n"
@@ -1983,11 +2295,17 @@ async def _stream_answer_async(
             )
             if chat_id:
                 remember(chat_id, "assistant", refusal)
-            yield f"data: {refusal.replace(chr(10),'\\\\n')}\n\n"
+            yield f"data: {refusal.replace(chr(10), '\\\\n')}\n\n"
             yield "event: done\ndata: ok\n\n"
             return
 
-        sources_block = build_sources_block(pdf_chunks, web_pages, docai_hits, user_query=user_msg, precision=precision)
+        sources_block = build_sources_block(
+            pdf_chunks,
+            web_pages,
+            docai_hits,
+            user_query=user_msg,
+            precision=precision,
+        )
 
         ensure_vertex_ready()
         if not _VERTEX_READY:
@@ -2002,7 +2320,11 @@ async def _stream_answer_async(
         model = get_model(model_name=model_name, system_prompt=system_prompt)
         contents = build_contents(history_for_prompt, user_msg, sources_block, precision=precision)
 
-        stream = model.generate_content(contents, generation_config=get_generation_config(evidence_mode), stream=True)
+        stream = model.generate_content(
+            contents,
+            generation_config=get_generation_config(evidence_mode),
+            stream=True,
+        )
 
         full: List[str] = []
         for ch in stream:
@@ -2010,10 +2332,14 @@ async def _stream_answer_async(
             if not delta:
                 continue
             full.append(delta)
-            safe = delta.replace("\r", "").replace("\n", "\\n")
-            yield f"data: {safe}\n\n"
+            safe_delta = delta.replace("\r", "").replace("\n", "\\n")
+            yield f"data: {safe_delta}\n\n"
 
         draft = "".join(full).strip()
+
+        # Enforce web citations (only if we actually fetched web pages)
+        if do_web and web_pages:
+            draft = _enforce_web_citations(draft, web_pages)
 
         # Hard verify numeric against evidence blob
         sources_blob = _sources_text_blob_for_verification(pdf_chunks, docai_hits, web_pages)
@@ -2021,7 +2347,7 @@ async def _stream_answer_async(
 
         if not ok and final_text:
             upd = "\n\n---\n\n### ✅ Final (verified)\n\n" + final_text
-            yield f"data: {upd.replace(chr(10),'\\\\n')}\n\n"
+            yield f"data: {upd.replace(chr(10), '\\\\n')}\n\n"
             draft = (draft + upd).strip()
 
         if chat_id:
@@ -2034,41 +2360,3 @@ async def _stream_answer_async(
         yield f"event: error\ndata: {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
 
-
-@app.get("/chat_stream")
-def chat_stream_get(
-    q: str = Query(""),
-    chat_id: str = Query(""),
-    force_docs: bool = Query(False),
-    pdf: Optional[str] = Query(None),
-    page_hint: Optional[int] = Query(None),
-):
-    async def gen():
-        async for s in _stream_answer_async(chat_id.strip(), q, force_docs, pdf, page_hint, messages=None):
-            yield s
-
-    return StreamingResponse(
-        gen(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
-    )
-
-
-@app.post("/chat_stream")
-def chat_stream_post(payload: Dict[str, Any] = Body(...)):
-    chat_id = (payload.get("chat_id") or "").strip()
-    message = (payload.get("message") or payload.get("q") or "").strip()
-    force_docs = bool(payload.get("force_docs", False))
-    pdf = payload.get("pdf")
-    page_hint = payload.get("page_hint")
-    messages = payload.get("messages")
-
-    async def gen():
-        async for s in _stream_answer_async(chat_id, message, force_docs, pdf, page_hint, messages=messages):
-            yield s
-
-    return StreamingResponse(
-        gen(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
-    )
