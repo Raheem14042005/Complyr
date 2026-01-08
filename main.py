@@ -14,10 +14,13 @@ from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime
 from collections import Counter, defaultdict
 
+
 import httpx
 import fitz  # PyMuPDF
+import boto3
 
 from fastapi import FastAPI, UploadFile, File, Query, Body, Header
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 
@@ -25,6 +28,44 @@ from dotenv import load_dotenv
 
 import vertexai
 from vertexai.generative_models import GenerativeModel, Part, Content, GenerationConfig
+
+# ============================================================
+# REQUEST MODELS
+# ============================================================
+
+class ChatBody(BaseModel):
+    message: str
+    messages: Optional[List[Dict[str, Any]]] = None
+
+# ============================================================
+# BASE DIR (must exist before you build any paths from it)
+# ============================================================
+BASE_DIR = Path(__file__).resolve().parent
+
+# ============================================================
+# CONFIG / ENV
+# ============================================================
+load_dotenv()
+R2_ENABLED = os.getenv("R2_ENABLED", "false").lower() in ("1", "true", "yes", "on")
+R2_BUCKET = (os.getenv("R2_BUCKET") or "").strip()
+
+R2_ENDPOINT = (os.getenv("R2_ENDPOINT") or "").strip()
+R2_ACCESS_KEY_ID = (os.getenv("R2_ACCESS_KEY_ID") or "").strip()
+R2_SECRET_ACCESS_KEY = (os.getenv("R2_SECRET_ACCESS_KEY") or "").strip()
+
+def r2_client():
+    if not (R2_ENDPOINT and R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY):
+        raise RuntimeError(
+            "Missing R2 creds/env "
+            "(R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)"
+        )
+    return boto3.client(
+        "s3",
+        endpoint_url=R2_ENDPOINT,
+        aws_access_key_id=R2_ACCESS_KEY_ID,
+        aws_secret_access_key=R2_SECRET_ACCESS_KEY,
+    )
+
 
 # Optional: Vertex Embeddings (no extra deps)
 try:
@@ -48,9 +89,6 @@ except Exception:
 # ============================================================
 # CONFIG
 # ============================================================
-
-load_dotenv()
-
 
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "80"))
 
@@ -88,9 +126,9 @@ RERANK_ENABLED = os.getenv("RERANK_ENABLED", "true").lower() in ("1", "true", "y
 RERANK_TOPK = int(os.getenv("RERANK_TOPK", str(TOP_K_CHUNKS)))
 
 # Broad vs precise answering controls
-BROAD_DOC_DIVERSITY_K = int(os.getenv("BROAD_DOC_DIVERSITY_K", "3"))  # broad questions: cover up to N docs
-BROAD_TOPIC_HITS_K = int(os.getenv("BROAD_TOPIC_HITS_K", "2"))        # broad questions: hits per doc/topic bucket
-BROAD_MAX_SUBQUERIES = int(os.getenv("BROAD_MAX_SUBQUERIES", "6"))    # cost limiter for topic expansion
+BROAD_DOC_DIVERSITY_K = int(os.getenv("BROAD_DOC_DIVERSITY_K", "5"))
+BROAD_TOPIC_HITS_K = int(os.getenv("BROAD_TOPIC_HITS_K", "3"))
+BROAD_MAX_SUBQUERIES = int(os.getenv("BROAD_MAX_SUBQUERIES", "8"))
 
 # Web allowlist (safe + higher trust)
 WEB_ALLOWLIST_DEFAULT = [
@@ -130,6 +168,14 @@ WEB_RETRY_BACKOFF = float(os.getenv("WEB_RETRY_BACKOFF", "0.6")) # seconds
 
 # Web cache
 WEB_CACHE_TTL_SECONDS = int(os.getenv("WEB_CACHE_TTL_SECONDS", str(12 * 60 * 60)))  # 12h
+# -----------------------------------------
+# DIAGRAMS / IMAGES FROM PDFs (optional)
+# -----------------------------------------
+PDF_IMAGE_EXTRACT = os.getenv("PDF_IMAGE_EXTRACT", "false").lower() in ("1", "true", "yes", "on")
+PDF_IMAGE_MAX_PAGES = int(os.getenv("PDF_IMAGE_MAX_PAGES", "12"))     # safety cap
+PDF_IMAGE_MAX_IMAGES = int(os.getenv("PDF_IMAGE_MAX_IMAGES", "24"))   # safety cap
+PDF_IMAGE_MIN_PIXELS = int(os.getenv("PDF_IMAGE_MIN_PIXELS", "120000"))  # ignore tiny icons
+
 
 DATA_DIR = Path(os.getenv("DATA_DIR", str(BASE_DIR))).resolve()
 
@@ -149,7 +195,7 @@ def require_admin_key(x_api_key: Optional[str]) -> Optional[JSONResponse]:
         return JSONResponse({"ok": False, "error": "Unauthorized"}, status_code=401)
     return None
 
-app = FastAPI(docs_url="/swagger", redoc_url=None)
+app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
 # ---- CORS configuration ----
 # Comma-separated list in env:
@@ -229,8 +275,9 @@ def get_model(model_name: str, system_prompt: str) -> GenerativeModel:
 def get_generation_config(is_evidence: bool) -> GenerationConfig:
     # More ChatGPT-like: stable, paragraphy
     if is_evidence:
-        return GenerationConfig(temperature=0.2, top_p=0.8, max_output_tokens=2200)
-    return GenerationConfig(temperature=0.65, top_p=0.9, max_output_tokens=2200)
+        return GenerationConfig(temperature=0.2, top_p=0.8, max_output_tokens=3500)
+    return GenerationConfig(temperature=0.65, top_p=0.9, max_output_tokens=3500)
+
 
 
 # ============================================================
@@ -315,6 +362,119 @@ TABLE_RE = re.compile(r"\btable\s+([a-z0-9][a-z0-9\.\-]*)\b", re.I)
 DIAGRAM_RE = re.compile(r"\bdiagram\s+([a-z0-9][a-z0-9\.\-]*)\b", re.I)
 
 WEB_CITE_NUM_RE = re.compile(r"\[(\d+)\]")
+
+# ============================================================
+# VISUAL (DIAGRAM/TABLE) INTENT + PAGE RENDERING + VISION
+# ============================================================
+
+VISUAL_TERMS_RE = re.compile(r"\b(diagram|figure|fig\.|table|chart|graph|drawing|schematic)\b", re.I)
+
+@dataclass
+class Chunk:
+    doc: str
+    page: int  # 1-based
+    chunk_id: str
+    text: str
+    tf: Counter
+    length: int
+    section: str = ""
+    heading: str = ""
+    table: str = ""
+    diagram: str = ""
+
+
+CHUNK_INDEX: Dict[str, Dict[str, Any]] = {}
+EMBED_INDEX: Dict[str, Dict[str, Any]] = {}  # pdf_name -> {"vectors": {chunk_id: [..]}, "dim": int}
+PDF_IMAGE_INDEX: Dict[str, List[Dict[str, Any]]] = {}
+
+def wants_visual_evidence(q: str) -> bool:
+    return bool(VISUAL_TERMS_RE.search(q or ""))
+
+def render_pdf_page_to_png(pdf_path: Path, page_no: int, zoom: float = 2.0) -> Optional[Path]:
+    """
+    Render a PDF page to PNG. Works for vector diagrams + raster.
+    page_no is 1-based.
+    """
+    doc = None
+    try:
+        doc = fitz.open(pdf_path)
+        page = doc.load_page(max(0, page_no - 1))
+        mat = fitz.Matrix(zoom, zoom)
+        pix = page.get_pixmap(matrix=mat, alpha=False)
+
+        out_dir = CACHE_DIR / "page_renders" / pdf_path.stem
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / f"p{page_no}.png"
+        pix.save(str(out_path))
+        return out_path
+    except Exception:
+        return None
+    finally:
+        try:
+            if doc:
+                doc.close()
+        except Exception:
+            pass
+
+def describe_image_with_gemini(image_path: Path, user_question: str) -> str:
+    """
+    Ask Gemini to interpret a diagram/table screenshot.
+    Returns text. If unreadable, it may return OCR_NEEDED.
+    """
+    ensure_vertex_ready()
+    if not _VERTEX_READY:
+        return ""
+
+    img_bytes = image_path.read_bytes()
+
+    prompt = (
+        "You are reading a figure/table/diagram rendered from a PDF page.\n"
+        "1) Describe what the visual shows.\n"
+        "2) If it contains a table, transcribe the table values as clean text.\n"
+        "3) If text is too small/unclear, output 'OCR_NEEDED' and explain what is unreadable.\n\n"
+        f"User question: {user_question}"
+    )
+
+    model = GenerativeModel(MODEL_COMPLIANCE)
+    resp = model.generate_content(
+        [Part.from_text(prompt), Part.from_data(img_bytes, mime_type='image/png')],
+        generation_config=GenerationConfig(temperature=0.2, top_p=0.8, max_output_tokens=1200),
+        stream=False,
+    )
+    return (getattr(resp, "text", "") or "").strip()
+
+def pick_visual_pages(user_msg: str, chunks: List[Chunk], max_pages: int = 2) -> List[int]:
+    """
+    Choose the most likely pages to render when the user asks about a diagram/table/figure.
+    """
+    a = anchor_from_query(user_msg)
+    pages: List[int] = []
+
+    if a.get("table"):
+        t = a["table"]
+        for c in chunks:
+            if c.table and c.table.lower() == t.lower():
+                pages.append(c.page)
+
+    if a.get("diagram"):
+        d = a["diagram"]
+        for c in chunks:
+            if c.diagram and c.diagram.lower() == d.lower():
+                pages.append(c.page)
+
+    if not pages:
+        pages = [c.page for c in chunks[:6]]
+
+    out: List[int] = []
+    seen = set()
+    for p in pages:
+        if p in seen:
+            continue
+        seen.add(p)
+        out.append(p)
+        if len(out) >= max_pages:
+            break
+    return out
 
 def _enforce_web_citations(answer: str, web_pages: List[Dict[str, str]]) -> str:
     if not web_pages:
@@ -490,24 +650,6 @@ def intent_queries_for_topics(user_msg: str, topics: List[str]) -> List[str]:
 # CHUNK INDEX (BM25 + METADATA + OPTIONAL EMBEDDINGS)
 # ============================================================
 
-@dataclass
-class Chunk:
-    doc: str
-    page: int  # 1-based
-    chunk_id: str
-    text: str
-    tf: Counter
-    length: int
-    section: str = ""
-    heading: str = ""
-    table: str = ""
-    diagram: str = ""
-
-
-CHUNK_INDEX: Dict[str, Dict[str, Any]] = {}
-EMBED_INDEX: Dict[str, Dict[str, Any]] = {}  # pdf_name -> {"vectors": {chunk_id: [..]}, "dim": int}
-
-
 def bm25_score(query_toks: List[str], tf: Counter, df: Counter, N: int, dl: int, avgdl: float) -> float:
     k1 = 1.2
     b = 0.75
@@ -541,12 +683,30 @@ def _pdf_fingerprint(pdf_path: Path) -> str:
 
 
 def list_pdfs() -> List[str]:
+    # Prefer R2 as the source of truth (persistent across redeploys)
+    if R2_ENABLED:
+        try:
+            c = r2_client()
+            resp = c.list_objects_v2(Bucket=R2_BUCKET)
+            out = []
+            for obj in (resp.get("Contents") or []):
+                key = (obj.get("Key") or "").strip()
+                if key.lower().endswith(".pdf"):
+                    out.append(Path(key).name)
+            out.sort()
+            return out
+        except Exception:
+            # fallback to disk if R2 temporarily errors
+            pass
+
+    # Local fallback
     files = []
     for p in PDF_DIR.iterdir():
         if p.is_file() and p.suffix.lower() == ".pdf":
             files.append(p.name)
     files.sort()
     return files
+
 
 
 def looks_like_table_block(text: str) -> bool:
@@ -611,7 +771,7 @@ def _detect_context_lines(page_text: str) -> Tuple[str, str, str, str]:
     diagram = ""
 
     lines = [ln.strip() for ln in (page_text or "").split("\n") if ln.strip()]
-    for ln in lines[:100]:
+    for ln in lines[:220]:
         m = SECTION_RE.match(ln)
         if m:
             section = m.group(1).strip()
@@ -736,6 +896,77 @@ def _save_index_to_cache(pdf_path: Path, idx: Dict[str, Any]) -> None:
     except Exception:
         pass
 
+def extract_pdf_images(pdf_path: Path) -> List[Dict[str, Any]]:
+    """
+    Extract raster images from a PDF using PyMuPDF.
+    Saves to CACHE_DIR/images/<pdf_stem>/...
+    Returns: {page, path, width, height, bytes, ext}
+    """
+    if not PDF_IMAGE_EXTRACT:
+        return []
+
+    out: List[Dict[str, Any]] = []
+    try:
+        doc = fitz.open(pdf_path)
+    except Exception:
+        return []
+
+    img_dir = CACHE_DIR / "images" / pdf_path.stem
+    img_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        pages_to_scan = min(doc.page_count, max(1, PDF_IMAGE_MAX_PAGES))
+        for i in range(pages_to_scan):
+            page = doc.load_page(i)
+            images = page.get_images(full=True) or []
+            for img in images:
+                if len(out) >= PDF_IMAGE_MAX_IMAGES:
+                    return out
+
+                xref = img[0]
+                try:
+                    pix = fitz.Pixmap(doc, xref)
+                except Exception:
+                    continue
+
+                if pix.n > 4:
+                    try:
+                        pix = fitz.Pixmap(fitz.csRGB, pix)
+                    except Exception:
+                        continue
+
+                w, h = int(pix.width), int(pix.height)
+                if w * h < PDF_IMAGE_MIN_PIXELS:
+                    continue
+
+                ext = "png"
+                fname = f"p{i+1}_img{xref}.{ext}"
+                fpath = img_dir / fname
+
+                try:
+                    pix.save(str(fpath))
+                except Exception:
+                    continue
+
+                try:
+                    size_bytes = fpath.stat().st_size
+                except Exception:
+                    size_bytes = 0
+
+                out.append(
+                    {
+                        "page": i + 1,
+                        "path": str(fpath),
+                        "width": w,
+                        "height": h,
+                        "bytes": size_bytes,
+                        "ext": ext,
+                    }
+                )
+    finally:
+        doc.close()
+
+    return out
 
 def index_pdf_to_chunks(pdf_path: Path) -> None:
     pdf_name = pdf_path.name
@@ -803,14 +1034,34 @@ def index_pdf_to_chunks(pdf_path: Path) -> None:
 
     finally:
         doc.close()
+def ensure_pdf_local(pdf_name: str) -> Optional[Path]:
+    """
+    Make sure PDF exists on local disk.
+    If missing and R2 is enabled, download it from R2 into PDF_DIR.
+    """
+    pdf_name = Path(pdf_name).name
+    local_path = PDF_DIR / pdf_name
+    if local_path.exists():
+        return local_path
 
+    if not R2_ENABLED:
+        return None
+
+    try:
+        c = r2_client()
+        # object key = filename (we store just the name)
+        c.download_file(R2_BUCKET, pdf_name, str(local_path))
+        return local_path if local_path.exists() else None
+    except Exception:
+        return None
 
 def ensure_chunk_indexed(pdf_name: str) -> None:
     if pdf_name in CHUNK_INDEX:
         return
-    p = PDF_DIR / pdf_name
-    if p.exists():
+    p = ensure_pdf_local(pdf_name)
+    if p and p.exists():
         index_pdf_to_chunks(p)
+
 
 
 def _cosine(a: List[float], b: List[float]) -> float:
@@ -975,10 +1226,13 @@ def search_chunks(
         N = idx["N"]
         avgdl = idx["avgdl"]
 
+        doc_boost = 1.2 if (pinned_pdf and pdf_name == pinned_pdf) else 0.0
+
         scored: List[Tuple[float, Chunk]] = []
         for ch in idx["chunks"]:
             s = bm25_score(qt, ch.tf, df, N, ch.length, avgdl)
             s += page_hint_boost(ch.page, page_hint)
+            s += doc_boost
 
             if vector_set and ch.chunk_id in vector_set:
                 s += 2.5
@@ -989,9 +1243,6 @@ def search_chunks(
 
         take = max(24, top_k * 6)
         candidates.extend(scored[:take])
-
-        if pinned_pdf and pdf_name == pinned_pdf:
-            break
 
     candidates.sort(key=lambda x: x[0], reverse=True)
     seen = set()
@@ -1721,9 +1972,11 @@ def build_contents(history: List[Dict[str, str]], user_message: str, sources_blo
     if precision == "broad":
         controller = (
             "\n\n[CONTROLLER]\n"
-            "The user question is BROAD. Cover the main interpretations that match the user's words, "
-            "and make sure you address EACH key topic mentioned by the user. "
-            "Keep it in paragraphs. End with ONE focused follow-up.\n"
+            "The user question is BROAD.\n"
+            "- Give a thorough, structured explanation covering each topic implied by the question.\n"
+            "- If multiple documents mention the topic, summarise the key differences/angles.\n"
+            "- Prefer paragraphs; use bullets only when it improves clarity.\n"
+            "- End with ONE focused follow-up.\n"
         )
     elif precision == "precise":
         controller = (
@@ -1748,14 +2001,15 @@ def build_contents(history: List[Dict[str, str]], user_message: str, sources_blo
 
 
 def _format_pdf_citation(c: Chunk) -> str:
-    bits = [f"Document: {c.doc}"]
+    bits = [f"Document: {c.doc}", f"p.{c.page}"]
     if c.section:
         bits.append(f"Section: {c.section}")
-    elif c.table:
+    if c.table:
         bits.append(f"Table: {c.table}")
-    else:
-        bits.append(f"p.{c.page}")
+    if c.diagram:
+        bits.append(f"Diagram: {c.diagram}")
     return "(" + ", ".join(bits) + ")"
+
 
 
 def _tighten_chunk_text_for_evidence(c: Chunk, query: str, max_chars: int = 950) -> str:
@@ -1993,31 +2247,36 @@ def _split_docai_combined_to_chunks(combined: str) -> List[Tuple[Tuple[int, int]
         i += 3
     return out
 
-
 @app.post("/upload-pdf")
 async def upload_pdf(
     file: UploadFile = File(...),
     x_api_key: Optional[str] = Header(None, alias="x-api-key"),
 ):
-
     # Admin key gate (dev allows if ADMIN_API_KEY not set)
     unauthorized = require_admin_key(x_api_key)
     if unauthorized:
         return unauthorized
 
-    # Validate file type (don’t trust only filename, but this is a good minimum)
+    # Validate file type
     filename = (file.filename or "").lower()
     content_type = (file.content_type or "").lower()
 
     if not filename.endswith(".pdf") and content_type != "application/pdf":
-        return JSONResponse({"ok": False, "error": "Only PDF files are allowed."}, status_code=400)
+        return JSONResponse(
+            {"ok": False, "error": "Only PDF files are allowed."},
+            status_code=400,
+        )
 
     raw = await file.read()
     if len(raw) > MAX_UPLOAD_MB * 1024 * 1024:
-        return JSONResponse({"ok": False, "error": f"File too large. Max {MAX_UPLOAD_MB}MB."}, status_code=400)
+        return JSONResponse(
+            {"ok": False, "error": f"File too large. Max {MAX_UPLOAD_MB}MB."},
+            status_code=400,
+        )
 
     safe_name = Path(file.filename or "upload.pdf").name
     dest = PDF_DIR / safe_name
+
     if dest.exists():
         stem, suffix = dest.stem, dest.suffix
         i = 2
@@ -2028,7 +2287,31 @@ async def upload_pdf(
                 break
             i += 1
 
+    # Save locally
     dest.write_bytes(raw)
+
+    # Optional: extract diagrams/images from PDF into cache
+    if PDF_IMAGE_EXTRACT:
+        try:
+            PDF_IMAGE_INDEX[dest.name] = extract_pdf_images(dest)
+        except Exception:
+            PDF_IMAGE_INDEX[dest.name] = []
+
+    # Upload to R2 for persistence (survives redeploy)
+    if R2_ENABLED:
+        try:
+            c = r2_client()
+            c.put_object(
+                Bucket=R2_BUCKET,
+                Key=dest.name,
+                Body=raw,
+                ContentType="application/pdf",
+            )
+        except Exception as e:
+            return JSONResponse(
+                {"ok": False, "error": f"R2 upload failed: {repr(e)}"},
+                status_code=500,
+            )
 
     # Clear indexes for this file
     CHUNK_INDEX.pop(dest.name, None)
@@ -2037,13 +2320,17 @@ async def upload_pdf(
     try:
         index_pdf_to_chunks(dest)
     except Exception as e:
-        return JSONResponse({"ok": False, "error": f"Index failed: {repr(e)}"}, status_code=500)
+        return JSONResponse(
+            {"ok": False, "error": f"Index failed: {repr(e)}"},
+            status_code=500,
+        )
 
     try:
         if EMBED_ENABLED:
             _ensure_embeddings(dest.name)
     except Exception:
         pass
+
 
     # DocAI parse (optional)
     docai_ok = False
@@ -2079,32 +2366,37 @@ async def upload_pdf(
 
 @app.post("/chat")
 async def chat_endpoint(
+    body: ChatBody,
     chat_id: str = Query(""),
-    message: str = Body(..., embed=True),
     force_docs: bool = Query(False),
     pdf: Optional[str] = Query(None),
     page_hint: Optional[int] = Query(None),
-    messages: Optional[List[Dict[str, Any]]] = Body(None),
     x_api_key: Optional[str] = Header(None, alias="x-api-key"),
 ):
+
     unauthorized = require_admin_key(x_api_key)
     if unauthorized:
         return unauthorized
 
     return StreamingResponse(
-        _stream_answer_async(chat_id, message, force_docs, pdf, page_hint, messages=messages),
+        _stream_answer_async(chat_id, body.message, force_docs, pdf, page_hint, messages=body.messages),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",  # helpful on nginx
+            "X-Accel-Buffering": "no",
         },
     )
+
 
 @app.get("/pdfs")
 def pdfs():
     return {"pdfs": list_pdfs()}
-
+@app.get("/pdf-images")
+def pdf_images(pdf: str = Query(...)):
+    name = Path(pdf).name
+    imgs = PDF_IMAGE_INDEX.get(name, [])
+    return {"ok": True, "pdf": name, "count": len(imgs), "images": imgs}
 
 # ============================================================
 # HEALTH + ROOT
@@ -2300,6 +2592,49 @@ async def _stream_answer_async(
         )
 
         # ----------------------------
+        # Visual evidence lane (diagrams/tables/figures)
+        # ----------------------------
+        visual_notes: List[str] = []
+        if wants_visual_evidence(user_msg) and pdf_chunks:
+            # Decide which PDF to render from: use pinned if available, else the top chunk's doc
+            visual_pdf = Path((pinned or pdf_chunks[0].doc) or "").name
+            pdf_path = ensure_pdf_local(visual_pdf) if visual_pdf else None
+
+            if pdf_path and pdf_path.exists():
+                pages_to_render = pick_visual_pages(user_msg, pdf_chunks, max_pages=2)
+
+                # Safety: dedupe + hard cap
+                seen_pages = set()
+                safe_pages: List[int] = []
+                for pno in pages_to_render:
+                    try:
+                        pno = int(pno)
+                    except Exception:
+                        continue
+                    if pno <= 0 or pno in seen_pages:
+                        continue
+                    seen_pages.add(pno)
+                    safe_pages.append(pno)
+                    if len(safe_pages) >= 2:
+                        break
+
+                for pno in safe_pages:
+                    img_path = render_pdf_page_to_png(pdf_path, pno, zoom=2.0)
+                    if not img_path:
+                        continue
+
+                    # describe_image_with_gemini is sync; run in a thread to avoid blocking the event loop
+                    try:
+                        vision_text = await asyncio.to_thread(describe_image_with_gemini, img_path, user_msg)
+                    except Exception:
+                        vision_text = ""
+
+                    if vision_text:
+                        visual_notes.append(
+                            f"[VISUAL] (Document: {visual_pdf}, p.{pno})\n{vision_text}"
+                        )
+
+        # ----------------------------
         # Doc-family sanity: pinned doc mismatch
         # ----------------------------
         if pinned:
@@ -2340,6 +2675,10 @@ async def _stream_answer_async(
             user_query=user_msg,
             precision=precision,
         )
+
+        # Append visual notes into sources (so the model can use them)
+        if visual_notes:
+            sources_block = (sources_block + "\n\nVISUAL EVIDENCE:\n" + "\n\n".join(visual_notes)).strip()
 
         ensure_vertex_ready()
         if not _VERTEX_READY:
@@ -2393,6 +2732,4 @@ async def _stream_answer_async(
         msg = str(e).replace("\r", "").replace("\n", " ")
         yield f"event: error\ndata: {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
-
-
-
+        return
