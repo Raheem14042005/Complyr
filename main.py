@@ -52,6 +52,9 @@ R2_BUCKET = (os.getenv("R2_BUCKET") or "").strip()
 R2_ENDPOINT = (os.getenv("R2_ENDPOINT") or "").strip()
 R2_ACCESS_KEY_ID = (os.getenv("R2_ACCESS_KEY_ID") or "").strip()
 R2_SECRET_ACCESS_KEY = (os.getenv("R2_SECRET_ACCESS_KEY") or "").strip()
+R2_PREFIX = (os.getenv("R2_PREFIX") or "pdfs/").strip()
+if R2_PREFIX and not R2_PREFIX.endswith("/"):
+    R2_PREFIX += "/"
 
 def r2_client():
     if not (R2_ENDPOINT and R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY):
@@ -685,20 +688,39 @@ def _pdf_fingerprint(pdf_path: Path) -> str:
 
 
 def list_pdfs() -> List[str]:
-    # Prefer R2 as the source of truth (persistent across redeploys)
     if R2_ENABLED:
         try:
             c = r2_client()
-            resp = c.list_objects_v2(Bucket=R2_BUCKET)
             out = []
-            for obj in (resp.get("Contents") or []):
-                key = (obj.get("Key") or "").strip()
-                if key.lower().endswith(".pdf"):
-                    out.append(Path(key).name)
+            token = None
+
+            prefix = R2_PREFIX if "R2_PREFIX" in globals() else "pdfs/"
+            prefix = (prefix or "").strip()
+            if prefix and not prefix.endswith("/"):
+                prefix += "/"
+
+            while True:
+                kwargs = {"Bucket": R2_BUCKET, "MaxKeys": 1000}
+                if prefix:
+                    kwargs["Prefix"] = prefix
+                if token:
+                    kwargs["ContinuationToken"] = token
+
+                resp = c.list_objects_v2(**kwargs)
+
+                for obj in (resp.get("Contents") or []):
+                    key = (obj.get("Key") or "").strip()
+                    if key.lower().endswith(".pdf"):
+                        out.append(Path(key).name)
+
+                if resp.get("IsTruncated"):
+                    token = resp.get("NextContinuationToken")
+                else:
+                    break
+
             out.sort()
             return out
         except Exception:
-            # fallback to disk if R2 temporarily errors
             pass
 
     # Local fallback
@@ -708,6 +730,7 @@ def list_pdfs() -> List[str]:
             files.append(p.name)
     files.sort()
     return files
+
 
 
 
@@ -1037,10 +1060,6 @@ def index_pdf_to_chunks(pdf_path: Path) -> None:
     finally:
         doc.close()
 def ensure_pdf_local(pdf_name: str) -> Optional[Path]:
-    """
-    Make sure PDF exists on local disk.
-    If missing and R2 is enabled, download it from R2 into PDF_DIR.
-    """
     pdf_name = Path(pdf_name).name
     local_path = PDF_DIR / pdf_name
     if local_path.exists():
@@ -1051,11 +1070,23 @@ def ensure_pdf_local(pdf_name: str) -> Optional[Path]:
 
     try:
         c = r2_client()
-        # object key = filename (we store just the name)
+
+        # Try prefixed key first (matches your dashboard)
+        key1 = f"{R2_PREFIX}{pdf_name}" if R2_PREFIX else pdf_name
+        try:
+            c.download_file(R2_BUCKET, key1, str(local_path))
+            if local_path.exists():
+                return local_path
+        except Exception:
+            pass
+
+        # Fallback: try non-prefixed key (older uploads)
         c.download_file(R2_BUCKET, pdf_name, str(local_path))
         return local_path if local_path.exists() else None
+
     except Exception:
         return None
+
 
 def ensure_chunk_indexed(pdf_name: str) -> None:
     if pdf_name in CHUNK_INDEX:
@@ -2760,5 +2791,6 @@ async def _stream_answer_async(
         yield f"event: error\ndata: {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
 
 
