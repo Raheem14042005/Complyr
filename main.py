@@ -2392,11 +2392,25 @@ async def chat_endpoint(
 @app.get("/pdfs")
 def pdfs():
     return {"pdfs": list_pdfs()}
+    
 @app.get("/pdf-images")
 def pdf_images(pdf: str = Query(...)):
     name = Path(pdf).name
     imgs = PDF_IMAGE_INDEX.get(name, [])
     return {"ok": True, "pdf": name, "count": len(imgs), "images": imgs}
+    
+@app.get("/r2-test")
+def r2_test():
+    if not R2_ENABLED:
+        return {"ok": False, "error": "R2_ENABLED is false"}
+
+    try:
+        c = r2_client()
+        resp = c.list_objects_v2(Bucket=R2_BUCKET, MaxKeys=20)
+        keys = [o.get("Key") for o in (resp.get("Contents") or [])]
+        return {"ok": True, "bucket": R2_BUCKET, "count": len(keys), "keys": keys}
+    except Exception as e:
+        return {"ok": False, "error": repr(e)}
 
 # ============================================================
 # HEALTH + ROOT
@@ -2415,7 +2429,10 @@ def health():
         "vertex_ready": _VERTEX_READY,
         "vertex_error": _VERTEX_ERR,
         "pdf_count": len(list_pdfs()),
-        "models": {"chat": MODEL_CHAT, "compliance": MODEL_COMPLIANCE},
+        "models": {
+            "chat": MODEL_CHAT,
+            "compliance": MODEL_COMPLIANCE,
+        },
         "project": GCP_PROJECT_ID,
         "location": GCP_LOCATION,
         "docai_helper": _DOCAI_HELPER_AVAILABLE,
@@ -2428,7 +2445,15 @@ def health():
         "verify_numeric": bool(VERIFY_NUMERIC),
         "rules_enabled": bool(RULES_ENABLED and RULES_FILE.exists()),
         "web_cache_ttl_seconds": WEB_CACHE_TTL_SECONDS,
+        "r2": {
+            "enabled": R2_ENABLED,
+            "bucket": R2_BUCKET,
+            "endpoint": R2_ENDPOINT,
+            "access_key_set": bool(R2_ACCESS_KEY_ID),
+            "secret_set": bool(R2_SECRET_ACCESS_KEY),
+        },
     }
+
 
 
 # ============================================================
@@ -2733,3 +2758,4 @@ async def _stream_answer_async(
         yield f"event: error\ndata: {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
