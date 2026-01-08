@@ -2804,7 +2804,7 @@ async def _stream_answer_async(
         ensure_vertex_ready()
         if not _VERTEX_READY:
             msg = (_VERTEX_ERR or "Vertex not ready").replace("\r", "").replace("\n", " ")
-            yield f"event: error\ndata: {msg}\n\n"
+            yield f"data: [ERROR] {msg}\n\n"
             yield "event: done\ndata: ok\n\n"
             return
 
@@ -2851,9 +2851,10 @@ async def _stream_answer_async(
 
     except Exception as e:
         msg = str(e).replace("\r", "").replace("\n", " ")
-        yield f"event: error\ndata: {msg}\n\n"
+        yield f"data: [ERROR] {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
 
 
 
