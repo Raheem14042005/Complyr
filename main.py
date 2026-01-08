@@ -393,6 +393,7 @@ class Chunk:
 CHUNK_INDEX: Dict[str, Dict[str, Any]] = {}
 EMBED_INDEX: Dict[str, Dict[str, Any]] = {}  # pdf_name -> {"vectors": {chunk_id: [..]}, "dim": int}
 PDF_IMAGE_INDEX: Dict[str, List[Dict[str, Any]]] = {}
+PDF_DISPLAY_NAME: Dict[str, str] = {}
 
 def wants_visual_evidence(q: str) -> bool:
     return bool(VISUAL_TERMS_RE.search(q or ""))
@@ -2771,7 +2772,7 @@ async def _stream_answer_async(
                 )
                 if chat_id:
                     remember(chat_id, "assistant", safe)
-                yield sse_send(rendered)
+                yield sse_send(safe)
                 yield "event: done\ndata: ok\n\n"
                 return
 
@@ -2785,7 +2786,7 @@ async def _stream_answer_async(
             )
             if chat_id:
                 remember(chat_id, "assistant", refusal)
-            yield sse_send(rendered)
+            yield sse_send(refusal)
             yield "event: done\ndata: ok\n\n"
             return
 
@@ -2854,6 +2855,7 @@ async def _stream_answer_async(
         yield f"data: [ERROR] {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
 
 
 
