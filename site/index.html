@@ -1089,11 +1089,10 @@
     // Safety: prevent arbitrary API_BASE overrides (protects users & prevents broken configs)
     if (!API_BASE.startsWith("https://complyr.onrender.com")) {
       localStorage.removeItem("RAHEEM_API_BASE");
-      // Avoid reload loops on weird browsers; safe enough.
-      if (!navigator.userAgent.toLowerCase().includes("samsungbrowser")) {
-        location.replace("/");
+      // Force correct base without causing a redirect loop.
+      window.__RAHEEM_API_BASE_FORCED = true;
       }
-    }
+ 
 
     // =========================================================
     // Toast
@@ -1184,8 +1183,9 @@
     document.getElementById("btnOpenFuture").onclick = ()=>showView("future");
 
     // Restore last view
-    const savedView = (localStorage.getItem("RAHEEM_VIEW") || "home").toLowerCase();
-    showView(["home","chat","future"].includes(savedView) ? savedView : "home");
+    const API_BASE_DEFAULT = "https://complyr.onrender.com";
+    let API_BASE = (localStorage.getItem("RAHEEM_API_BASE") || API_BASE_DEFAULT).replace(/\/+$/, "");
+    if (window.__RAHEEM_API_BASE_FORCED) API_BASE = API_BASE_DEFAULT;
 
     // =========================================================
     // Future feature preview buttons
@@ -1260,15 +1260,27 @@
     }
 
     async function refreshStatusPill(){
+      setPill("warn", "Checking…"); // ensure UI updates immediately
+      
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000); // 8 seconds
+      
       try{
-        const r = await fetch(apiUrl("/health"), { cache: "no-store" });
+        const r = await fetch(apiUrl("/health"), {
+          cache: "no-store",
+          signal: controller.signal
+    });
+        
         const t = await r.text();
+        
         if(!r.ok){
           setPill("bad", "Offline");
           return;
         }
+        
         let j = {};
         try{ j = JSON.parse(t); }catch(e){}
+        
         if(j && j.ok){
           if(j.vertex_ready){
             setPill("ok", "Online • AI ready");
@@ -1280,13 +1292,19 @@
         }
       }catch(e){
         setPill("bad", "Offline");
+      }finally{
+        clearTimeout(timeout);
       }
     }
 
-    btnStatus.onclick = async ()=>{
       try{
-        const r = await fetch(apiUrl("/health"), { cache: "no-store" });
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+
+        const r = await fetch(apiUrl("/health"), { cache: "no-store", signal: controller.signal });
         const t = await r.text();
+        clearTimeout(timeout);
+
         let j = {};
         try{ j = JSON.parse(t); }catch(e){}
         if(!r.ok){
@@ -1921,5 +1939,6 @@
   </script>
 </body>
 </html>
+
 
 
