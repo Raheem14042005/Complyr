@@ -26,7 +26,6 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 
-from dotenv import load_dotenv
 
 import vertexai
 from vertexai.generative_models import GenerativeModel, Part, Content, GenerationConfig
@@ -2689,6 +2688,7 @@ async def _stream_answer_async(
         yield f"data: [ERROR] {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
 
 
 
