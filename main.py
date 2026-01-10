@@ -2344,30 +2344,67 @@ def r2_test():
 def root():
     return {"ok": True, "app": "Raheem AI", "time": datetime.utcnow().isoformat()}
 
+@app.get("/ping")
+def ping():
+    # ultra-light endpoint for frontend "online/offline"
+    return {"ok": True}
 
 @app.get("/health")
 def health():
-    ensure_vertex_ready()
+    # Health should REPORT failures, not crash (so it must never 500).
+    vertex_ready = False
+    vertex_error = None
+
+    # Vertex init (safe)
+    try:
+        ensure_vertex_ready()
+        vertex_ready = bool(_VERTEX_READY)
+        vertex_error = _VERTEX_ERR
+    except Exception as e:
+        vertex_ready = False
+        vertex_error = repr(e)
+
+    # PDF listing (safe)
+    try:
+        pdf_count = len(list_pdfs())
+    except Exception as e:
+        pdf_count = 0
+        # If Vertex error is empty, store this; otherwise don't overwrite
+        if not vertex_error:
+            vertex_error = f"list_pdfs failed: {repr(e)}"
+
+    # rules file exists check (safe)
+    try:
+        rules_file_exists = bool(RULES_FILE.exists())
+    except Exception:
+        rules_file_exists = False
+
+    # Embed model check (safe)
+    try:
+        embed_ready = bool(EMBED_ENABLED and _EMBED_MODEL is not None)
+    except Exception:
+        embed_ready = False
+
     return {
         "ok": True,
-        "vertex_ready": _VERTEX_READY,
-        "vertex_error": _VERTEX_ERR,
-        "pdf_count": len(list_pdfs()),
+        "vertex_ready": vertex_ready,
+        "vertex_error": vertex_error,
+        "pdf_count": pdf_count,
         "models": {
             "chat": MODEL_CHAT,
             "compliance": MODEL_COMPLIANCE,
         },
         "project": GCP_PROJECT_ID,
         "location": GCP_LOCATION,
-        "docai_helper": _DOCAI_HELPER_AVAILABLE,
+        "docai_helper": bool(_DOCAI_HELPER_AVAILABLE),
         "docai_processor_id_present": bool((os.getenv("DOCAI_PROCESSOR_ID") or "").strip()),
         "docai_location_present": bool((os.getenv("DOCAI_LOCATION") or "").strip()),
         "web_enabled": WEB_ENABLED,
         "web_allowlist": WEB_ALLOWLIST,
-        "embed_enabled": bool(EMBED_ENABLED and _EMBED_MODEL is not None),
+        "embed_enabled": embed_ready,
         "rerank_enabled": bool(RERANK_ENABLED),
         "verify_numeric": bool(VERIFY_NUMERIC),
-        "rules_enabled": bool(RULES_ENABLED and RULES_FILE.exists()),
+        "rules_enabled": bool(RULES_ENABLED and rules_file_exists),
         "web_cache_ttl_seconds": WEB_CACHE_TTL_SECONDS,
         "r2": {
             "enabled": R2_ENABLED,
@@ -2688,6 +2725,7 @@ async def _stream_answer_async(
         yield f"data: [ERROR] {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
 
 
 
