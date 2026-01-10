@@ -1,5 +1,6 @@
 from __future__ import annotations
 from app.models.chat import ChatBody
+from app.core.config import *
 
 import os
 import re
@@ -2688,6 +2689,7 @@ async def _stream_answer_async(
         yield f"data: [ERROR] {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
 
 
 
