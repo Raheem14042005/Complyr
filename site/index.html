@@ -1254,7 +1254,7 @@
       const timeout = setTimeout(() => controller.abort(), 8000);
 
       try{
-        const r = await fetch(apiUrl("/health"), {
+        const r = await fetch(apiUrl("/ping"), {
           method: "GET",
           cache: "no-store",
           mode: "cors",
@@ -1266,6 +1266,7 @@
           setPill("bad", "Offline");
           return;
         }
+        setpill("ok", "online");
 
         let j = {};
         try{ j = JSON.parse(t); }catch(e){}
@@ -1919,7 +1920,7 @@
     // =========================================================
     async function quickPing(){
       try{
-        const r = await fetchWithTimeout(apiUrl("/health"), { method:"GET" }, 8000, false);
+        const r = await fetchWithTimeout(apiUrl("/ping"), { method:"GET" }, 8000, false);
         return r.ok;
       }catch(e){
         return false;
@@ -1940,3 +1941,4 @@
   </script>
 </body>
 </html>
+
