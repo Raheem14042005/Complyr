@@ -1261,21 +1261,14 @@
           signal: controller.signal
         });
 
-        const t = await r.text();
         if(!r.ok){
           setPill("bad", "Offline");
           return;
         }
-        setpill("ok", "online");
-
-        let j = {};
-        try{ j = JSON.parse(t); }catch(e){}
-
-        if(j && j.ok){
-          setPill(j.vertex_ready ? "ok" : "warn", j.vertex_ready ? "Online • AI ready" : "Online • Warming up");
-        }else{
-          setPill("warn", "Online");
-        }
+        
+        // /ping only tells you the server is reachable
+        
+        setPill("ok", "Online");
       }catch(e){
         setPill("bad", "Offline");
       }finally{
@@ -1941,4 +1934,5 @@
   </script>
 </body>
 </html>
+
 
