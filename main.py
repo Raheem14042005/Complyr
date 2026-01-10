@@ -1,4 +1,5 @@
 from __future__ import annotations
+from app.models.chat import ChatBody
 
 import os
 import re
@@ -32,10 +33,6 @@ from vertexai.generative_models import GenerativeModel, Part, Content, Generatio
 # ============================================================
 # REQUEST MODELS
 # ============================================================
-
-class ChatBody(BaseModel):
-    message: str
-    messages: Optional[List[Dict[str, Any]]] = None
 
 # ============================================================
 # BASE DIR (must exist before you build any paths from it)
@@ -2855,6 +2852,7 @@ async def _stream_answer_async(
         yield f"data: [ERROR] {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
 
 
 
