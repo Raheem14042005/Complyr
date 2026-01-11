@@ -31,6 +31,12 @@ import vertexai
 from vertexai.generative_models import GenerativeModel, Part, Content, GenerationConfig
 
 # ============================================================
+# OPTIONAL DOCAI HELPER (SAFE FALLBACKS)
+# ============================================================
+_DOCAI_HELPER_AVAILABLE = False
+docai_extract_pdf_to_text = None
+
+# ============================================================
 # REQUEST MODELS
 # ============================================================
 
@@ -2261,7 +2267,7 @@ async def upload_pdf(
     docai_chunks_saved = 0
     docai_error = None
     try:
-        if _DOCAI_HELPER_AVAILABLE and docai_extract_pdf_to_text:
+        if _DOCAI_HELPER_AVAILABLE and callable(docai_extract_pdf_to_text):
             if (os.getenv("DOCAI_PROCESSOR_ID") or "").strip() and (os.getenv("DOCAI_LOCATION") or "").strip():
                 combined_text, _ = docai_extract_pdf_to_text(str(dest), chunk_pages=15)
                 chunks = _split_docai_combined_to_chunks(combined_text)
@@ -2281,16 +2287,13 @@ async def upload_pdf(
         "embeddings_ready": bool(EMBED_INDEX.get(dest.name, {}).get("vectors")) if dest.name in EMBED_INDEX else False,
         "web_enabled": WEB_ENABLED,
         "docai": {
-            "attempted": bool(
-                globals().get("_DOCAI_HELPER_AVAILABLE", False)
-                and globals().get("docai_extract_pdf_to_text")
-            ),
-            "ok": globals().get("docai_ok", False),
-            "chunks_saved": globals().get("docai_chunks_saved", 0),
-            "error": globals().get("docai_error")
+            "attempted": bool(_DOCAI_HELPER_AVAILABLE and callable(docai_extract_pdf_to_text)),
+            "ok": docai_ok,
+            "chunks_saved": docai_chunks_saved,
+            "error": docai_error,
         },
     }
-
+        
 @app.post("/chat")
 async def chat_endpoint(
     body: ChatBody,
@@ -2728,6 +2731,7 @@ async def _stream_answer_async(
         yield f"data: [ERROR] {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
 
 
 
