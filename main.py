@@ -83,67 +83,6 @@ app.add_middleware(
 )
 
 # ============================================================
-# CHAT MEMORY (SERVER SIDE)
-# ============================================================
-
-CHAT_STORE: Dict[str, List[Dict[str, str]]] = {}
-
-
-def _trim_chat(chat_id: str) -> None:
-    msgs = CHAT_STORE.get(chat_id, [])
-    if not msgs:
-        return
-    if len(msgs) > CHAT_MAX_MESSAGES:
-        msgs = msgs[-CHAT_MAX_MESSAGES:]
-
-    total = 0
-    kept_rev: List[Dict[str, str]] = []
-    for m in reversed(msgs):
-        total += len(m.get("content", ""))
-        if total > CHAT_MAX_CHARS:
-            break
-        kept_rev.append(m)
-    kept_rev.reverse()
-    CHAT_STORE[chat_id] = kept_rev
-
-
-def remember(chat_id: str, role: str, content: str) -> None:
-    if not chat_id:
-        return
-    content = (content or "").strip()
-    if not content:
-        return
-    CHAT_STORE.setdefault(chat_id, []).append({"role": role, "content": content})
-    _trim_chat(chat_id)
-
-
-def get_history(chat_id: str) -> List[Dict[str, str]]:
-    return CHAT_STORE.get(chat_id, [])
-
-
-def _normalize_incoming_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, str]]:
-    hist: List[Dict[str, str]] = []
-    for m in messages or []:
-        r = (m.get("role") or "").lower().strip()
-        c = (m.get("content") or "").strip()
-        if r in ("user", "assistant") and c:
-            hist.append({"role": r, "content": c})
-    return hist
-
-
-def _ensure_last_user_message(hist: List[Dict[str, str]], message: str) -> List[Dict[str, str]]:
-    msg = (message or "").strip()
-    if not msg:
-        return hist
-    if not hist:
-        return [{"role": "user", "content": msg}]
-    last = hist[-1]
-    if last.get("role") != "user" or (last.get("content") or "").strip() != msg:
-        hist = hist + [{"role": "user", "content": msg}]
-    return hist
-
-
-# ============================================================
 # TEXT + TOKENIZATION
 # ============================================================
 
@@ -2687,6 +2626,7 @@ async def _stream_answer_async(
         yield f"data: [ERROR] {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
 
 
 
