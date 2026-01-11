@@ -2281,12 +2281,14 @@ async def upload_pdf(
         "embeddings_ready": bool(EMBED_INDEX.get(dest.name, {}).get("vectors")) if dest.name in EMBED_INDEX else False,
         "web_enabled": WEB_ENABLED,
         "docai": {
-            "attempted": bool(_DOCAI_HELPER_AVAILABLE and docai_extract_pdf_to_text),
-            "ok": docai_ok,
-            "chunks_saved": docai_chunks_saved,
-            "error": docai_error,
+            "attempted": bool(
+                globals().get("_DOCAI_HELPER_AVAILABLE", False)
+                and globals().get("docai_extract_pdf_to_text")
+            ),
+            "ok": globals().get("docai_ok", False),
+            "chunks_saved": globals().get("docai_chunks_saved", 0),
+            "error": globals().get("docai_error")
         },
-    }
 
 @app.post("/chat")
 async def chat_endpoint(
@@ -2725,6 +2727,7 @@ async def _stream_answer_async(
         yield f"data: [ERROR] {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
 
 
 
