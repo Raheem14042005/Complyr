@@ -2,6 +2,19 @@ from __future__ import annotations
 from app.models.chat import ChatBody
 from app.core.config import *
 
+# Star-import skips underscore names, so pull these explicitly
+try:
+    from app.core.config import _DOCAI_HELPER_AVAILABLE, docai_extract_pdf_to_text
+except Exception:
+    _DOCAI_HELPER_AVAILABLE = False
+    docai_extract_pdf_to_text = None
+
+try:
+    from app.core.config import _VERTEX_EMBEDDINGS_AVAILABLE, TextEmbeddingModel
+except Exception:
+    _VERTEX_EMBEDDINGS_AVAILABLE = False
+    TextEmbeddingModel = None
+
 import os
 import re
 import math
@@ -2731,6 +2744,7 @@ async def _stream_answer_async(
         yield f"data: [ERROR] {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
 
 
 
