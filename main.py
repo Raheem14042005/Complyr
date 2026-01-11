@@ -2289,6 +2289,7 @@ async def upload_pdf(
             "chunks_saved": globals().get("docai_chunks_saved", 0),
             "error": globals().get("docai_error")
         },
+    }
 
 @app.post("/chat")
 async def chat_endpoint(
@@ -2727,6 +2728,7 @@ async def _stream_answer_async(
         yield f"data: [ERROR] {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
 
 
 
