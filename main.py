@@ -388,11 +388,14 @@ def _hash_id(s: str) -> str:
     return hashlib.sha1(s.encode("utf-8", errors="ignore")).hexdigest()[:12]
 
 def sse_send(text: str) -> str:
-    # SSE format: each line must be prefixed with 'data: ' and event ends with blank line.
     if text is None:
         return ""
-    text = str(text).replace("\r", "")
+    text = str(text).replace("\r", "").replace("\x00", "")
+    # Keep SSE frames small-ish
+    if len(text) > 8000:
+        text = text[:8000]
     return "".join(f"data: {line}\n" for line in text.split("\n")) + "\n"
+
 
 # ============================================================
 # CHUNK / INDICES
@@ -1071,6 +1074,11 @@ def docai_search_text(pdf_name: str, question: str, k: int = 2) -> List[Tuple[st
 # SMALLTALK + INTENT
 # ============================================================
 
+FOLLOWUP_RE = re.compile(r"^(why|why\?|how come|can you explain( why)?|explain why)\s*$", re.I)
+
+def is_followup_why(msg: str) -> bool:
+    return bool(FOLLOWUP_RE.match((msg or "").strip()))
+
 SMALLTALK_RE = re.compile(r"^(hi|hello|hey|yo|howdy|sup|hiya|evening|morning|afternoon)\b", re.I)
 PART_PATTERN = re.compile(r"\bpart\s*[a-m]\b", re.I)
 
@@ -1361,7 +1369,7 @@ def _default_headers() -> Dict[str, str]:
         "User-Agent": "Mozilla/5.0 (compatible; RaheemAI/1.0)",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.5",
         "Accept-Language": "en-IE,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
+        "Accept-Encoding": "gzip, deflate",
         "Cache-Control": "no-cache",
         "Pragma": "no-cache",
     }
@@ -1523,12 +1531,14 @@ def _enforce_web_citations(answer: str, web_pages: List[Dict[str, str]]) -> str:
     lines = ["", "Sources:"]
     for i, w in enumerate(web_pages, start=1):
         title = (w.get("title") or "").strip() or f"Source {i}"
-        url = (w.get("url") or "").strip()
-        if url:
-            lines.append(f"[{i}] {title} — {url}")
+        host = _host_from_url((w.get("url") or "").strip())
+        # No raw URL, just domain. (You can still keep the URL in logs if you want.)
+        if host:
+            lines.append(f"[{i}] {title} ({host})")
         else:
             lines.append(f"[{i}] {title}")
     return answer + "\n" + "\n".join(lines)
+
 
 # ============================================================
 # RULES LAYER
@@ -1691,7 +1701,7 @@ def build_contents(history: List[Dict[str, str]], user_message: str, sources_blo
 
 def _format_pdf_citation(c: Chunk) -> str:
     doc_label = PDF_DISPLAY_NAME.get(c.doc, c.doc)
-    bits = [f"Document: {doc_label}", f"p.{c.page}"]
+    bits: List[str] = [f"Document: {doc_label}", f"p.{c.page}"]
     if c.section:
         bits.append(f"Section: {c.section}")
     if c.table:
@@ -1699,6 +1709,7 @@ def _format_pdf_citation(c: Chunk) -> str:
     if c.diagram:
         bits.append(f"Diagram: {c.diagram}")
     return "(" + ", ".join(bits) + ")"
+
 
 def _tighten_chunk_text_for_evidence(c: Chunk, query: str, max_chars: int = 950) -> str:
     text = clean_text(c.text)
@@ -2171,13 +2182,27 @@ async def _stream_answer_async(
                 remember(chat_id, "user", user_msg)
                 history_for_prompt = get_history(chat_id)
 
+        # If user asks "why" / "explain why" — anchor it to the last assistant answer.
+        if is_followup_why(user_msg) and history_for_prompt:
+            last_assistant = next(
+                (m["content"] for m in reversed(history_for_prompt) if m.get("role") == "assistant"),
+                "",
+            )
+            if last_assistant:
+                user_msg = (
+                    "Explain WHY your previous answer is true, in plain language.\n\n"
+                    "Previous answer:\n"
+                    f"{last_assistant}\n\n"
+                    "Now explain the reasoning clearly, without changing the conclusion unless it was wrong."
+                )
+
         fam = _question_family(user_msg)
         precision = question_precision(user_msg)
 
-        evidence_mode = force_docs or DEFAULT_EVIDENCE_MODE or fam in ("building_regs", "planning", "ber")
         numeric_needed = is_numeric_compliance(user_msg) and fam == "building_regs"
+        evidence_mode = bool(force_docs or DEFAULT_EVIDENCE_MODE or numeric_needed)
 
-        pinned = pdf  # keep your manual pin behavior (auto-pin removed here to avoid wrong doc surprises)
+        pinned = pdf  # manual pin only
 
         # Rules first
         rules_hit = _match_rules(user_msg) if RULES_ENABLED else []
@@ -2191,7 +2216,7 @@ async def _stream_answer_async(
             if quote:
                 rendered += "\n\n> " + quote
             if cit:
-                bits = []
+                bits: List[str] = []
                 if cit.get("doc"):
                     bits.append(f"Document: {cit.get('doc')}")
                 if cit.get("section"):
@@ -2211,14 +2236,30 @@ async def _stream_answer_async(
             if not list_pdfs():
                 return []
             if precision == "broad":
-                collected = search_chunks(user_msg, top_k=max(TOP_K_CHUNKS, 8), pinned_pdf=pinned, page_hint=page_hint)
+                collected = search_chunks(
+                    user_msg,
+                    top_k=max(TOP_K_CHUNKS, 8),
+                    pinned_pdf=pinned,
+                    page_hint=page_hint,
+                )
                 collected = dedupe_chunks_keep_order(collected)
                 if RERANK_ENABLED and collected:
-                    collected = await _rerank_candidates(user_msg, collected, max_keep=max(RERANK_TOPK, 10))
-                collected = diversify_chunks(collected, max_docs=max(1, BROAD_DOC_DIVERSITY_K), per_doc=max(1, BROAD_TOPIC_HITS_K))
+                    collected = await _rerank_candidates(
+                        user_msg, collected, max_keep=max(RERANK_TOPK, 10)
+                    )
+                collected = diversify_chunks(
+                    collected,
+                    max_docs=max(1, BROAD_DOC_DIVERSITY_K),
+                    per_doc=max(1, BROAD_TOPIC_HITS_K),
+                )
                 return collected[: max(RERANK_TOPK, 10)]
 
-            cands = search_chunks(user_msg, top_k=TOP_K_CHUNKS, pinned_pdf=pinned, page_hint=page_hint)
+            cands = search_chunks(
+                user_msg,
+                top_k=TOP_K_CHUNKS,
+                pinned_pdf=pinned,
+                page_hint=page_hint,
+            )
             if RERANK_ENABLED and cands:
                 cands = await _rerank_candidates(user_msg, cands, max_keep=RERANK_TOPK)
             return cands[:RERANK_TOPK]
@@ -2236,10 +2277,31 @@ async def _stream_answer_async(
             serp = await web_search_serper(user_msg, k=TOP_K_WEB)
             return await web_fetch_and_excerpt(user_msg, serp, max_items=TOP_K_WEB)
 
-        do_web = WEB_ENABLED and (
-            (not evidence_mode)
-            or fam in ("planning", "general", "ber")
-            or (evidence_mode and not numeric_needed)
+        def _web_worth_it(family: str, prec: str, msg: str) -> bool:
+            m = (msg or "").lower()
+            time_sensitive = any(
+                x in m
+                for x in (
+                    "how long",
+                    "timeline",
+                    "timeframe",
+                    "weeks",
+                    "days",
+                    "fee",
+                    "cost",
+                    "process",
+                    "steps",
+                    "appeal",
+                    "an bord pleanála",
+                    "application",
+                )
+            )
+            return (family in ("planning", "general") and time_sensitive) or (prec in ("broad", "mixed"))
+
+        do_web = bool(
+            WEB_ENABLED
+            and (not numeric_needed)  # never web for numeric compliance
+            and _web_worth_it(fam, precision, user_msg)
         )
 
         pdf_chunks, docai_hits, web_pages = await asyncio.gather(
@@ -2303,7 +2365,6 @@ async def _stream_answer_async(
         sources_blob = _sources_text_blob_for_verification(pdf_chunks, docai_hits, web_pages)
         ok, final_text = _hard_verify_numeric(draft, sources_blob)
 
-        # ✅ FIXED: previously referenced undefined "rendered"
         if not ok:
             yield sse_send("\n\n---\n\nFinal (verified):\n\n" + final_text + "\n")
             draft = (draft + "\n\n---\n\nFinal (verified):\n\n" + final_text).strip()
@@ -2319,3 +2380,5 @@ async def _stream_answer_async(
         yield f"data: [ERROR] {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
+
