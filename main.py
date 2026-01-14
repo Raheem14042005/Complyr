@@ -359,7 +359,19 @@ STOPWORDS = {
 }
 
 NUM_WITH_UNIT_RE = re.compile(
-    r"\b\d+(\.\d+)?\s*(mm|m|metre|meter|w/m²k|w\/m2k|%|kwh|kwh\/m2\/yr|kwh\/m²\/yr|lux|lm|lumen|lumens)\b",
+    r"\b\d+(\.\d+)?\s*("
+    r"mm|cm|m|metre|meter|"
+    r"w/m²k|w\/m2k|"
+    r"%|"
+    r"kwh|kwh\/m2\/yr|kwh\/m²\/yr|"
+    r"lux|lm|lumen|lumens|"
+    r"min|mins|minute|minutes|"
+    r"hr|hrs|hour|hours|"
+    r"sec|secs|second|seconds|"
+    r"pa|kpa|"
+    r"kw|w|"
+    r"°c|c"
+    r")\b",
     re.I
 )
 ANY_NUMBER_RE = re.compile(r"\b\d+(\.\d+)?\b")
@@ -368,8 +380,50 @@ SECTION_RE = re.compile(r"^\s*(?:section\s+)?(\d+(?:\.\d+){0,4})\b", re.I)
 TABLE_RE = re.compile(r"\btable\s+([a-z0-9][a-z0-9\.\-]*)\b", re.I)
 DIAGRAM_RE = re.compile(r"\bdiagram\s+([a-z0-9][a-z0-9\.\-]*)\b", re.I)
 
-WEB_CITE_NUM_RE = re.compile(r"\[(\d+)\]")
+WEB_CITE_W_RE = re.compile(r"\[(W\d+)\]")
 VISUAL_TERMS_RE = re.compile(r"\b(diagram|figure|fig\.|table|chart|graph|drawing|schematic)\b", re.I)
+
+# ============================================================
+# OUTPUT NORMALISATION + SOURCES FOOTER
+# ============================================================
+
+BULLET_STAR_RE = re.compile(r"(?m)^\s*\*\s+")
+EXCESS_SPACES_RE = re.compile(r"[ \t]{2,}")
+MULTI_BLANKLINES_RE = re.compile(r"\n{3,}")
+
+def normalize_model_output(text: str) -> str:
+    t = (text or "").replace("\r", "")
+    t = BULLET_STAR_RE.sub("- ", t)
+    t = EXCESS_SPACES_RE.sub(" ", t)
+    t = MULTI_BLANKLINES_RE.sub("\n\n", t)
+    return t.strip()
+
+CITE_TAG_RE = re.compile(r"\[(D\d+:\d+|W\d+)\]")
+
+def build_sources_footer(answer: str, evidence: Dict[str, Any]) -> str:
+    used = set(CITE_TAG_RE.findall(answer or ""))
+    if not used:
+        return ""
+
+    lines = ["", "Sources (from loaded evidence):"]
+
+    pdf_docs = evidence.get("pdf_docs") or {}
+    cited_doc_codes = sorted({u.split(":")[0] for u in used if u.startswith("D")})
+    for code in cited_doc_codes:
+        title = pdf_docs.get(code, code)
+        lines.append(f"- {code}: {title}")
+
+    web_items = evidence.get("web") or []
+    cited_web = sorted([u for u in used if u.startswith("W")])
+    if cited_web and web_items:
+        web_by_code = {w.get("code"): w for w in web_items}
+        for wcode in cited_web:
+            w = web_by_code.get(wcode) or {}
+            title = (w.get("title") or wcode).strip()
+            host = (w.get("host") or "").strip()
+            lines.append(f"- {wcode}: {title}" + (f" ({host})" if host else ""))
+
+    return "\n".join(lines).strip()
 
 def clean_text(s: str) -> str:
     s = (s or "").replace("\u00ad", "")
@@ -387,14 +441,30 @@ def tokenize(text: str) -> List[str]:
 def _hash_id(s: str) -> str:
     return hashlib.sha1(s.encode("utf-8", errors="ignore")).hexdigest()[:12]
 
-def sse_send(text: str) -> str:
+def sse_send(text: str, max_frame_chars: int = 6000) -> str:
     if text is None:
         return ""
     text = str(text).replace("\r", "").replace("\x00", "")
-    # Keep SSE frames small-ish
-    if len(text) > 8000:
-        text = text[:8000]
-    return "".join(f"data: {line}\n" for line in text.split("\n")) + "\n"
+
+    lines = text.split("\n")
+    frames: List[str] = []
+    buff: List[str] = []
+    size = 0
+
+    for ln in lines:
+        add = len(ln) + 1  # + newline
+        if size + add > max_frame_chars and buff:
+            frames.append("".join(f"data: {x}\n" for x in buff) + "\n")
+            buff = []
+            size = 0
+        buff.append(ln)
+        size += add
+
+    if buff:
+        frames.append("".join(f"data: {x}\n" for x in buff) + "\n")
+
+    return "".join(frames)
+
 
 
 # ============================================================
@@ -1148,25 +1218,44 @@ def _question_family(q: str) -> str:
         return "building_regs"
     return "general"
 
-BROAD_HINTS = ["tell me about","explain","overview","what about","guidance on","info on","general"]
-PRECISE_HINTS = ["minimum","maximum","min","max","required","shall","must","limit","section","table","clause"]
+SPECIFIC_PATTERNS = [
+    r"\bminimum\b", r"\bmaximum\b", r"\bmin\b", r"\bmax\b",
+    r"\bshall\b", r"\bmust\b", r"\brequired\b",
+    r"\bsection\b", r"\bclause\b", r"\btable\b", r"\bdiagram\b",
+    r"\briser\b", r"\bgoing\b", r"\bheadroom\b", r"\blanding\b",
+    r"\bwidth\b", r"\bheight\b", r"\bdistance\b"
+]
+
+BROAD_PATTERNS = [
+    r"\btell me about\b", r"\boverview\b", r"\bexplain\b", r"\bguidance\b",
+    r"\bwhat is\b(?!.*\bminimum\b|\bmaximum\b|\bmin\b|\bmax\b)"
+]
 
 def question_precision(q: str) -> str:
     ql = (q or "").lower().strip()
     if not ql:
         return "broad"
-    if PART_PATTERN.search(ql):
-        return "precise"
-    if re.search(r"\b(section|table|diagram|clause)\b", ql):
-        return "precise"
+
+    # If user provides any explicit numbers/units, almost always specific
     if NUM_WITH_UNIT_RE.search(ql) or ANY_NUMBER_RE.search(ql):
         return "precise"
-    if any(h in ql for h in PRECISE_HINTS):
+
+    # If user references sections/tables/clauses => specific
+    if re.search(r"\b(section|clause|table|diagram)\b", ql):
         return "precise"
-    if any(h in ql for h in BROAD_HINTS):
+
+    # If strong “must/shall/min/max” language => specific
+    if any(re.search(p, ql) for p in SPECIFIC_PATTERNS):
+        return "precise"
+
+    # Broad phrasing => broad
+    if any(re.search(p, ql) for p in BROAD_PATTERNS):
         return "broad"
-    if len(ql.split()) <= 6:
+
+    # Short questions usually need interpretation => broad/mixed
+    if len(ql.split()) <= 7:
         return "broad"
+
     return "mixed"
 
 # ============================================================
@@ -1525,18 +1614,21 @@ def _enforce_web_citations(answer: str, web_pages: List[Dict[str, str]]) -> str:
     answer = (answer or "").rstrip()
     if not web_pages:
         return answer
-    if WEB_CITE_NUM_RE.search(answer):
+
+    # If the model already used [W1] style, leave it.
+    if WEB_CITE_W_RE.search(answer):
         return answer
 
+    # Otherwise append a compact [W#] sources list
     lines = ["", "Sources:"]
     for i, w in enumerate(web_pages, start=1):
         title = (w.get("title") or "").strip() or f"Source {i}"
         host = _host_from_url((w.get("url") or "").strip())
-        # No raw URL, just domain. (You can still keep the URL in logs if you want.)
+        tag = f"[W{i}]"
         if host:
-            lines.append(f"[{i}] {title} ({host})")
+            lines.append(f"{tag} {title} ({host})")
         else:
-            lines.append(f"[{i}] {title}")
+            lines.append(f"{tag} {title}")
     return answer + "\n" + "\n".join(lines)
 
 
@@ -1590,7 +1682,7 @@ Core functions:
 - Answer questions conversationally.
 - If PDF sources are provided in SOURCES, use them as primary evidence.
 - When "Evidence Mode" is enabled, do not invent numeric limits; only state numbers found in evidence.
-- You can use web evidence only when provided; cite web sources as [1], [2], etc.
+- You can use web evidence only when provided; cite web sources as [W1], [W2], etc.
 
 Limits:
 - You cannot truly predict the future or guarantee outcomes about the creator's life/career.
@@ -1613,7 +1705,7 @@ Formatting:
 - Only use bullet points when the user asks for a list or when comparing options.
 
 Citations:
-- If you used web sources, cite them inline as [1], [2] etc (square bracket numbers).
+- You can use web evidence only when provided; cite web sources as [W1], [W2], etc.
 - Don’t show raw URLs inline in paragraphs. If needed, put a “Sources” list at the end.
 
 If the question is broad: answer well, then ask ONE focused follow-up.
@@ -1658,7 +1750,7 @@ Rules:
 - Keep output to at most 12 ids.
 """.strip()
 
-def build_contents(history: List[Dict[str, str]], user_message: str, sources_block: str, precision: str) -> List[Content]:
+def build_contents(history: List[Dict[str, str]], user_message: str, evidence: Dict[str, Any], precision: str) -> List[Content]:
     contents: List[Content] = []
     for m in history or []:
         r = (m.get("role") or "").lower().strip()
@@ -1670,34 +1762,37 @@ def build_contents(history: List[Dict[str, str]], user_message: str, sources_blo
         elif r == "assistant":
             contents.append(Content(role="model", parts=[Part.from_text(c)]))
 
-    final_user = (user_message or "").strip()
+    controller = f"""
+[STYLE]
+- Write clean, structured paragraphs. Only use lists if it truly helps.
+- NEVER use '*' as a bullet. If you must list, use '-' only.
+- Do not say "Document:" in the answer body.
+- Use compact citations like [D1:81] for PDFs and [W1] for web.
+- Do not repeat the same citation after every sentence; cite once per paragraph/group.
 
-    if precision == "broad":
-        controller = (
-            "\n\n[CONTROLLER]\n"
-            "The user question is BROAD.\n"
-            "- Give a thorough explanation covering each topic implied by the question.\n"
-            "- Prefer paragraphs; use bullets only when it improves clarity.\n"
-            "- End with ONE focused follow-up.\n"
-        )
-    elif precision == "precise":
-        controller = (
-            "\n\n[CONTROLLER]\n"
-            "The user question is PRECISE. Answer ONLY what was asked. Do not expand into unrelated topics.\n"
-        )
-    else:
-        controller = (
-            "\n\n[CONTROLLER]\n"
-            "The user question is MIXED. Answer the core request, and only mention adjacent points if directly implied.\n"
-        )
+[PRECISION]
+- precision = {precision}
+- If precise: answer exactly what was asked, then stop.
+- If broad: give a comprehensive overview with clear grouping.
 
-    if sources_block.strip():
-        final_user += controller + "\nSOURCES:\n" + sources_block.strip()
-    else:
-        final_user += controller
+[OUTPUT STRUCTURE]
+If broad:
+1) Brief summary (2–4 lines)
+2) Main points grouped logically (stairs: geometry / landings / headroom / handrails-guards / special cases, etc.)
+3) Practical pitfalls (3–5 items)
+4) Ask ONE follow-up question
 
+If precise:
+- Answer in a tight way (1–3 short paragraphs), include the exact requirement if available.
+
+[EVIDENCE]
+Here is the evidence pack (JSON). Use it. Cite it.
+""".strip()
+
+    final_user = (user_message or "").strip() + "\n\n" + controller + "\n\n" + json.dumps(evidence, ensure_ascii=False)
     contents.append(Content(role="user", parts=[Part.from_text(final_user)]))
     return contents
+
 
 def _format_pdf_citation(c: Chunk) -> str:
     doc_label = PDF_DISPLAY_NAME.get(c.doc, c.doc)
@@ -1763,42 +1858,71 @@ def _tighten_chunk_text_for_evidence(c: Chunk, query: str, max_chars: int = 950)
         return meta_line + "\n" + out
     return out
 
-def build_sources_block(
+def _doc_code_map(chunks: List[Chunk]) -> Dict[str, str]:
+    # Assign stable short codes per doc: D1, D2, ...
+    docs = []
+    seen = set()
+    for c in chunks:
+        if c.doc not in seen:
+            seen.add(c.doc)
+            docs.append(c.doc)
+    return {doc: f"D{i+1}" for i, doc in enumerate(docs)}
+
+def _tight_excerpt(text: str, max_chars: int = 700) -> str:
+    t = clean_text(text or "")
+    if len(t) <= max_chars:
+        return t
+    return t[:max_chars].rstrip() + "…"
+
+def build_evidence_packets(
     chunks: List[Chunk],
     web_pages: List[Dict[str, str]],
     docai_hits: List[Tuple[str, str]],
     user_query: str,
     precision: str,
-) -> str:
-    parts: List[str] = []
-    max_chars = 650 if precision == "broad" else 950
+) -> Dict[str, Any]:
+    # Smaller excerpts for broad questions so model doesn't drown
+    max_chars = 520 if precision == "broad" else 780
 
-    if chunks:
-        parts.append("PDF EVIDENCE:")
-        for c in chunks:
-            excerpt = (
-                _tighten_chunk_text_for_evidence(c, query=user_query, max_chars=max_chars)
-                or clean_text(c.text)[:max_chars]
-            )
-            parts.append(f"[PDF] {_format_pdf_citation(c)} | id:{c.chunk_id}\n{excerpt}")
+    doc_codes = _doc_code_map(chunks)
+    pdf_items = []
+    for c in chunks[: max(10, RERANK_TOPK)]:
+        pdf_items.append({
+            "code": doc_codes.get(c.doc, "D?"),
+            "doc": PDF_DISPLAY_NAME.get(c.doc, c.doc),
+            "page": c.page,
+            "section": c.section or "",
+            "heading": c.heading or "",
+            "table": c.table or "",
+            "diagram": c.diagram or "",
+            "excerpt": _tight_excerpt(_tighten_chunk_text_for_evidence(c, user_query, max_chars=max_chars) or c.text, max_chars=max_chars),
+        })
 
-    if docai_hits:
-        parts.append("DOC.AI EVIDENCE (raw extraction, use carefully):")
-        for label, text in docai_hits:
-            t = clean_text(text)
-            if len(t) > 1800:
-                t = t[:1800] + "..."
-            parts.append(f"[DOCAI] {label}\n{t}")
+    web_items = []
+    for i, w in enumerate(web_pages[:TOP_K_WEB], start=1):
+        web_items.append({
+            "code": f"W{i}",
+            "title": (w.get("title") or "").strip(),
+            "host": _host_from_url(w.get("url") or ""),
+            "excerpt": _tight_excerpt(w.get("excerpt") or "", max_chars=520),
+        })
 
-    if web_pages:
-        parts.append("\nWEB EVIDENCE:")
-        for i, w in enumerate(web_pages, start=1):
-            url = (w.get("url") or "").strip()
-            title = (w.get("title") or "").strip() or f"Source {i}"
-            ex = clean_text(w.get("excerpt", ""))
-            parts.append(f"[{i}] {title}\nURL: {url}\nEXCERPT:\n{ex}")
+    # DocAI hits are optional — keep them but compact
+    docai_items = []
+    for i, (label, txt) in enumerate(docai_hits[:3], start=1):
+        docai_items.append({
+            "code": f"A{i}",
+            "label": label,
+            "excerpt": _tight_excerpt(txt, max_chars=700),
+        })
 
-    return "\n\n".join(p for p in parts if p).strip()
+    return {
+        "pdf_docs": {v: PDF_DISPLAY_NAME.get(k, k) for k, v in doc_codes.items()},
+        "pdf": pdf_items,
+        "web": web_items,
+        "docai": docai_items,
+    }
+
 
 # ============================================================
 # RERANK (LLM)
@@ -2182,27 +2306,19 @@ async def _stream_answer_async(
                 remember(chat_id, "user", user_msg)
                 history_for_prompt = get_history(chat_id)
 
-        # If user asks "why" / "explain why" — anchor it to the last assistant answer.
-        if is_followup_why(user_msg) and history_for_prompt:
-            last_assistant = next(
-                (m["content"] for m in reversed(history_for_prompt) if m.get("role") == "assistant"),
-                "",
-            )
-            if last_assistant:
-                user_msg = (
-                    "Explain WHY your previous answer is true, in plain language.\n\n"
-                    "Previous answer:\n"
-                    f"{last_assistant}\n\n"
-                    "Now explain the reasoning clearly, without changing the conclusion unless it was wrong."
-                )
-
         fam = _question_family(user_msg)
         precision = question_precision(user_msg)
 
+        # Evidence mode behavior
         numeric_needed = is_numeric_compliance(user_msg) and fam == "building_regs"
-        evidence_mode = bool(force_docs or DEFAULT_EVIDENCE_MODE or numeric_needed)
+        evidence_mode = bool(
+            force_docs
+            or DEFAULT_EVIDENCE_MODE
+            or numeric_needed
+            or fam in ("building_regs", "planning", "ber")
+        )
 
-        pinned = pdf  # manual pin only
+        pinned = pdf  # keep manual pin
 
         # Rules first
         rules_hit = _match_rules(user_msg) if RULES_ENABLED else []
@@ -2214,20 +2330,23 @@ async def _stream_answer_async(
 
             rendered = ans
             if quote:
-                rendered += "\n\n> " + quote
+                rendered += "\n\n" + quote
             if cit:
                 bits: List[str] = []
                 if cit.get("doc"):
-                    bits.append(f"Document: {cit.get('doc')}")
+                    bits.append(str(cit.get("doc")))
                 if cit.get("section"):
-                    bits.append(f"Section: {cit.get('section')}")
+                    bits.append(f"Section {cit.get('section')}")
                 if cit.get("table"):
-                    bits.append(f"Table: {cit.get('table')}")
+                    bits.append(f"Table {cit.get('table')}")
                 if bits:
-                    rendered += "\n\n(" + ", ".join(bits) + ")"
+                    rendered += "\n\nSource: " + " | ".join(bits)
+
+            rendered = normalize_model_output(rendered)
 
             if chat_id:
                 remember(chat_id, "assistant", rendered)
+
             yield sse_send(rendered)
             yield "event: done\ndata: ok\n\n"
             return
@@ -2235,10 +2354,11 @@ async def _stream_answer_async(
         async def get_pdf_chunks() -> List[Chunk]:
             if not list_pdfs():
                 return []
+
             if precision == "broad":
                 collected = search_chunks(
                     user_msg,
-                    top_k=max(TOP_K_CHUNKS, 8),
+                    top_k=max(TOP_K_CHUNKS, 10),
                     pinned_pdf=pinned,
                     page_hint=page_hint,
                 )
@@ -2247,11 +2367,6 @@ async def _stream_answer_async(
                     collected = await _rerank_candidates(
                         user_msg, collected, max_keep=max(RERANK_TOPK, 10)
                     )
-                collected = diversify_chunks(
-                    collected,
-                    max_docs=max(1, BROAD_DOC_DIVERSITY_K),
-                    per_doc=max(1, BROAD_TOPIC_HITS_K),
-                )
                 return collected[: max(RERANK_TOPK, 10)]
 
             cands = search_chunks(
@@ -2269,7 +2384,7 @@ async def _stream_answer_async(
                 return []
             if not _docai_chunk_files_for(pinned):
                 return []
-            return docai_search_text(pinned, user_msg, k=3 if precision == "broad" else 2)
+            return docai_search_text(pinned, user_msg, k=2 if precision != "broad" else 3)
 
         async def get_web_evidence() -> List[Dict[str, str]]:
             if not WEB_ENABLED:
@@ -2277,32 +2392,8 @@ async def _stream_answer_async(
             serp = await web_search_serper(user_msg, k=TOP_K_WEB)
             return await web_fetch_and_excerpt(user_msg, serp, max_items=TOP_K_WEB)
 
-        def _web_worth_it(family: str, prec: str, msg: str) -> bool:
-            m = (msg or "").lower()
-            time_sensitive = any(
-                x in m
-                for x in (
-                    "how long",
-                    "timeline",
-                    "timeframe",
-                    "weeks",
-                    "days",
-                    "fee",
-                    "cost",
-                    "process",
-                    "steps",
-                    "appeal",
-                    "an bord pleanála",
-                    "application",
-                )
-            )
-            return (family in ("planning", "general") and time_sensitive) or (prec in ("broad", "mixed"))
-
-        do_web = bool(
-            WEB_ENABLED
-            and (not numeric_needed)  # never web for numeric compliance
-            and _web_worth_it(fam, precision, user_msg)
-        )
+        # Web only when it makes sense (avoid noisy citations for numeric compliance)
+        do_web = bool(WEB_ENABLED and (not numeric_needed) and fam in ("planning", "general", "ber"))
 
         pdf_chunks, docai_hits, web_pages = await asyncio.gather(
             get_pdf_chunks(),
@@ -2313,16 +2404,17 @@ async def _stream_answer_async(
         # Numeric compliance must have doc evidence
         if numeric_needed and not pdf_chunks and not docai_hits:
             msg = (
-                "I can’t confirm the exact numeric requirement yet because I don’t have relevant TGD evidence loaded for this.\n\n"
-                "Upload the correct TGD (or tell me which Part: K, M, B, L), and I’ll quote the exact line containing the number."
+                "I can’t confirm the exact numeric requirement yet because I don’t have the relevant TGD evidence loaded for this question.\n"
+                "Upload the correct TGD (or pin the PDF), and I’ll quote the exact line containing the number."
             )
+            msg = normalize_model_output(msg)
             if chat_id:
                 remember(chat_id, "assistant", msg)
             yield sse_send(msg)
             yield "event: done\ndata: ok\n\n"
             return
 
-        sources_block = build_sources_block(
+        evidence_pack = build_evidence_packets(
             pdf_chunks,
             web_pages,
             docai_hits,
@@ -2341,7 +2433,7 @@ async def _stream_answer_async(
         model_name = MODEL_COMPLIANCE if evidence_mode else MODEL_CHAT
 
         model = get_model(model_name=model_name, system_prompt=system_prompt)
-        contents = build_contents(history_for_prompt, user_msg, sources_block, precision=precision)
+        contents = build_contents(history_for_prompt, user_msg, evidence_pack, precision=precision)
 
         stream = model.generate_content(
             contents,
@@ -2349,25 +2441,34 @@ async def _stream_answer_async(
             stream=True,
         )
 
+        # Buffer tokens (do NOT stream messy deltas)
         full: List[str] = []
         for ch in stream:
             delta = getattr(ch, "text", None)
             if not delta:
                 continue
             full.append(delta)
-            yield sse_send(delta)
 
-        draft = "".join(full).strip()
+        # Clean output
+        draft = normalize_model_output("".join(full).strip())
 
-        if do_web and web_pages:
-            draft = _enforce_web_citations(draft, web_pages)
+        # Ensure web citations exist if web evidence was used
+        draft = _enforce_web_citations(draft, web_pages)
 
+        # Add ONE sources footer (only if citations are present)
+        footer = build_sources_footer(draft, evidence_pack)
+        if footer:
+            draft = draft.rstrip() + "\n\n" + footer
+
+        # Numeric verification guard (kept)
         sources_blob = _sources_text_blob_for_verification(pdf_chunks, docai_hits, web_pages)
         ok, final_text = _hard_verify_numeric(draft, sources_blob)
-
         if not ok:
-            yield sse_send("\n\n---\n\nFinal (verified):\n\n" + final_text + "\n")
-            draft = (draft + "\n\n---\n\nFinal (verified):\n\n" + final_text).strip()
+            final_text = normalize_model_output(final_text)
+            draft = (draft + "\n\n---\n\n" + final_text).strip()
+
+        # Send one clean response
+        yield sse_send(draft)
 
         if chat_id:
             remember(chat_id, "assistant", draft)
@@ -2380,5 +2481,8 @@ async def _stream_answer_async(
         yield f"data: [ERROR] {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
+
+
 
 
