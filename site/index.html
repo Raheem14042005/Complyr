@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Raheem AI — Maintenance</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Maintenance Mode — Chaos Control Room</title>
   <style>
     :root{
       --bg:#0b0f17;
@@ -12,8 +12,12 @@
       --text:rgba(255,255,255,.92);
       --muted:rgba(255,255,255,.68);
       --accent:#7c3aed;
+      --ok:#22c55e;
+      --warn:#fde68a;
+      --bad:#fca5a5;
       --shadow: 0 20px 60px rgba(0,0,0,.35);
       --radius: 18px;
+      --vibe: 40; /* 0..100 */
     }
     *{box-sizing:border-box}
     body{
@@ -26,31 +30,28 @@
         radial-gradient(900px 500px at 20% 80%, rgba(34,197,94,.12), transparent 60%),
         var(--bg);
       color:var(--text);
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
       padding:24px;
+      overflow-x:hidden;
     }
     .wrap{
-      width:min(1100px, 100%);
+      width:min(1180px, 100%);
       display:grid;
       gap:18px;
       grid-template-columns: 1.25fr .75fr;
+      align-items:start;
     }
     @media (max-width: 980px){ .wrap{grid-template-columns:1fr} }
+
     .card{
       background:linear-gradient(180deg, var(--card), var(--card2));
       border:1px solid rgba(255,255,255,.10);
       border-radius:var(--radius);
       box-shadow:var(--shadow);
       overflow:hidden;
+      position:relative;
     }
     .pad{padding:18px 18px 14px}
-    .top{
-      display:flex;
-      gap:12px;
-      align-items:flex-start;
-      justify-content:space-between;
-      flex-wrap:wrap;
-    }
     .title{
       font-size:clamp(22px, 3vw, 34px);
       line-height:1.1;
@@ -59,10 +60,17 @@
     }
     .subtitle{
       margin:8px 0 0;
-      color:rgba(255,255,255,.68);
+      color:var(--muted);
       font-size:14px;
       line-height:1.5;
-      max-width:76ch;
+      max-width:72ch;
+    }
+    .top{
+      display:flex;
+      gap:14px;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      align-items:flex-start;
     }
     .pillrow{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px}
     .pill{
@@ -93,7 +101,7 @@
     }
     .small{
       margin:10px 0 0;
-      color:rgba(255,255,255,.68);
+      color:var(--muted);
       font-size:12px;
       display:flex;
       justify-content:space-between;
@@ -109,6 +117,8 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     }
 
+    /* Buttons */
+    .btns{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
     button{
       border:1px solid rgba(255,255,255,.14);
       background:rgba(255,255,255,.06);
@@ -118,24 +128,17 @@
       cursor:pointer;
       font-weight:800;
       font-size:13px;
+      letter-spacing:-0.01em;
     }
     button:hover{background:rgba(255,255,255,.10)}
     button:active{transform:translateY(1px)}
-    .primary{
-      background:rgba(124,58,237,.22);
-      border-color:rgba(124,58,237,.45);
-    }
-    .danger{
-      background:rgba(239,68,68,.18);
-      border-color:rgba(239,68,68,.35);
-    }
+    .primary{background:rgba(124,58,237,.22); border-color:rgba(124,58,237,.45);}
+    .danger{background:rgba(239,68,68,.18); border-color:rgba(239,68,68,.35);}
+    .ok{background:rgba(34,197,94,.16); border-color:rgba(34,197,94,.35);}
+    .toggleOn{outline:2px solid rgba(255,255,255,.18)}
 
-    canvas{
-      width:100%;
-      height:auto;
-      display:block;
-      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,.05));
-    }
+    /* Snake */
+    canvas{width:100%; height:auto; display:block; background:rgba(0,0,0,.25);}
     .gameHeader{
       display:flex;
       justify-content:space-between;
@@ -146,8 +149,8 @@
       background:rgba(0,0,0,.18);
       flex-wrap:wrap;
     }
-    .stats{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:rgba(255,255,255,.68)}
-    .stats span{color:rgba(255,255,255,.88)}
+    .stats{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--muted)}
+    .stats span{color:rgba(255,255,255,.85)}
     .kbd{
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
       font-size: 12px;
@@ -158,18 +161,19 @@
       color:rgba(255,255,255,.88);
     }
 
+    /* Right column */
     .h2{margin:0 0 10px; font-size:16px; letter-spacing:-0.01em;}
     .log{
       border:1px dashed rgba(255,255,255,.16);
       border-radius:14px;
       padding:12px;
       background:rgba(0,0,0,.18);
-      min-height:170px;
+      min-height:160px;
       font-size:13px;
       color:rgba(255,255,255,.86);
       line-height:1.5;
     }
-    .log .muted{color:rgba(255,255,255,.68)}
+    .log .muted{color:var(--muted)}
     .log .ok{color: #86efac}
     .log .warn{color: #fde68a}
     .log .nope{color: #fca5a5}
@@ -194,8 +198,13 @@
       height:100%;
       width:0%;
       background:linear-gradient(90deg, #22c55e, #fde68a, #ef4444);
-      transition:width .4s ease;
+      transition:width .35s ease;
     }
+
+    .grid2{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px}
+    .row{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap}
+
+    input[type="range"]{width:100%}
 
     .bingo{
       display:grid;
@@ -213,103 +222,190 @@
       user-select:none;
       line-height:1.2;
     }
-    .tile.on{
-      background:rgba(34,197,94,.18);
-      border-color:rgba(34,197,94,.35);
-    }
+    .tile.on{background:rgba(34,197,94,.18); border-color:rgba(34,197,94,.35);}
 
-    .footer{
-      margin-top:12px;
-      font-size:12px;
-      color:rgba(255,255,255,.68);
+    /* Toast */
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:18px;
+      transform:translateX(-50%);
+      background:rgba(0,0,0,.65);
+      border:1px solid rgba(255,255,255,.14);
+      padding:10px 14px;
+      border-radius:999px;
+      box-shadow:var(--shadow);
+      font-size:13px;
+      color:rgba(255,255,255,.92);
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .25s ease, transform .25s ease;
+      z-index:50;
+      max-width:min(92vw, 760px);
+      text-align:center;
     }
+    .toast.show{opacity:1; transform:translateX(-50%) translateY(-4px);}
 
     /* Modal */
-    .modalOverlay{
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,.60);
+    .modalBack{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.55);
       display:none;
       align-items:center;
       justify-content:center;
+      z-index:60;
       padding:18px;
-      z-index:9999;
     }
-    .modalOverlay.show{display:flex;}
     .modal{
-      width:min(560px, 100%);
-      border-radius:18px;
+      width:min(620px, 100%);
+      background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
       border:1px solid rgba(255,255,255,.14);
-      background:linear-gradient(180deg, rgba(255,255,255,.10), rgba(0,0,0,.28));
-      box-shadow: var(--shadow);
-      overflow:hidden;
-    }
-    .modalTop{
-      padding:14px 16px;
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
-      align-items:center;
-      border-bottom:1px solid rgba(255,255,255,.10);
-      background:rgba(0,0,0,.18);
-    }
-    .modalTop b{letter-spacing:-0.01em}
-    .modalBody{
+      border-radius:18px;
+      box-shadow:var(--shadow);
       padding:16px;
+    }
+    .modal h3{margin:0 0 6px; letter-spacing:-0.01em}
+    .modal p{margin:0 0 12px; color:var(--muted); font-size:14px; line-height:1.45}
+    .modal .actions{display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap}
+
+    /* Boss Screen */
+    .boss{
+      position:fixed; inset:0;
+      background:linear-gradient(180deg, #0b1220, #070b12);
+      display:none;
+      z-index:70;
       color:rgba(255,255,255,.92);
-      line-height:1.45;
-      font-size:14px;
+      padding:26px;
     }
-    .modalBody .tiny{
-      margin-top:10px;
-      color:rgba(255,255,255,.68);
+    .bossHeader{
+      display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;
+      margin-bottom:16px;
+    }
+    .bossTitle{
+      font-weight:900;
+      letter-spacing:-0.02em;
+      font-size:18px;
+    }
+    .bossSub{color:rgba(255,255,255,.65); font-size:12px}
+    .bossGrid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:14px;
+    }
+    @media (max-width:900px){ .bossGrid{grid-template-columns:1fr} }
+    .bossCard{
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.05);
+      border-radius:16px;
+      padding:14px;
+    }
+    .fakeTable{
+      width:100%;
+      border-collapse:collapse;
       font-size:12px;
+      color:rgba(255,255,255,.86);
     }
-    .modalActions{
-      padding:14px 16px;
-      border-top:1px solid rgba(255,255,255,.10);
-      display:flex;
-      gap:10px;
-      justify-content:flex-end;
-      flex-wrap:wrap;
-      background:rgba(0,0,0,.12);
+    .fakeTable th,.fakeTable td{
+      border-bottom:1px solid rgba(255,255,255,.08);
+      padding:8px 6px;
+      text-align:left;
+    }
+    .bossKbd{
+      display:inline-block;
+      padding:2px 6px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size:12px;
+      color:rgba(255,255,255,.86);
+    }
+
+    /* Meme confetti */
+    .floaty{
+      position:fixed;
+      left:0; top:0;
+      font-size:22px;
+      opacity:.85;
+      pointer-events:none;
+      animation: drift linear forwards;
+      z-index:40;
+      filter: drop-shadow(0 6px 10px rgba(0,0,0,.35));
+    }
+    @keyframes drift{
+      from{transform:translate(var(--x), -40px) rotate(0deg)}
+      to{transform:translate(var(--x2), calc(100vh + 60px)) rotate(360deg)}
+    }
+
+    .footer{margin-top:10px; font-size:12px; color:var(--muted);}
+    .badge{
+      display:inline-block;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      font-size:12px;
+      color:rgba(255,255,255,.86);
+      margin-left:8px;
     }
   </style>
 </head>
 <body>
 
-  <!-- Panic Modal -->
-  <div class="modalOverlay" id="panicOverlay" role="dialog" aria-modal="true" aria-labelledby="panicTitle">
+  <div class="toast" id="toast"></div>
+
+  <!-- Modal -->
+  <div class="modalBack" id="modalBack" role="dialog" aria-modal="true">
     <div class="modal">
-      <div class="modalTop">
-        <b id="panicTitle">🚨 PANIC REPORT</b>
-        <button id="panicCloseTop" title="Close">✖</button>
-      </div>
-      <div class="modalBody">
-        <div id="panicMsg" style="font-weight:900; font-size:15px"></div>
-        <div id="panicSub" style="margin-top:10px"></div>
-        <div class="tiny">
-          Raheem AI knows TGDs & planning regs by heart… but even Raheem can’t fight a rogue semicolon at 3am.
-        </div>
-      </div>
-      <div class="modalActions">
-        <button id="panicCopy">Copy official excuse</button>
-        <button class="primary" id="panicClose">Close (I’m calm now)</button>
+      <h3 id="modalTitle">Error</h3>
+      <p id="modalBody">Something happened.</p>
+      <div class="actions">
+        <button id="modalClose" class="primary">Close</button>
       </div>
     </div>
   </div>
 
-  <main class="wrap">
+  <!-- Boss Screen -->
+  <div class="boss" id="boss">
+    <div class="bossHeader">
+      <div>
+        <div class="bossTitle">Quarterly Performance Dashboard <span class="badge">Very Serious™</span></div>
+        <div class="bossSub">Press <span class="bossKbd">B</span> to return • You look extremely productive right now</div>
+      </div>
+      <div class="bossSub">Status: “Reviewing KPIs” • Confidence: High • Reality: Optional</div>
+    </div>
+    <div class="bossGrid">
+      <div class="bossCard">
+        <div style="font-weight:900; margin-bottom:10px; letter-spacing:-0.01em;">Key Metrics</div>
+        <table class="fakeTable" aria-label="Fake KPI table">
+          <thead>
+            <tr><th>Metric</th><th>Value</th><th>Trend</th></tr>
+          </thead>
+          <tbody id="bossRows"></tbody>
+        </table>
+      </div>
+      <div class="bossCard">
+        <div style="font-weight:900; margin-bottom:10px; letter-spacing:-0.01em;">Notes</div>
+        <div style="color:rgba(255,255,255,.75); font-size:13px; line-height:1.5">
+          • Align stakeholders (translation: send one email and disappear)<br/>
+          • Improve synergy (translation: rename folders)<br/>
+          • Reduce latency (translation: restart router)<br/><br/>
+          <span style="color:rgba(255,255,255,.60)">Pro tip: occasionally nod at the screen.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap" id="mainUI">
     <!-- Left -->
     <section class="card">
       <div class="pad">
         <div class="top">
           <div>
-            <h1 class="title">Raheem AI 🧠📘 — Maintenance Mode</h1>
+            <h1 class="title">Maintenance Mode 🧰 — Chaos Control Room</h1>
             <p class="subtitle">
-              Raheem AI knows <b>TGDs</b> and <b>planning regs</b> by heart.
-              Unfortunately… the server knows <b>chaos</b> by heart.
-              <br><span style="color:rgba(255,255,255,.68)">While we fix it, enjoy Snake + maximum nonsense.</span>
+              We’re fixing the site. Translation: we changed one line and now the whole internet is judging us.
+              <br><span style="color:rgba(255,255,255,.75)">Distraction tools are provided below for… “emotional stability”.</span>
             </p>
 
             <div class="pillrow">
@@ -319,7 +415,7 @@
               <div class="pill">Server mood: <b id="serverMood">moody</b></div>
             </div>
 
-            <div class="progress">
+            <div class="progress" aria-label="fake progress bar">
               <div class="bar" id="progressBar"></div>
             </div>
             <div class="small">
@@ -331,19 +427,41 @@
               <button class="danger" id="panicBtn">🚨 PANIC BUTTON</button>
               <button id="blameBtn">🧾 Generate Blame</button>
               <button class="primary" id="deployBtn">🚀 Deploy Now</button>
+              <button id="errorBtn">🧯 Fake Error Popup</button>
+              <button id="internBtn">🧑‍💻 Summon Intern</button>
+              <button class="ok" id="lootBtn">🎁 Open Loot Box</button>
+            </div>
+
+            <div class="pillrow" style="margin-top:10px">
+              <button id="roastBtn">🔥 Roast Me</button>
+              <button id="memeBtn">🌀 Meme Mode</button>
+              <button id="soundBtn">🔊 Sound FX: Off</button>
+              <button id="helpBtn">❓ Secret Controls</button>
             </div>
           </div>
 
-          <div class="panel" style="min-width:250px; flex:1">
-            <div style="font-weight:900">Rage Meter</div>
-            <div class="footer">Increases when you die. Decreases when you stop caring.</div>
+          <div class="panel" style="min-width:280px; flex:1">
+            <div class="row">
+              <div style="font-weight:900; letter-spacing:-0.01em">Rage Meter</div>
+              <div class="pill">Boss Key: <b>B</b></div>
+            </div>
+            <div class="footer">Increases when you die. Decreases when you stop taking it personally.</div>
             <div class="meter"><div id="rageBar"></div></div>
             <div class="footer"><span id="rageLabel">Calm-ish.</span></div>
+
+            <div class="panel" style="margin-top:10px">
+              <div class="row">
+                <div style="font-weight:900; letter-spacing:-0.01em">Vibe Slider</div>
+                <div class="pill">Chill ←→ Chaos</div>
+              </div>
+              <input id="vibe" type="range" min="0" max="100" value="40" aria-label="Vibe slider"/>
+              <div class="footer" id="vibeLabel">Current vibe: mildly chaotic.</div>
+            </div>
           </div>
         </div>
       </div>
 
-      <canvas id="game" width="720" height="480"></canvas>
+      <canvas id="game" width="720" height="480" aria-label="Snake game"></canvas>
 
       <div class="gameHeader">
         <div class="stats">
@@ -358,7 +476,7 @@
         <div class="btns">
           <button class="primary" id="startBtn">Start / Restart</button>
           <button id="pauseBtn">Pause</button>
-          <button id="hardBtn">Hard Mode</button>
+          <button id="hardBtn" title="For the brave (or the bored)">Hard Mode</button>
         </div>
       </div>
     </section>
@@ -366,30 +484,90 @@
     <!-- Right -->
     <aside class="card">
       <div class="pad">
-        <h2 class="h2">Live Engineering Updates</h2>
+        <h2 class="h2">Live Engineering Updates (definitely real)</h2>
         <div class="log" id="log"></div>
 
         <div class="panel">
           <div style="font-weight:900">Developer Excuse Bingo</div>
-          <div class="footer">Tap excuses until BINGO. (Still won’t fix the site.)</div>
+          <div class="footer">Tap excuses until you get a BINGO. It won’t fix the site, but it will fix your mood.</div>
           <div class="bingo" id="bingo"></div>
           <div class="pillrow" style="margin-top:10px">
             <button id="resetBingo">Reset Bingo</button>
           </div>
         </div>
 
+        <div class="panel">
+          <div style="font-weight:900">Secret Achievement Tracker</div>
+          <div class="footer" id="achievements">Achievements: none (yet). Your legacy is being built.</div>
+        </div>
+
         <div class="footer">
-          Emergency support: whisper “<b>it worked on my machine</b>” into your router.
+          Pro tip: press <span class="kbd">B</span> if someone walks in. Instantly become “Corporate”.
         </div>
       </div>
     </aside>
   </main>
 
   <script>
+    // ---------------------------
+    // Helpers
+    // ---------------------------
     const $ = (id) => document.getElementById(id);
-    const randomPick = (arr) => arr[Math.floor(Math.random()*arr.length)];
+    const toast = $("toast");
+    const logEl = $("log");
 
+    function randomPick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+    function showToast(msg){
+      toast.textContent = msg;
+      toast.classList.add("show");
+      setTimeout(()=>toast.classList.remove("show"), 1700);
+    }
+
+    function addLog(line, cls="muted"){
+      const p = document.createElement("div");
+      p.innerHTML = `<span class="${cls}">• ${line}</span>`;
+      logEl.prepend(p);
+      while(logEl.childNodes.length > 14) logEl.removeChild(logEl.lastChild);
+    }
+
+    // ---------------------------
+    // Simple WebAudio "beep" (only if enabled)
+    // ---------------------------
+    let sfxOn = false;
+    let audioCtx = null;
+    function beep(freq=440, ms=70){
+      if(!sfxOn) return;
+      try{
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.type = "sine";
+        o.frequency.value = freq;
+        g.gain.value = 0.02;
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start();
+        setTimeout(()=>{ o.stop(); }, ms);
+      }catch(e){}
+    }
+
+    // ---------------------------
+    // Achievements
+    // ---------------------------
+    const achievementsEl = $("achievements");
+    const unlocked = new Set();
+    function unlock(name){
+      if(unlocked.has(name)) return;
+      unlocked.add(name);
+      achievementsEl.textContent = "Achievements: " + [...unlocked].join(", ");
+      showToast("🏆 Achievement unlocked: " + name);
+      addLog("Achievement unlocked: " + name, "ok");
+      beep(880, 120);
+    }
+
+    // ---------------------------
     // Maintenance fluff
+    // ---------------------------
     const statusText = $("statusText");
     const coffeeLevel = $("coffeeLevel");
     const bugCount = $("bugCount");
@@ -397,42 +575,55 @@
     const progressBar = $("progressBar");
     const eta = $("eta");
     const truth = $("truth");
-    const logEl = $("log");
 
-    function addLog(line, cls="muted"){
-      const p = document.createElement("div");
-      p.innerHTML = `<span class="${cls}">• ${line}</span>`;
-      logEl.prepend(p);
-      while(logEl.childNodes.length > 12) logEl.removeChild(logEl.lastChild);
+    let vibe = 40; // 0..100
+    function vibeLabel(){
+      return vibe < 20 ? "zen mode. suspiciously calm." :
+             vibe < 45 ? "mildly chaotic." :
+             vibe < 70 ? "chaos with a spreadsheet." :
+             "full goblin mode.";
     }
+    function vibeIntensity(){ return 0.6 + (vibe/100)*1.2; } // 0.6..1.8
 
     const statuses = [
       "Negotiating with the database",
       "Turning it off and on again (for spiritual reasons)",
       "Applying duct tape (digital edition)",
       "Reading the error message this time. Maybe.",
-      "Updating dependencies (summoning chaos)",
+      "Updating dependencies (a.k.a. summoning chaos)",
       "Teaching the server empathy",
-      "Refactoring (rearranging deck chairs)",
-      "Asking the API nicely"
+      "Refactoring (aka rearranging the deck chairs)",
+      "Asking the API nicely",
+      "Looking at the bug until it confesses"
     ];
-    const coffees = ["critical", "low", "acceptable", "dangerously optimistic", "espresso-powered"];
-    const bugs = ["plotting", "multiplying", "in witness protection", "too confident", "doing parkour"];
-    const moods = ["moody", "confused", "surprisingly cooperative", "needs attention", "vibing"];
+    const coffees = ["critical", "low", "acceptable", "dangerously optimistic", "espresso-powered", "existential"];
+    const bugs = ["plotting", "multiplying", "in witness protection", "too confident", "doing parkour", "cosplaying features"];
+    const moods = ["moody", "confused", "surprisingly cooperative", "needs attention", "vibing", "dramatic"];
 
     let fakeProgress = 0;
+
     function tickMaintenance(){
       statusText.textContent = randomPick(statuses);
       coffeeLevel.textContent = randomPick(coffees);
       bugCount.textContent = randomPick(bugs);
       serverMood.textContent = randomPick(moods);
 
-      const delta = (Math.random() * 10) - 3; // -3..7
+      const delta = ((Math.random() * 10) - 3) * vibeIntensity();
       fakeProgress = Math.max(0, Math.min(97, fakeProgress + delta));
       progressBar.style.width = fakeProgress.toFixed(0) + "%";
 
-      eta.textContent = randomPick(["soon™", "in a sec", "after one more coffee", "shortly-ish"]);
-      truth.textContent = randomPick(["ask again later","depends on the bug’s vibe","classified information","after we stop touching it"]);
+      const etas = ["soon™", "in a sec", "after one more coffee", "shortly-ish", "when Mercury stops retrograding"];
+      eta.textContent = randomPick(etas);
+
+      const truths = [
+        "ask again later",
+        "depends on the bug’s vibe",
+        "classified information",
+        "when JavaScript feels like it",
+        "after we stop touching it",
+        "after the server finishes its emotional arc"
+      ];
+      truth.textContent = randomPick(truths);
 
       const logLines = [
         ["Cleared cache. Cache cleared *us* emotionally.", "warn"],
@@ -441,86 +632,231 @@
         ["Server replied: ‘lol’. Investigating.", "warn"],
         ["Added console.log(). Problem got shy.", "ok"],
         ["Refactored code. Now it’s ‘art’.", "ok"],
+        ["Database requested boundaries. Respecting that.", "ok"],
+        ["Reduced bugs by 0.3%. We take wins.", "muted"],
+        ["We solved it. Then remembered we didn’t.", "nope"]
       ];
       const [line, cls] = randomPick(logLines);
       addLog(line, cls);
+
+      if(fakeProgress > 90) unlock("Almost There™");
     }
 
-    addLog("Raheem AI is warming up… the server is not.", "ok");
+    addLog("Booting maintenance mode… secure your snacks.", "ok");
+    addLog("Loading comedy module… done.", "ok");
     tickMaintenance();
-    setInterval(tickMaintenance, 3200);
+    setInterval(tickMaintenance, 3000);
 
-    // Panic Modal
-    const overlay = $("panicOverlay");
-    const panicMsg = $("panicMsg");
-    const panicSub = $("panicSub");
-
-    const panicLines = [
-      { title:"CRITICAL ALERT: Server entered its ‘main character arc’.", sub:"Recommended action: speak gently to your router." },
-      { title:"EMERGENCY: A semicolon escaped containment.", sub:"Do not approach. Offer snacks from a safe distance." },
-      { title:"WARNING: Database is ‘thinking about its life choices’.", sub:"Give it space. Healing takes time." },
-      { title:"CODE RED: Someone said ‘quick change’ in production.", sub:"Legends begin this way. So do outages." },
-      { title:"ALERT: Site is down, but confidence is up.", sub:"This is not helpful. But it is consistent." },
-    ];
-
-    function openPanic(){
-      const m = randomPick(panicLines);
-      panicMsg.textContent = m.title;
-      panicSub.textContent = m.sub;
-      overlay.classList.add("show");
-      addLog("PANIC BUTTON pressed. Official meltdown initiated.", "warn");
-    }
-    function closePanic(){
-      overlay.classList.remove("show");
-      addLog("Panic resolved. (Not the issue. Just the panic.)", "ok");
+    // ---------------------------
+    // Modal
+    // ---------------------------
+    const modalBack = $("modalBack");
+    const modalTitle = $("modalTitle");
+    const modalBody = $("modalBody");
+    $("modalClose").addEventListener("click", ()=> modalBack.style.display = "none");
+    function showModal(title, body){
+      modalTitle.textContent = title;
+      modalBody.textContent = body;
+      modalBack.style.display = "flex";
+      beep(220, 120);
     }
 
-    $("panicBtn").addEventListener("click", openPanic);
-    $("panicClose").addEventListener("click", closePanic);
-    $("panicCloseTop").addEventListener("click", closePanic);
-    overlay.addEventListener("click", (e)=>{ if(e.target === overlay) closePanic(); });
+    // ---------------------------
+    // Meme mode
+    // ---------------------------
+    let memeMode = false;
+    let memeTimer = null;
+    function spawnFloaty(){
+      const icons = ["😂","💀","🔥","🧠","🧰","🚀","🫠","🐍","🥲","✨","🧻","🍕"];
+      const d = document.createElement("div");
+      d.className = "floaty";
+      d.textContent = randomPick(icons);
+      const x = Math.random() * 100;
+      const x2 = x + (Math.random()*30 - 15);
+      d.style.setProperty("--x", x + "vw");
+      d.style.setProperty("--x2", x2 + "vw");
+      d.style.animationDuration = (6 / vibeIntensity() + Math.random()*2) + "s";
+      document.body.appendChild(d);
+      setTimeout(()=>d.remove(), 9000);
+    }
 
-    $("panicCopy").addEventListener("click", async ()=>{
-      const excuse = "Official excuse: ‘The server is currently reviewing TGDs and refusing to comply with vibes.’";
-      try{
-        await navigator.clipboard.writeText(excuse);
-        alert("Copied!\n\n" + excuse);
-      }catch{
-        alert("Copy this manually:\n\n" + excuse);
+    function setMemeMode(on){
+      memeMode = on;
+      $("memeBtn").classList.toggle("toggleOn", memeMode);
+      if(memeTimer) clearInterval(memeTimer);
+      if(memeMode){
+        showToast("Meme Mode ON. Professionalism has left the chat.");
+        addLog("Meme mode enabled. Good luck explaining this.", "warn");
+        unlock("Unprofessional");
+        memeTimer = setInterval(()=>{ if(Math.random() < 0.7) spawnFloaty(); }, 450);
+      }else{
+        showToast("Meme Mode OFF. You are now ‘employable’ again.");
+        addLog("Meme mode disabled. HR is relieved.", "ok");
       }
+    }
+
+    // ---------------------------
+    // Buttons (fun)
+    // ---------------------------
+    $("panicBtn").addEventListener("click", ()=>{
+      const msgs = [
+        "Panic activated ✅ Nothing changed ✅ (as expected)",
+        "Emergency meeting scheduled with the hamster running the server.",
+        "You pressed PANIC. The site pressed PANIC back.",
+        "We screamed internally. Thanks for your contribution."
+      ];
+      showToast(randomPick(msgs));
+      addLog("PANIC BUTTON pressed. Confidence decreased by 14%.", "warn");
+      unlock("Panic Enjoyer");
+      beep(330, 90);
     });
 
-    // Blame / Deploy popups
     $("blameBtn").addEventListener("click", ()=>{
       const blame = [
         "Blame assigned to: Wi-Fi spirits.",
         "Blame assigned to: Mercury retrograde.",
-        "Blame assigned to: the intern (we don’t have an intern).",
+        "Blame assigned to: the intern (we don’t have one).",
         "Blame assigned to: a missing semicolon living its best life.",
-        "Blame assigned to: ‘that one plugin’ nobody remembers installing."
+        "Blame assigned to: ‘that one plugin’ nobody remembers installing.",
+        "Blame assigned to: cosmic rays flipping a bit (probably).",
+        "Blame assigned to: user error (respectfully)."
       ];
       const msg = randomPick(blame);
-      alert(msg);
+      showToast(msg);
       addLog(msg, "warn");
+      unlock("Accountability Avoider");
+      beep(520, 70);
     });
 
     $("deployBtn").addEventListener("click", ()=>{
-      alert("Deploying… 🚀\n\n(please clap)");
-      addLog("Starting deployment…", "ok");
-      setTimeout(()=>addLog("Packing pixels into boxes…", "ok"), 350);
-      setTimeout(()=>addLog("Rocket has feelings. Comforting rocket…", "warn"), 700);
-      setTimeout(()=>{
-        addLog("Deployment complete ✅", "ok");
-        addLog("Site status: still maintenance 💀", "nope");
-        alert("Deployment complete ✅\n\nResult: still maintenance 💀");
-      }, 1100);
+      unlock("Ship It");
+      showToast("Deploying… (dramatic music)");
+      beep(660, 110);
+      const steps = [
+        ["Starting deployment…", "ok"],
+        ["Packing pixels into boxes…", "ok"],
+        ["Launching rocket 🚀 …", "ok"],
+        ["Rocket has feelings. Comforting rocket…", "warn"],
+        ["Deployment complete ✅", "ok"],
+        ["Site status: still maintenance 💀", "nope"]
+      ];
+      let i = 0;
+      const t = setInterval(()=>{
+        addLog(steps[i][0], steps[i][1]);
+        i++;
+        if(i >= steps.length) clearInterval(t);
+      }, 420);
     });
 
+    $("errorBtn").addEventListener("click", ()=>{
+      showModal(
+        "Unhandled Promise Rejection",
+        "motivationNotFoundError: Cannot read properties of 'willpower' (reading 'exists')."
+      );
+      addLog("User encountered motivationNotFoundError. Relatable.", "warn");
+      unlock("Motivation? Never Heard Of Her");
+    });
+
+    $("internBtn").addEventListener("click", ()=>{
+      unlock("Summoned Help");
+      const lines = [
+        ["Summoning intern…", "ok"],
+        ["Intern arrived: confident.", "warn"],
+        ["Intern Googled: ‘how to fix website’…", "ok"],
+        ["Intern pushed to production 😬", "nope"],
+        ["Intern is now ‘learning’ (aka fleeing).", "warn"]
+      ];
+      showToast("Intern summoned. Outcome: unpredictable.");
+      let i = 0;
+      const t = setInterval(()=>{
+        addLog(lines[i][0], lines[i][1]);
+        i++;
+        if(i >= lines.length) clearInterval(t);
+      }, 380);
+      beep(300, 80);
+    });
+
+    $("lootBtn").addEventListener("click", ()=>{
+      const rewards = [
+        ["+10 Morale", "ok"],
+        ["+1 Bug", "warn"],
+        ["Legendary Drop: ‘It worked first try’ (fake)", "ok"],
+        ["Common Drop: ‘Have you tried clearing cache?’", "muted"],
+        ["Epic Drop: ‘StackOverflow Answer from 2013’", "warn"],
+        ["Cursed Drop: ‘New dependency added’", "nope"],
+      ];
+      const [r, cls] = randomPick(rewards);
+      showToast("Loot Box: " + r);
+      addLog("Loot box opened: " + r, cls);
+      unlock("Loot Goblin");
+      beep(840, 70);
+      if(memeMode || vibe > 55) for(let i=0;i<4;i++) spawnFloaty();
+    });
+
+    $("roastBtn").addEventListener("click", ()=>{
+      unlock("Roasted");
+      const roasts = [
+        "You clicked ‘Roast Me’… that’s bravery, or a cry for help.",
+        "If confidence was a feature, yours would be in beta.",
+        "You’re doing amazing. Not in the game. In general. (maybe).",
+        "Your snake moved like it was on airport Wi-Fi.",
+        "The site is down, but your commitment to chaos is up.",
+      ];
+      showToast(randomPick(roasts));
+      addLog("Roast delivered. Emotional damage applied.", "warn");
+      beep(480, 60);
+    });
+
+    $("memeBtn").addEventListener("click", ()=> setMemeMode(!memeMode));
+
+    $("soundBtn").addEventListener("click", ()=>{
+      sfxOn = !sfxOn;
+      $("soundBtn").textContent = "🔊 Sound FX: " + (sfxOn ? "On" : "Off");
+      $("soundBtn").classList.toggle("toggleOn", sfxOn);
+      showToast(sfxOn ? "Sound FX ON (tiny beeps only)" : "Sound FX OFF (peace restored)");
+      if(sfxOn) beep(880, 80);
+    });
+
+    $("helpBtn").addEventListener("click", ()=>{
+      showModal("Secret Controls",
+        "• Boss Key: press B (instant ‘serious dashboard’)\n" +
+        "• Pause Snake: P\n" +
+        "• Konami Code: ↑ ↑ ↓ ↓ ← → ← → B A (try it)\n" +
+        "• Meme Mode: makes emojis rain (blame yourself)\n"
+      );
+      unlock("Read The Manual");
+    });
+
+    // ---------------------------
+    // Vibe slider
+    // ---------------------------
+    const vibeRange = $("vibe");
+    const vibeLabelEl = $("vibeLabel");
+    vibeRange.addEventListener("input", ()=>{
+      vibe = Number(vibeRange.value);
+      vibeLabelEl.textContent = "Current vibe: " + vibeLabel();
+      if(vibe > 80) unlock("Goblin Mode");
+      if(memeMode){
+        // adjust frequency
+        if(memeTimer) clearInterval(memeTimer);
+        memeTimer = setInterval(()=>{ if(Math.random() < 0.7) spawnFloaty(); }, Math.max(180, 600 - vibe*4));
+      }
+    });
+    vibeLabelEl.textContent = "Current vibe: " + vibeLabel();
+
+    // ---------------------------
     // Bingo
+    // ---------------------------
     const excuses = [
-      "It works on my machine","DNS is haunted","Caching issue (trust me)",
-      "We’re ‘optimizing’","A ‘quick’ hotfix","Third-party API changed",
-      "We’re ‘migrating’ stuff","Someone pushed to main","It’s a feature",
+      "It works on my machine",
+      "DNS is haunted",
+      "Caching issue (trust me)",
+      "We’re ‘optimizing’",
+      "A ‘quick’ hotfix",
+      "Third-party API changed",
+      "We’re ‘migrating’ stuff",
+      "Someone pushed to main",
+      "It’s a feature",
     ];
     const bingoEl = $("bingo");
 
@@ -533,6 +869,7 @@
         d.addEventListener("click", ()=>{
           d.classList.toggle("on");
           checkBingo();
+          beep(600, 40);
         });
         bingoEl.appendChild(d);
       });
@@ -546,15 +883,117 @@
         [0,3,6],[1,4,7],[2,5,8],
         [0,4,8],[2,4,6]
       ];
-      if(lines.some(line => line.every(i => on[i]))){
-        alert("BINGO! 🏆\n\nReward:\n• Nothing\n• More maintenance\n• Character development");
+      const bingo = lines.some(line => line.every(i => on[i]));
+      if(bingo){
+        showToast("BINGO! Reward: absolutely nothing 🏆");
         addLog("BINGO achieved. Still not fixing the site though.", "ok");
+        unlock("Bingo Enjoyer");
+        beep(980, 120);
+        if(memeMode || vibe > 60) for(let i=0;i<8;i++) spawnFloaty();
       }
     }
-    $("resetBingo").addEventListener("click", renderBingo);
+
+    $("resetBingo").addEventListener("click", ()=>{
+      renderBingo();
+      showToast("Bingo reset. Lies reloaded.");
+      addLog("Excuse Bingo reset. Accountability avoided.", "muted");
+    });
     renderBingo();
 
-    // Snake Game (visible colors)
+    // ---------------------------
+    // Boss Key
+    // ---------------------------
+    const boss = $("boss");
+    const mainUI = $("mainUI");
+    const bossRows = $("bossRows");
+
+    function randomKpiRows(){
+      const rows = [
+        ["Synergy Index", (80+Math.random()*19).toFixed(1)+"%", "↗"],
+        ["Stakeholder Happiness", (30+Math.random()*50).toFixed(0)+"%", "↔"],
+        ["Latency Reduction", (Math.random()*42).toFixed(1)+"ms", "↘"],
+        ["Revenue (Projected)", "€"+(100+Math.random()*900).toFixed(0)+"k", "↗"],
+        ["Meetings Avoided", (2+Math.random()*18).toFixed(0), "↗"],
+        ["Actual Work Done", (1+Math.random()*4).toFixed(1)+"%", "↔"],
+      ];
+      bossRows.innerHTML = "";
+      rows.forEach(r=>{
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td>`;
+        bossRows.appendChild(tr);
+      });
+    }
+
+    let bossOn = false;
+    function toggleBoss(){
+      bossOn = !bossOn;
+      boss.style.display = bossOn ? "block" : "none";
+      mainUI.style.display = bossOn ? "none" : "grid";
+      if(bossOn){
+        randomKpiRows();
+        unlock("Corporate Disguise");
+        showToast("Boss Screen ON. You are now ‘working’.");
+      }else{
+        showToast("Boss Screen OFF. Back to chaos.");
+      }
+      beep(740, 70);
+    }
+
+    window.addEventListener("keydown", (e)=>{
+      if(e.key.toLowerCase() === "b"){
+        toggleBoss();
+      }
+    });
+
+    // ---------------------------
+    // Konami code
+    // ---------------------------
+    const KONAMI = ["arrowup","arrowup","arrowdown","arrowdown","arrowleft","arrowright","arrowleft","arrowright","b","a"];
+    let kIndex = 0;
+    let godMode = false;
+
+    window.addEventListener("keydown", (e)=>{
+      const key = e.key.toLowerCase();
+      if(key === KONAMI[kIndex]){
+        kIndex++;
+        if(kIndex === KONAMI.length){
+          kIndex = 0;
+          godMode = !godMode;
+          unlock("Secret Code");
+          showToast(godMode ? "💎 KONAMI UNLOCKED: God Mode jokes activated" : "God Mode jokes disabled (coward)");
+          addLog(godMode ? "Konami code entered. The universe is concerned." : "God mode disabled. Reality restored.", godMode ? "ok" : "warn");
+          beep(1040, 120);
+          if(memeMode || vibe > 55) for(let i=0;i<10;i++) spawnFloaty();
+        }
+      } else {
+        kIndex = 0;
+      }
+    });
+
+    // ---------------------------
+    // Rage meter (snake)
+    // ---------------------------
+    const rageBar = $("rageBar");
+    const rageLabel = $("rageLabel");
+    let rage = 6;
+
+    function setRage(n){
+      rage = Math.max(0, Math.min(100, n));
+      rageBar.style.width = rage + "%";
+      rageLabel.textContent =
+        rage < 15 ? "Calm-ish." :
+        rage < 35 ? "Mildly annoyed (British level)." :
+        rage < 60 ? "Spicy frustration." :
+        rage < 85 ? "Keyboard looking throwable." :
+        "Full gamer rage. Drink water.";
+      if(rage >= 90) unlock("Rage Max");
+    }
+    setRage(rage);
+    setInterval(()=> setRage(rage - (1 + Math.floor(vibe/50))), 3200);
+
+    // ---------------------------
+    // Snake Game
+    // ---------------------------
     const canvas = $("game");
     const ctx = canvas.getContext("2d");
 
@@ -566,43 +1005,15 @@
     const pauseBtn = $("pauseBtn");
     const hardBtn  = $("hardBtn");
 
-    const rageBar = $("rageBar");
-    const rageLabel = $("rageLabel");
-    let rage = 5;
-
-    function setRage(n){
-      rage = Math.max(0, Math.min(100, n));
-      rageBar.style.width = rage + "%";
-      rageLabel.textContent =
-        rage < 15 ? "Calm-ish." :
-        rage < 35 ? "Mildly annoyed." :
-        rage < 60 ? "Spicy frustration." :
-        rage < 85 ? "Keyboard looking throwable." :
-        "Full gamer rage. Drink water.";
-    }
-    setRage(rage);
-    setInterval(()=> setRage(rage - 1), 3500);
-
     const GRID = 24;
     const COLS = Math.floor(canvas.width / GRID);
     const ROWS = Math.floor(canvas.height / GRID);
 
-    const STORAGE_KEY = "raheem_snake_best";
+    const STORAGE_KEY = "maintenance_snake_best";
     let best = Number(localStorage.getItem(STORAGE_KEY) || 0);
     bestEl.textContent = best;
 
     let snake, dir, nextDir, food, score, running, paused, tickMs, hardMode;
-
-    const COLORS = {
-      grid: "rgba(255,255,255,0.10)",
-      boardA: "rgba(255,255,255,0.06)",
-      boardB: "rgba(0,0,0,0.10)",
-      snakeHead: "rgba(34,197,94,0.95)",
-      snakeBody: "rgba(59,130,246,0.90)",
-      food: "rgba(248,113,113,0.95)",
-      text: "white",
-      overlay: "rgba(0,0,0,0.55)"
-    };
 
     function resetGame(){
       snake = [{x: Math.floor(COLS/2), y: Math.floor(ROWS/2)}];
@@ -615,26 +1026,33 @@
       placeFood();
       scoreEl.textContent = score;
       updateSpeedLabel();
+      addLog(hardMode ? "Hard mode enabled. Reflexes required." : "Snake restarted. Productivity paused.", "ok");
+      beep(600, 60);
     }
 
     function updateSpeedLabel(){
       const base = 120;
-      speedEl.textContent = (base / tickMs).toFixed(1) + "x";
+      const mult = (base / tickMs);
+      speedEl.textContent = mult.toFixed(1) + "x";
     }
 
     function placeFood(){
       while(true){
         const fx = Math.floor(Math.random()*COLS);
         const fy = Math.floor(Math.random()*ROWS);
-        if(!snake.some(s=>s.x===fx && s.y===fy)){ food = {x: fx, y: fy}; return; }
+        if(!snake.some(s=>s.x===fx && s.y===fy)){
+          food = {x: fx, y: fy};
+          return;
+        }
       }
     }
 
     function overlayText(big, small){
       ctx.save();
-      ctx.fillStyle = COLORS.overlay;
+      ctx.globalAlpha = 0.85;
       ctx.fillRect(0,0,canvas.width,canvas.height);
-      ctx.fillStyle = COLORS.text;
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "white";
       ctx.font = "900 42px system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText(big, canvas.width/2, canvas.height/2 - 10);
@@ -646,42 +1064,41 @@
     function draw(){
       ctx.clearRect(0,0,canvas.width,canvas.height);
 
-      const g = ctx.createLinearGradient(0,0,0,canvas.height);
-      g.addColorStop(0, COLORS.boardA);
-      g.addColorStop(1, COLORS.boardB);
-      ctx.fillStyle = g;
-      ctx.fillRect(0,0,canvas.width,canvas.height);
-
-      ctx.strokeStyle = COLORS.grid;
+      // grid
+      ctx.globalAlpha = 0.18;
       for(let x=0;x<=COLS;x++){ ctx.beginPath(); ctx.moveTo(x*GRID,0); ctx.lineTo(x*GRID,canvas.height); ctx.stroke(); }
       for(let y=0;y<=ROWS;y++){ ctx.beginPath(); ctx.moveTo(0,y*GRID); ctx.lineTo(canvas.width,y*GRID); ctx.stroke(); }
+      ctx.globalAlpha = 1;
 
-      ctx.fillStyle = COLORS.food;
+      // food
       ctx.fillRect(food.x*GRID+4, food.y*GRID+4, GRID-8, GRID-8);
 
+      // snake
       snake.forEach((s,i)=>{
         const pad = i===0 ? 3 : 5;
-        ctx.fillStyle = i===0 ? COLORS.snakeHead : COLORS.snakeBody;
         ctx.fillRect(s.x*GRID+pad, s.y*GRID+pad, GRID-(pad*2), GRID-(pad*2));
       });
 
-      if(!running) overlayText("Game over 💀", "Press Start / Restart");
-      else if(paused) overlayText("Paused ⏸", "Press P or Pause");
+      if(!running){
+        overlayText("Game over 💀", "Press Start / Restart");
+      } else if(paused){
+        overlayText("Paused ⏸", "Press P or Pause");
+      }
     }
 
     function step(){
       if(!running || paused) return;
-      dir = nextDir;
 
+      dir = nextDir;
       const head = snake[0];
       const newHead = {x: head.x + dir.x, y: head.y + dir.y};
 
       if(newHead.x < 0 || newHead.x >= COLS || newHead.y < 0 || newHead.y >= ROWS){
-        die("Snake tried to leave. Same.");
+        die(godMode ? "Wall collided with YOU. Unacceptable." : "Snake tried to escape. Same honestly.");
         return;
       }
       if(snake.some(s => s.x === newHead.x && s.y === newHead.y)){
-        die("Snake got philosophical and ate itself.");
+        die(godMode ? "You ate yourself with confidence. Iconic." : "Snake got philosophical and ate itself.");
         return;
       }
 
@@ -700,17 +1117,36 @@
           best = score;
           localStorage.setItem(STORAGE_KEY, String(best));
           bestEl.textContent = best;
+          showToast("New best! Your procrastination is evolving.");
+          unlock("High Score Energy");
         }
+
         placeFood();
-      }else{
+        addLog(randomPick([
+          "Snack acquired. Performance review pending.",
+          "Apple defeated. Again.",
+          "Crunchy pixels consumed successfully.",
+          "The snake approves your life choices (for now).",
+          "You’re basically a professional snake handler."
+        ]), "ok");
+        beep(880, 45);
+
+        if(score >= 10) unlock("Double Digits");
+        if(score >= 25) unlock("Snake Specialist");
+      } else {
         snake.pop();
       }
     }
 
-    function die(msg){
+    function die(message){
       running = false;
       setRage(rage + 18);
-      addLog(msg, "nope");
+      addLog(message, "nope");
+      addLog(godMode ? "God Mode note: skill issue (respectfully)." : "Maintenance tip: stare at the bug until it feels guilty.", "warn");
+      showToast("Oof. Rage meter increased.");
+      beep(220, 120);
+      unlock("It Be Like That");
+      if(memeMode || vibe > 70) for(let i=0;i<8;i++) spawnFloaty();
     }
 
     function setDirection(x,y){
@@ -726,13 +1162,14 @@
       if(k === "arrowleft" || k === "a") setDirection(-1,0);
       if(k === "arrowright" || k === "d") setDirection(1,0);
       if(k === "p") togglePause();
-      if(k === "escape" && overlay.classList.contains("show")) closePanic();
     });
 
     function togglePause(){
       if(!running) return;
       paused = !paused;
+      addLog(paused ? "Paused. Look busy." : "Unpaused. Back to snake business.", paused ? "warn" : "ok");
       draw();
+      beep(500, 50);
     }
 
     startBtn.addEventListener("click", ()=>{ resetGame(); draw(); });
@@ -741,9 +1178,13 @@
     hardBtn.addEventListener("click", ()=>{
       hardMode = !hardMode;
       hardBtn.classList.toggle("primary", hardMode);
+      showToast(hardMode ? "Hard mode ON 😈" : "Hard mode OFF 😌");
+      addLog(hardMode ? "Hard mode enabled. Blame future you." : "Hard mode disabled. Peace treaty signed.", hardMode ? "warn" : "ok");
       resetGame(); draw();
+      if(hardMode) unlock("Masochist");
     });
 
+    // Start loop
     hardMode = false;
     resetGame(); draw();
 
