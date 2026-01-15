@@ -2740,7 +2740,12 @@ async def _stream_answer_async(
             yield "event: done\ndata: ok\n\n"
             return
 
-        # Smalltalk
+        chat_id = (chat_id or "").strip()
+        pinned = (pdf or "").strip() or None
+
+        # -----------------------------
+        # 0) Smalltalk fast exit
+        # -----------------------------
         if is_smalltalk(user_msg):
             friendly = f"Hey — I’m {PRODUCT_NAME}. What can I help you with?"
             if chat_id:
@@ -2750,9 +2755,9 @@ async def _stream_answer_async(
             yield "event: done\ndata: ok\n\n"
             return
 
-        chat_id = (chat_id or "").strip()
-
-        # Canonical history
+        # -----------------------------
+        # 1) Canonical history
+        # -----------------------------
         if isinstance(messages, list) and messages:
             hist = _normalize_incoming_messages(messages)
             hist = _ensure_last_user_message(hist, user_msg)
@@ -2775,8 +2780,10 @@ async def _stream_answer_async(
             default_evidence_mode=DEFAULT_EVIDENCE_MODE,
         )
 
-        # ---- FAST RETURN: answer cache ----
-        cache_key = _answer_cache_key(fam, strictness, pdf, page_hint, user_msg)
+        # -----------------------------
+        # 2) Answer cache fast return
+        # -----------------------------
+        cache_key = _answer_cache_key(fam, strictness, pinned, page_hint, user_msg)
         cached = _load_answer_cache(cache_key)
         if cached:
             if chat_id:
@@ -2785,7 +2792,9 @@ async def _stream_answer_async(
             yield "event: done\ndata: ok\n\n"
             return
 
-        # ---- Rules first (fast path) ----
+        # -----------------------------
+        # 3) Rules layer fast return
+        # -----------------------------
         rules_hit = _match_rules(user_msg) if RULES_ENABLED else []
         if rules_hit:
             rule = rules_hit[0]
@@ -2797,6 +2806,7 @@ async def _stream_answer_async(
             if quote:
                 rendered += "\n\n" + quote
 
+            # Convert rule citations into clean human refs (no D1/W1 codes)
             if cit:
                 bits: List[str] = []
                 if cit.get("doc"):
@@ -2805,57 +2815,54 @@ async def _stream_answer_async(
                     bits.append(f"Section {cit.get('section')}")
                 if cit.get("table"):
                     bits.append(f"Table {cit.get('table')}")
+                if cit.get("diagram"):
+                    bits.append(f"Diagram {cit.get('diagram')}")
                 if bits:
-                    rendered += "\n\nSource: " + " | ".join(bits)
+                    rendered += "\n\nReferences\n[1] " + " — ".join(bits)
 
-            rendered = normalize_model_output(rendered)
+            rendered = enforce_chatgpt_paragraphs(normalize_model_output(rendered))
 
             if chat_id:
                 remember(chat_id, "assistant", rendered)
+
+            # Cache it too (rules answers benefit massively from caching)
+            _save_answer_cache(cache_key, rendered)
 
             yield sse_send(rendered)
             yield "event: done\ndata: ok\n\n"
             return
 
-        pinned = pdf
-
-        # ---- Planner step ----
+        # -----------------------------
+        # 4) Planner step
+        # -----------------------------
         plan = await plan_request(user_msg, fam=fam, precision=precision, strictness=strictness)
 
-        # sanitize strictness from planner
         try:
             plan_strictness = int(plan.get("strictness", strictness))
         except Exception:
             plan_strictness = strictness
         plan["strictness"] = max(0, min(3, plan_strictness))
 
-        # ---- FAST PATH: keep it ChatGPT-feel fast for simple questions ----
+        # Keep it snappy for simple questions
         if can_fast_path(fam, int(plan.get("strictness", strictness)), user_msg, pinned):
             plan["needs_docs"] = False
             plan["needs_docai"] = False
-            # web can still be useful for planning/general, but we’ll gate it later
-            plan["needs_web"] = bool(WEB_ENABLED and fam in ("planning", "general"))
+            plan["needs_web"] = bool(WEB_ENABLED and fam in ("planning", "general", "ber"))
 
-        # ... continue with your retrieval + writer logic here ...
-        # (pdf_chunks/docai_hits/web_pages gather -> evidence_pack -> model streaming -> final pass -> cache save)
-
-    except Exception as e:
-        msg = str(e).replace("\r", " ").replace("\n", " ")
-        log.exception("Chat stream error: %s", msg)
-        yield f"data: [ERROR] {msg}\n\n"
-        yield "event: done\ndata: ok\n\n"
-        return
-
-        # Retrieval strategy
+        # -----------------------------
+        # 5) Retrieval (PDF + DocAI + Web)
+        # -----------------------------
         async def get_pdf_chunks() -> List[Chunk]:
             if not list_pdfs():
                 return []
 
-            # use planner subqueries if any (broad coverage without drowning)
-            queries = [user_msg] + [q for q in (plan.get("subqueries") or []) if isinstance(q, str) and q.strip()]
-            collected: List[Chunk] = []
+            queries = [user_msg] + [
+                q for q in (plan.get("subqueries") or [])
+                if isinstance(q, str) and q.strip()
+            ]
 
-            for q in queries[: max(1, min(6, len(queries)))]:
+            collected: List[Chunk] = []
+            for q in queries[:6]:
                 cands = search_chunks(
                     q,
                     top_k=max(TOP_K_CHUNKS, 10) if plan.get("precision") == "broad" else TOP_K_CHUNKS,
@@ -2866,7 +2873,6 @@ async def _stream_answer_async(
 
             collected = dedupe_chunks_keep_order(collected)
 
-            # If broad, diversify docs a bit
             if plan.get("precision") == "broad" and collected:
                 collected = diversify_chunks(collected, max_docs=BROAD_DOC_DIVERSITY_K, per_doc=3)
 
@@ -2892,31 +2898,39 @@ async def _stream_answer_async(
                 return []
             if not bool(plan.get("needs_web")):
                 return []
-            serp = await web_search_serper(user_msg, k=TOP_K_WEB)
-            return await web_fetch_and_excerpt(user_msg, serp, max_items=TOP_K_WEB)
 
-        # If strictness 3 + numeric compliance, we still allow web for context,
-        # but PDFs/DocAI must exist to state numbers confidently.
+            serp = await web_search_serper(user_msg, k=TOP_K_WEB)
+
+            # ✅ IMPORTANT: filter by authority tier BEFORE fetching pages
+            serp = filter_web_by_authority(fam, int(plan.get("strictness", strictness)), serp)
+
+            pages = await web_fetch_and_excerpt(user_msg, serp, max_items=TOP_K_WEB)
+            pages = filter_web_by_authority(fam, int(plan.get("strictness", strictness)), pages)
+            return pages
+
         pdf_chunks, docai_hits, web_pages = await asyncio.gather(
             get_pdf_chunks() if plan.get("needs_docs") else asyncio.sleep(0, result=[]),
             get_docai_hits(),
             get_web_evidence(),
         )
 
-        # Guard: strictness 3 + numeric compliance must have doc evidence available
+        # Hard guard for strict numeric compliance
         numeric_needed = is_numeric_compliance(user_msg) and fam == "building_regs"
-        if numeric_needed and plan["strictness"] >= 3 and not pdf_chunks and not docai_hits:
+        if numeric_needed and int(plan["strictness"]) >= 3 and not pdf_chunks and not docai_hits:
             msg = (
-                "I can’t confirm the exact numeric requirement yet because I don’t have the relevant TGD evidence loaded for this question.\n"
-                "If you upload/pin the correct TGD PDF, I’ll quote the exact line containing the number."
+                "I can’t confirm the exact numeric requirement yet because I don’t have the relevant TGD evidence loaded.\n"
+                "Upload/pin the correct TGD PDF and I’ll quote the exact line containing the number."
             )
-            msg = normalize_model_output(msg)
+            msg = enforce_chatgpt_paragraphs(normalize_model_output(msg))
             if chat_id:
                 remember(chat_id, "assistant", msg)
             yield sse_send(msg)
             yield "event: done\ndata: ok\n\n"
             return
 
+        # -----------------------------
+        # 6) Evidence pack
+        # -----------------------------
         evidence_pack = build_evidence_packets(
             pdf_chunks,
             web_pages,
@@ -2925,6 +2939,9 @@ async def _stream_answer_async(
             precision=plan.get("precision") or precision,
         )
 
+        # -----------------------------
+        # 7) Model streaming (writer)
+        # -----------------------------
         ensure_vertex_ready()
         if not _VERTEX_READY:
             msg = (_VERTEX_ERR or "Vertex not ready").replace("\r", " ").replace("\n", " ")
@@ -2932,8 +2949,7 @@ async def _stream_answer_async(
             yield "event: done\ndata: ok\n\n"
             return
 
-        # Writer model
-        model_name = MODEL_COMPLIANCE if plan["strictness"] >= 2 else MODEL_CHAT
+        model_name = MODEL_COMPLIANCE if int(plan["strictness"]) >= 2 else MODEL_CHAT
         model = get_model(model_name=model_name, system_prompt=SYSTEM_PROMPT_WRITER)
         contents = build_writer_contents(history_for_prompt, user_msg, evidence_pack, plan)
 
@@ -2943,35 +2959,42 @@ async def _stream_answer_async(
             stream=True,
         )
 
-        # Stream in readable chunks
         full_text, frames = await stream_llm_text_as_sse(stream)
         for fr in frames:
             if fr:
                 yield fr
 
-        # Final pass: normalize + footer + numeric verify note (append-only)
+        # -----------------------------
+        # 8) Postprocess: paragraphs + references + numeric verify note
+        # -----------------------------
         draft = enforce_chatgpt_paragraphs(normalize_model_output(full_text))
 
-        # Remove any footnotes that don't exist in our evidence refs
+        # Strip invalid footnotes (if the model hallucinated [99], etc.)
+        draft = strip_invalid_footnotes(draft, evidence_pack)
+
         footer = build_references_footer(draft, evidence_pack)
         if footer:
             yield sse_send("\n\n" + footer)
 
         sources_blob = _sources_text_blob_for_verification(pdf_chunks, docai_hits, web_pages)
         ok, note = _hard_verify_numeric(draft, sources_blob)
+
         numeric_note = ""
         if not ok:
-            numeric_note = "\n\n---\n\n" + normalize_model_output(note)
+            numeric_note = "\n\n---\n\n" + enforce_chatgpt_paragraphs(normalize_model_output(note))
             yield sse_send(numeric_note)
 
-        # ✅ Save final answer to cache (including references + any numeric note)
+        # -----------------------------
+        # 9) ✅ Save to cache ONCE (single exact location)
+        # -----------------------------
         final_for_cache = (draft + ("\n\n" + footer if footer else "") + numeric_note).strip()
         _save_answer_cache(cache_key, final_for_cache)
 
         if chat_id:
-            remember(chat_id, "assistant", (draft + ("\n\n" + footer if footer else "")).strip())
+            remember(chat_id, "assistant", final_for_cache)
 
         yield "event: done\ndata: ok\n\n"
+        return
 
     except Exception as e:
         msg = str(e).replace("\r", " ").replace("\n", " ")
@@ -2979,5 +3002,6 @@ async def _stream_answer_async(
         yield f"data: [ERROR] {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
 
 
