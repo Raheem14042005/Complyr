@@ -196,6 +196,11 @@ DOCAI_DIR = DATA_DIR / "parsed_docai"
 CACHE_DIR = DATA_DIR / "cache"
 WEB_CACHE_DIR = CACHE_DIR / "web"
 
+ANSWER_CACHE_DIR = CACHE_DIR / "answers"
+ANSWER_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+ANSWER_CACHE_TTL_SECONDS = int(os.getenv("ANSWER_CACHE_TTL_SECONDS", str(7 * 24 * 60 * 60)))  # 7 days
+
 for d in (PDF_DIR, DOCAI_DIR, CACHE_DIR, WEB_CACHE_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
@@ -1418,24 +1423,77 @@ def determine_strictness(
     # Otherwise: be friendly and helpful, cite when you have it.
     return 1 if fam in ("building_regs", "planning", "ber") else 0
 
+FASTPATH_TRIGGERS = re.compile(r"\b(timeframe|how long|process|steps|what happens|appeal period)\b", re.I)
+
+def can_fast_path(fam: str, strictness: int, user_msg: str, pinned: Optional[str]) -> bool:
+    # Only for low-risk, non-compliance confirmation
+    if pinned:
+        return False
+    if strictness >= 2:
+        return False
+    if fam not in ("planning", "general"):
+        return False
+    q = (user_msg or "").strip()
+    if len(q) > 180:
+        return False
+    # Avoid fast path if user asked for statutes/sections/tables/diagrams
+    if re.search(r"\b(section|clause|table|diagram|statutory|regulation|s\.i\.)\b", q, re.I):
+        return False
+    return True
+
+
+def _norm_q_for_cache(q: str) -> str:
+    q = (q or "").strip().lower()
+    q = re.sub(r"\s+", " ", q)
+    return q[:400]
+
+def _answer_cache_key(fam: str, strictness: int, pinned: Optional[str], page_hint: Optional[int], q: str) -> str:
+    base = f"{fam}|s{strictness}|pdf:{pinned or ''}|p:{page_hint or 0}|q:{_norm_q_for_cache(q)}"
+    return hashlib.sha1(base.encode("utf-8", errors="ignore")).hexdigest()[:24]
+
+def _answer_cache_path(key: str) -> Path:
+    return ANSWER_CACHE_DIR / f"{key}.json"
+
+def _load_answer_cache(key: str) -> Optional[str]:
+    try:
+        p = _answer_cache_path(key)
+        if not p.exists():
+            return None
+        obj = json.loads(p.read_text(encoding="utf-8"))
+        ts = float(obj.get("ts", 0))
+        if time.time() - ts > ANSWER_CACHE_TTL_SECONDS:
+            return None
+        txt = obj.get("answer")
+        return txt if isinstance(txt, str) and txt.strip() else None
+    except Exception:
+        return None
+
+def _save_answer_cache(key: str, answer: str) -> None:
+    try:
+        p = _answer_cache_path(key)
+        p.write_text(json.dumps({"ts": time.time(), "answer": answer}), encoding="utf-8")
+    except Exception:
+        pass
 
 # ============================================================
 # WEB: SAFETY + FETCH + CACHE
 # ============================================================
 
-WEB_STRICT_ALLOWLIST = os.getenv("WEB_STRICT_ALLOWLIST", "false").lower() in ("1","true","yes","on")
+WEB_STRICT_ALLOWLIST = os.getenv("WEB_STRICT_ALLOWLIST", "false").lower() in ("1", "true", "yes", "on")
 
 WEB_BLOCKLIST_DEFAULT = [
-    "facebook.com","instagram.com","tiktok.com","x.com","twitter.com",
-    "pinterest.com","reddit.com",
+    "facebook.com", "instagram.com", "tiktok.com", "x.com", "twitter.com",
+    "pinterest.com", "reddit.com",
 ]
 WEB_BLOCKLIST = [d.strip().lower() for d in (os.getenv("WEB_BLOCKLIST", "") or "").split(",") if d.strip()]
 if not WEB_BLOCKLIST:
     WEB_BLOCKLIST = WEB_BLOCKLIST_DEFAULT
 
+
 def _safe_url(url: str) -> bool:
     u = (url or "").strip().lower()
     return u.startswith("http://") or u.startswith("https://")
+
 
 def _host_from_url(url: str) -> str:
     try:
@@ -1449,11 +1507,13 @@ def _host_from_url(url: str) -> str:
     except Exception:
         return ""
 
+
 def _blocked_url(url: str) -> bool:
     host = _host_from_url(url)
     if not host:
         return True
     return any(host == d or host.endswith("." + d) for d in WEB_BLOCKLIST)
+
 
 def _allowed_url(url: str) -> bool:
     if _blocked_url(url):
@@ -1465,12 +1525,81 @@ def _allowed_url(url: str) -> bool:
         return False
     return any(host == d or host.endswith("." + d) for d in WEB_ALLOWLIST)
 
+
+# ---- Authority tiers for web sources ----
+TIER_A = {
+    # Official / primary sources (Ireland)
+    "irishstatutebook.ie",
+    "gov.ie",
+    "housing.gov.ie",
+    "nsai.ie",
+    "dublincity.ie",
+    "dlrcoco.ie",
+    "corkcity.ie",
+    "kildarecoco.ie",
+    "galwaycity.ie",
+}
+
+
+def web_tier(host: str) -> str:
+    h = (host or "").lower().strip()
+    if not h:
+        return "C"
+    if any(h == d or h.endswith("." + d) for d in TIER_A):
+        return "A"
+    if any(h == d or h.endswith("." + d) for d in WEB_ALLOWLIST):
+        return "B"
+    return "C"
+
+
+def filter_web_by_authority(
+    fam: str,
+    strictness: int,
+    web_pages: List[Dict[str, str]],
+) -> List[Dict[str, str]]:
+    out: List[Dict[str, str]] = []
+    for w in web_pages or []:
+        host = _host_from_url(w.get("url") or "")
+        tier = web_tier(host)
+
+        # Planning + Building regs + BER: keep stronger sources
+        if fam in ("planning", "building_regs", "ber"):
+            if strictness >= 2:
+                # strictness >= 2 => only Tier A (official)
+                if tier != "A":
+                    continue
+            else:
+                # strictness 0/1 => allow A/B, drop random blogs
+                if tier not in ("A", "B"):
+                    continue
+
+        out.append(w)
+
+    return out
+
+
+def _rewrite_query_ireland(q: str) -> str:
+    q = (q or "").strip()
+    if not q:
+        return q
+
+    # If the user didn’t specify a location/country, bias to Ireland
+    if not re.search(r"\b(ireland|irish|dublin|cork|galway|limerick)\b", q, re.I):
+        q = q + " Ireland"
+
+    return q
+
+
 async def web_search_serper(query: str, k: int = TOP_K_WEB) -> List[Dict[str, str]]:
     if not WEB_ENABLED:
         return []
+
+    q2 = _rewrite_query_ireland(query)
+
     url = "https://google.serper.dev/search"
     headers = {"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"}
-    payload = {"q": query, "num": max(3, min(10, k * 2))}
+    payload = {"q": q2, "num": max(3, min(10, k * 2))}
+
     try:
         async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             r = await client.post(url, headers=headers, json=payload)
@@ -1487,7 +1616,9 @@ async def web_search_serper(query: str, k: int = TOP_K_WEB) -> List[Dict[str, st
         snippet = (item.get("snippet") or "").strip()
         if link:
             out.append({"title": title, "url": link, "snippet": snippet})
+
     return out[: max(5, k * 2)]
+
 
 def _html_to_text(html: str) -> str:
     html = html or ""
@@ -1498,16 +1629,17 @@ def _html_to_text(html: str) -> str:
     html = re.sub(r"(?is)<[^>]+>", " ", html)
     html = (
         html.replace("&nbsp;", " ")
-            .replace("&amp;", "&")
-            .replace("&quot;", '"')
-            .replace("&#39;", "'")
-            .replace("&lt;", "<")
-            .replace("&gt;", ">")
+        .replace("&amp;", "&")
+        .replace("&quot;", '"')
+        .replace("&#39;", "'")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
     )
     html = re.sub(r"[ \t]+", " ", html)
     html = re.sub(r"\n{3,}", "\n\n", html)
     html = re.sub(r"\s+\n", "\n", html)
     return html.strip()
+
 
 def _best_excerpts_from_text(q: str, text: str, max_paras: int = 4, max_chars: int = 2200) -> str:
     text = clean_text(text)
@@ -1545,11 +1677,14 @@ def _best_excerpts_from_text(q: str, text: str, max_paras: int = 4, max_chars: i
         out = out[:max_chars] + "..."
     return out
 
+
 def _web_cache_key(url: str) -> str:
     return hashlib.sha1(url.encode("utf-8", errors="ignore")).hexdigest()[:16]
 
+
 def _web_cache_path(url: str) -> Path:
     return WEB_CACHE_DIR / f"{_web_cache_key(url)}.json"
+
 
 def _load_web_cache(url: str) -> Optional[Dict[str, Any]]:
     try:
@@ -1564,6 +1699,7 @@ def _load_web_cache(url: str) -> Optional[Dict[str, Any]]:
     except Exception:
         return None
 
+
 def _save_web_cache(url: str, content_type: str, text: str) -> None:
     try:
         p = _web_cache_path(url)
@@ -1574,14 +1710,18 @@ def _save_web_cache(url: str, content_type: str, text: str) -> None:
     except Exception:
         pass
 
+
 REDIRECT_CACHE_DIR = WEB_CACHE_DIR / "redirects"
 REDIRECT_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
 
 def _redirect_cache_key(url: str) -> str:
     return hashlib.sha1(url.encode("utf-8", errors="ignore")).hexdigest()[:16]
 
+
 def _redirect_cache_path(orig_url: str) -> Path:
     return REDIRECT_CACHE_DIR / f"{_redirect_cache_key(orig_url)}.json"
+
 
 def _load_redirect_map(orig_url: str) -> Optional[str]:
     try:
@@ -1596,6 +1736,7 @@ def _load_redirect_map(orig_url: str) -> Optional[str]:
         return final_url or None
     except Exception:
         return None
+
 
 def _save_redirect_map(orig_url: str, final_url: str) -> None:
     try:
@@ -1614,6 +1755,7 @@ def _save_redirect_map(orig_url: str, final_url: str) -> None:
     except Exception:
         pass
 
+
 def _default_headers() -> Dict[str, str]:
     return {
         "User-Agent": "Mozilla/5.0 (compatible; RaheemAI/1.0)",
@@ -1624,9 +1766,10 @@ def _default_headers() -> Dict[str, str]:
         "Pragma": "no-cache",
     }
 
+
 async def _fetch_one_web_with_final_url(
     client: httpx.AsyncClient,
-    orig_url: str
+    orig_url: str,
 ) -> Tuple[str, str, str, str, str]:
     orig_url = (orig_url or "").strip()
     if not _safe_url(orig_url):
@@ -1717,10 +1860,11 @@ async def _fetch_one_web_with_final_url(
     except Exception:
         return ("ERR", orig_url, "", "", "")
 
+
 async def web_fetch_and_excerpt(
     query: str,
     results: List[Dict[str, str]],
-    max_items: int = TOP_K_WEB
+    max_items: int = TOP_K_WEB,
 ) -> List[Dict[str, str]]:
     if not WEB_ENABLED:
         return []
@@ -1874,6 +2018,31 @@ def build_references_footer(answer: str, evidence: Dict[str, Any]) -> str:
         return ""
     return "\n".join(lines).strip()
 
+def strip_invalid_footnotes(answer: str, evidence: Dict[str, Any]) -> str:
+    refs = evidence.get("refs") or []
+    valid = set()
+    for r in refs:
+        try:
+            valid.add(int(r.get("n")))
+        except Exception:
+            pass
+
+    def repl(m):
+        try:
+            n = int(m.group(1))
+            return f"[{n}]" if n in valid else ""
+        except Exception:
+            return ""
+
+    return re.sub(r"\[(\d{1,2})\]", repl, answer or "")
+
+def needs_citation_for_numbers(text: str) -> bool:
+    # if there is a number with a unit OR a plain number in a “requirement-y” line
+    if NUM_WITH_UNIT_RE.search(text or ""):
+        return True
+    if ANY_NUMBER_RE.search(text or "") and re.search(r"\b(must|shall|required|minimum|maximum)\b", text or "", re.I):
+        return True
+    return False
 
 
 # ============================================================
@@ -2031,14 +2200,6 @@ async def plan_request(
 # EVIDENCE PACK (structured, compact)
 # ============================================================
 
-def _doc_code_map(chunks: List[Chunk]) -> Dict[str, str]:
-    docs = []
-    seen = set()
-    for c in chunks:
-        if c.doc not in seen:
-            seen.add(c.doc)
-            docs.append(c.doc)
-    return {doc: f"D{i+1}" for i, doc in enumerate(docs)}
 
 def _tight_excerpt(text: str, max_chars: int = 700) -> str:
     t = clean_text(text or "")
@@ -2607,9 +2768,24 @@ async def _stream_answer_async(
 
         fam = _question_family(user_msg)
         precision = question_precision(user_msg)
-        strictness = determine_strictness(fam, user_msg, force_docs, DEFAULT_EVIDENCE_MODE)
+        strictness = determine_strictness(
+            fam=fam,
+            user_msg=user_msg,
+            force_docs=force_docs,
+            default_evidence_mode=DEFAULT_EVIDENCE_MODE,
+        )
 
-        # Rules first (fast path)
+        # ---- FAST RETURN: answer cache ----
+        cache_key = _answer_cache_key(fam, strictness, pdf, page_hint, user_msg)
+        cached = _load_answer_cache(cache_key)
+        if cached:
+            if chat_id:
+                remember(chat_id, "assistant", cached)
+            yield sse_send(cached)
+            yield "event: done\ndata: ok\n\n"
+            return
+
+        # ---- Rules first (fast path) ----
         rules_hit = _match_rules(user_msg) if RULES_ENABLED else []
         if rules_hit:
             rule = rules_hit[0]
@@ -2620,6 +2796,7 @@ async def _stream_answer_async(
             rendered = ans
             if quote:
                 rendered += "\n\n" + quote
+
             if cit:
                 bits: List[str] = []
                 if cit.get("doc"):
@@ -2642,11 +2819,32 @@ async def _stream_answer_async(
 
         pinned = pdf
 
-        # Planner step (makes responses feel more “ChatGPT-like”)
+        # ---- Planner step ----
         plan = await plan_request(user_msg, fam=fam, precision=precision, strictness=strictness)
-        # force pinned doc preference if user pinned
-        plan_strictness = int(plan.get("strictness", strictness))
+
+        # sanitize strictness from planner
+        try:
+            plan_strictness = int(plan.get("strictness", strictness))
+        except Exception:
+            plan_strictness = strictness
         plan["strictness"] = max(0, min(3, plan_strictness))
+
+        # ---- FAST PATH: keep it ChatGPT-feel fast for simple questions ----
+        if can_fast_path(fam, int(plan.get("strictness", strictness)), user_msg, pinned):
+            plan["needs_docs"] = False
+            plan["needs_docai"] = False
+            # web can still be useful for planning/general, but we’ll gate it later
+            plan["needs_web"] = bool(WEB_ENABLED and fam in ("planning", "general"))
+
+        # ... continue with your retrieval + writer logic here ...
+        # (pdf_chunks/docai_hits/web_pages gather -> evidence_pack -> model streaming -> final pass -> cache save)
+
+    except Exception as e:
+        msg = str(e).replace("\r", " ").replace("\n", " ")
+        log.exception("Chat stream error: %s", msg)
+        yield f"data: [ERROR] {msg}\n\n"
+        yield "event: done\ndata: ok\n\n"
+        return
 
         # Retrieval strategy
         async def get_pdf_chunks() -> List[Chunk]:
@@ -2754,14 +2952,21 @@ async def _stream_answer_async(
         # Final pass: normalize + footer + numeric verify note (append-only)
         draft = enforce_chatgpt_paragraphs(normalize_model_output(full_text))
 
+        # Remove any footnotes that don't exist in our evidence refs
         footer = build_references_footer(draft, evidence_pack)
         if footer:
             yield sse_send("\n\n" + footer)
 
         sources_blob = _sources_text_blob_for_verification(pdf_chunks, docai_hits, web_pages)
         ok, note = _hard_verify_numeric(draft, sources_blob)
+        numeric_note = ""
         if not ok:
-            yield sse_send("\n\n---\n\n" + normalize_model_output(note))
+            numeric_note = "\n\n---\n\n" + normalize_model_output(note)
+            yield sse_send(numeric_note)
+
+        # ✅ Save final answer to cache (including references + any numeric note)
+        final_for_cache = (draft + ("\n\n" + footer if footer else "") + numeric_note).strip()
+        _save_answer_cache(cache_key, final_for_cache)
 
         if chat_id:
             remember(chat_id, "assistant", (draft + ("\n\n" + footer if footer else "")).strip())
@@ -2774,4 +2979,5 @@ async def _stream_answer_async(
         yield f"data: [ERROR] {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
 
