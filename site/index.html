@@ -6,22 +6,29 @@
   <title>Raheem AI</title>
 
   <meta name="description" content="Raheem AI — compliance-first chat and document reasoning for building workflows." />
-  <meta name="theme-color" content="#050610" />
+  <meta name="theme-color" content="#060713" />
   <meta property="og:title" content="Raheem AI" />
   <meta property="og:description" content="Compliance-first chat and document reasoning for building workflows." />
   <meta property="og:type" content="website" />
 
   <style>
     :root{
-      --bg0:#050610; --bg1:#070a18; --bg2:#0a0f22;
-      --glass: rgba(255,255,255,.08);
-      --glass2: rgba(255,255,255,.11);
-      --stroke: rgba(255,255,255,.14);
+      --bg0:#060713;
+      --bg1:#070a1a;
+      --bg2:#0b1030;
+
+      --glass: rgba(255,255,255,.07);
+      --glass2: rgba(255,255,255,.10);
+      --stroke: rgba(255,255,255,.12);
+
       --text:#f4f7ff;
       --muted: rgba(244,247,255,.78);
-      --muted2: rgba(244,247,255,.60);
+      --muted2: rgba(244,247,255,.58);
 
-      --a1:#50ffd7; --a2:#65b7ff; --a3:#c7a5ff; --hot:#ff4fd8;
+      --a1:#50ffd7;
+      --a2:#65b7ff;
+      --a3:#c7a5ff;
+      --hot:#ff4fd8;
       --ok: rgba(80,255,215,.45);
       --warn: rgba(255,204,102,.42);
       --bad: rgba(255,79,216,.44);
@@ -29,134 +36,204 @@
       --shadow: 0 28px 72px rgba(0,0,0,.58);
       --shadow2: 0 18px 48px rgba(0,0,0,.42);
 
-      --r:22px; --r2:16px;
+      --r:24px;
+      --r2:18px;
+
       --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+
+      --neon1: 0 0 18px rgba(80,255,215,.10), 0 0 40px rgba(101,183,255,.10);
+      --neon2: 0 0 18px rgba(255,79,216,.12), 0 0 42px rgba(199,165,255,.08);
+
       --btnPad: 10px 12px;
 
-      --neon1: 0 0 18px rgba(80,255,215,.12), 0 0 34px rgba(101,183,255,.10);
-      --neon2: 0 0 18px rgba(255,79,216,.12), 0 0 34px rgba(199,165,255,.08);
+      --headerH: 72px;
+      --railW: 84px;
+      --drawerW: 360px;
     }
+
     *{ box-sizing:border-box; }
     html,body{ height:100%; }
     body{
-      margin:0; font-family: var(--font); color: var(--text);
+      margin:0;
+      font-family: var(--font);
+      color: var(--text);
       background:
-        radial-gradient(1200px 700px at 18% -10%, rgba(80,255,215,.14), transparent 60%),
-        radial-gradient(1100px 650px at 85% 0%, rgba(101,183,255,.14), transparent 58%),
-        radial-gradient(900px 620px at 50% 115%, rgba(199,165,255,.12), transparent 58%),
-        linear-gradient(180deg, var(--bg0), var(--bg1) 35%, var(--bg2));
+        radial-gradient(1200px 700px at 15% -10%, rgba(80,255,215,.15), transparent 60%),
+        radial-gradient(1100px 650px at 85% 0%, rgba(101,183,255,.16), transparent 58%),
+        radial-gradient(900px 620px at 50% 115%, rgba(199,165,255,.14), transparent 58%),
+        linear-gradient(180deg, var(--bg0), var(--bg1) 38%, var(--bg2));
       overflow-x:hidden;
     }
 
-    /* Background effects */
+    /* ====== BACKGROUND FX ====== */
     .bg-wrap{ position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
     .aurora{
       position:absolute; inset:-25%;
       background:
-        radial-gradient(900px 520px at 12% 18%, rgba(80,255,215,.14) 0%, rgba(80,255,215,0) 65%),
-        radial-gradient(900px 520px at 88% 14%, rgba(101,183,255,.14) 0%, rgba(101,183,255,0) 62%),
-        radial-gradient(980px 560px at 50% 108%, rgba(199,165,255,.12) 0%, rgba(199,165,255,0) 60%),
-        radial-gradient(840px 520px at 45% 40%, rgba(255,79,216,.06) 0%, rgba(255,79,216,0) 60%);
-      filter: blur(22px); opacity:.85;
+        radial-gradient(980px 560px at 12% 18%, rgba(80,255,215,.16) 0%, rgba(80,255,215,0) 64%),
+        radial-gradient(980px 560px at 88% 14%, rgba(101,183,255,.16) 0%, rgba(101,183,255,0) 62%),
+        radial-gradient(1080px 620px at 50% 108%, rgba(199,165,255,.14) 0%, rgba(199,165,255,0) 60%),
+        radial-gradient(860px 520px at 45% 42%, rgba(255,79,216,.07) 0%, rgba(255,79,216,0) 60%);
+      filter: blur(22px);
+      opacity:.85;
       transform: translate3d(0,0,0);
       animation: auroraMove 22s ease-in-out infinite;
     }
     @keyframes auroraMove{
       0%,100%{ transform: translate3d(0,0,0) scale(1); }
-      45%{ transform: translate3d(12px,-10px,0) scale(1.02); }
-      75%{ transform: translate3d(-12px,10px,0) scale(1.015); }
+      45%{ transform: translate3d(16px,-12px,0) scale(1.02); }
+      75%{ transform: translate3d(-14px,12px,0) scale(1.015); }
     }
-    canvas#particles{ position:absolute; inset:0; opacity:.18; filter: blur(.2px); }
-    .vignette{ position:absolute; inset:-1px; background: radial-gradient(900px 520px at 50% 22%, rgba(0,0,0,0), rgba(0,0,0,.58)); opacity:.9; }
+    canvas#particles{ position:absolute; inset:0; opacity:.16; filter: blur(.2px); }
+    .vignette{
+      position:absolute; inset:-1px;
+      background:
+        radial-gradient(900px 520px at 50% 18%, rgba(0,0,0,0), rgba(0,0,0,.62));
+      opacity:.9;
+    }
     @media (prefers-reduced-motion: reduce){
       .aurora{ animation:none; }
       canvas#particles{ display:none; }
-      .glowline{ display:none; }
+      .shine{ display:none; }
     }
 
-    /* Layout */
-    .app{
-      position:relative; z-index:1;
+    /* ====== APP SHELL ====== */
+    .shell{
+      position:relative;
+      z-index:1;
       min-height:100vh;
       display:grid;
-      grid-template-columns: 340px 1fr;
-      gap: 18px;
-      padding: 18px;
-    }
-    @media (max-width: 980px){
-      .app{ grid-template-columns: 1fr; }
-      .side{ position:sticky; top:0; }
-    }
-    .side, .main{
-      border: 1px solid var(--stroke);
-      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
-      border-radius: var(--r);
-      box-shadow: var(--shadow2);
-      overflow:hidden;
-      backdrop-filter: blur(10px);
-      position:relative;
-    }
-    .main{ box-shadow: var(--shadow); display:flex; flex-direction:column; min-height: calc(100vh - 36px); }
-
-    /* Subtle neon line */
-    .glowline{
-      position:absolute; left:-120px; right:-120px; top:-40px; height:140px;
-      background: radial-gradient(closest-side, rgba(80,255,215,.12), transparent 70%);
-      filter: blur(10px);
-      opacity:.65;
-      pointer-events:none;
+      grid-template-rows: var(--headerH) 1fr;
     }
 
-    /* Brand */
-    .brand{
-      display:flex; align-items:center; gap: 12px;
-      padding: 16px 16px 12px 16px;
+    /* ====== HEADER ====== */
+    header{
+      height: var(--headerH);
+      position:sticky;
+      top:0;
+      z-index:30;
+      backdrop-filter: blur(12px);
+      background: linear-gradient(180deg, rgba(0,0,0,.46), rgba(0,0,0,.16));
       border-bottom: 1px solid rgba(255,255,255,.10);
     }
+    .headerInner{
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 14px;
+      padding: 12px 14px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .brandRow{ display:flex; align-items:center; gap: 12px; min-width:0; }
     .logoMark{
-      width: 46px; height: 46px; border-radius: 16px;
+      width: 46px; height:46px;
+      border-radius: 16px;
       border: 1px solid rgba(255,255,255,.16);
-      background: rgba(0,0,0,.18);
+      background: rgba(0,0,0,.22);
       box-shadow: var(--neon1);
-      display:grid; place-items:center; overflow:hidden; position:relative;
+      display:grid; place-items:center;
+      overflow:hidden;
+      position:relative;
+      flex-shrink:0;
     }
     .logoMark svg{ width:38px; height:38px; opacity:.95; }
-    .brand h1{ margin:0; font-size: 18px; letter-spacing:.5px; font-weight: 900; line-height:1.1; }
-    .brand h1 span{
+    .brandText{ min-width:0; }
+    .brandText .name{
+      margin:0;
+      font-size: 16px;
+      font-weight: 950;
+      letter-spacing: .5px;
+      line-height:1.1;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .brandText .name span{
       background: linear-gradient(90deg, var(--a1), var(--a2), var(--a3));
       -webkit-background-clip:text; background-clip:text; color:transparent;
       text-shadow: 0 0 18px rgba(101,183,255,.12);
     }
-    .brand .sub{ margin-top:4px; font-size: 12px; color: var(--muted2); line-height:1.2; }
+    .brandText .sub{
+      margin-top:4px;
+      font-size: 12px;
+      color: var(--muted2);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
 
-    /* Sidebar nav */
-    .nav{ padding: 12px; display:flex; flex-direction:column; gap: 10px; }
-    .navbtn{
-      display:flex; align-items:center; justify-content:space-between; gap: 10px;
-      width:100%; padding: 12px 12px; border-radius: 14px;
+    .headerCenter{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      flex-wrap:wrap;
+      justify-content:center;
+      min-width: 0;
+    }
+
+    .navPills{
+      display:flex;
+      gap: 8px;
+      align-items:center;
+      padding: 6px;
+      border-radius: 999px;
       border: 1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.18);
-      color: var(--text);
+      box-shadow: 0 0 0 1px rgba(0,0,0,.10) inset;
+      overflow:auto;
+      scrollbar-width:none;
+    }
+    .navPills::-webkit-scrollbar{ display:none; }
+
+    .navpill{
+      border: 1px solid transparent;
+      background: transparent;
+      color: rgba(244,247,255,.92);
+      padding: 9px 12px;
+      border-radius: 999px;
       cursor:pointer;
-      transition: transform .15s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease;
-      text-align:left;
+      font-weight: 900;
+      font-size: 13px;
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      transition: background .15s ease, transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+      white-space:nowrap;
     }
-    .navbtn:hover{
+    .navpill:hover{
       transform: translateY(-1px);
-      border-color: rgba(101,183,255,.34);
-      background: rgba(0,0,0,.24);
+      background: rgba(255,255,255,.06);
+      border-color: rgba(101,183,255,.28);
       box-shadow: var(--neon1);
     }
-    .navbtn.active{
+    .navpill.active{
+      background: linear-gradient(135deg, rgba(80,255,215,.16), rgba(101,183,255,.10));
       border-color: rgba(80,255,215,.34);
-      background: linear-gradient(135deg, rgba(80,255,215,.12), rgba(101,183,255,.08));
       box-shadow: var(--neon1);
     }
-    .navbtn .left{ display:flex; align-items:center; gap: 10px; min-width:0; }
+    .navpill .dot{
+      width: 8px; height:8px; border-radius:999px; background: rgba(244,247,255,.28);
+    }
+    .navpill.active .dot{
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.9), rgba(255,255,255,.0) 60%),
+                  linear-gradient(90deg, var(--a1), var(--a2));
+      box-shadow: 0 0 12px rgba(80,255,215,.16);
+    }
+
+    .headerRight{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
 
     .tag{
-      font-size: 11px;
-      padding: 6px 10px;
+      font-size: 12px;
+      padding: 7px 12px;
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,.14);
       color: var(--muted);
@@ -167,147 +244,6 @@
     .tag.live{ border-color: var(--ok); color: rgba(230,255,240,.92); background: rgba(80,255,215,.10); }
     .tag.warn{ border-color: var(--warn); color: rgba(255,235,200,.95); background: rgba(255,204,102,.10); }
     .tag.bad{  border-color: var(--bad);  color: rgba(255,215,242,.95); background: rgba(255,79,216,.10); }
-
-    /* Saved chats */
-    .chatlist{ display:none; padding: 10px 12px 12px 12px; border-top: 1px solid rgba(255,255,255,.10); }
-    .chatlist.show{ display:block; }
-    .chatlist h3{
-      margin: 10px 4px 8px 4px;
-      font-size: 12px; color: var(--muted2);
-      font-weight:800; letter-spacing:.35px; text-transform:uppercase;
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-    }
-    .chatSearch{ padding: 0 12px 10px 12px; }
-    .chatSearch input{
-      width:100%;
-      padding: 10px 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.20);
-      color: var(--text);
-      outline:none;
-    }
-    .chatSearch input:focus{
-      border-color: rgba(101,183,255,.40);
-      box-shadow: 0 0 0 3px rgba(101,183,255,.12);
-    }
-
-    /* Chat list items (professional) */
-    .chatitem{
-      width:100%;
-      text-align:left;
-      padding: 10px 10px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.16);
-      color: var(--text);
-      cursor:pointer;
-      margin-bottom: 8px;
-      transition: border-color .15s ease, transform .15s ease, background .15s ease, box-shadow .15s ease;
-      display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
-      position:relative;
-    }
-    .chatitem:hover{
-      transform: translateY(-1px);
-      border-color: rgba(80,255,215,.26);
-      background: rgba(0,0,0,.20);
-      box-shadow: 0 0 18px rgba(80,255,215,.06);
-    }
-    .chatitem.active{
-      border-color: rgba(101,183,255,.34);
-      background: rgba(0,0,0,.22);
-      box-shadow: 0 0 18px rgba(101,183,255,.06);
-    }
-    .chatitem .metaWrap{ min-width:0; flex:1; }
-    .chatitem .t{ font-weight:900; font-size: 13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .chatitem .s{ margin-top:4px; font-size: 11px; color: var(--muted2); display:flex; gap:8px; align-items:center; }
-
-    .chip{
-      font-size: 10px;
-      padding: 4px 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: rgba(244,247,255,.86);
-      user-select:none;
-    }
-
-    .iconBtn{
-      width:34px; height:34px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: rgba(244,247,255,.92);
-      cursor:pointer;
-      display:grid; place-items:center;
-      transition: transform .15s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease;
-      font-weight: 950; line-height:1; user-select:none;
-    }
-    .iconBtn:hover{
-      transform: translateY(-1px);
-      border-color: rgba(101,183,255,.36);
-      background: rgba(255,255,255,.10);
-      box-shadow: var(--neon1);
-    }
-    .iconBtn.danger{
-      border-color: rgba(255,79,216,.30);
-      background: rgba(255,79,216,.08);
-    }
-    .iconBtn.danger:hover{
-      border-color: rgba(255,79,216,.48);
-      background: rgba(255,79,216,.12);
-      box-shadow: var(--neon2);
-    }
-
-    /* Dropdown menu */
-    .menu{
-      position:absolute; right:10px; top:44px;
-      min-width: 210px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(10,12,24,.92);
-      box-shadow: var(--shadow2);
-      backdrop-filter: blur(10px);
-      overflow:hidden;
-      display:none;
-      z-index: 20;
-    }
-    .menu.show{ display:block; animation: menuPop .12s ease; }
-    @keyframes menuPop{
-      from{ transform: translateY(-6px); opacity:0; }
-      to{ transform: translateY(0); opacity:1; }
-    }
-    .menu button{
-      width:100%;
-      border:0;
-      background: transparent;
-      color: rgba(244,247,255,.92);
-      padding: 10px 12px;
-      text-align:left;
-      cursor:pointer;
-      font-weight: 800;
-      font-size: 13px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 10px;
-    }
-    .menu button:hover{ background: rgba(255,255,255,.06); }
-    .menu .sep{ height:1px; background: rgba(255,255,255,.10); }
-
-    /* Main topbar */
-    .topbar{
-      padding: 14px 16px;
-      display:flex; align-items:center; justify-content:space-between; gap: 10px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-      background: rgba(0,0,0,.12);
-      flex-wrap:wrap;
-      position:relative;
-    }
-    .crumb{ display:flex; align-items:center; gap: 10px; min-width: 0; }
-    .crumb .title{ font-weight: 900; letter-spacing:.25px; font-size: 15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .crumb .hint{ font-size: 12px; color: var(--muted2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
 
     .btn{
       padding: var(--btnPad);
@@ -329,105 +265,465 @@
     }
     .btn.primary{
       border-color: rgba(80,255,215,.34);
-      background: linear-gradient(135deg, rgba(80,255,215,.16), rgba(101,183,255,.10));
+      background: linear-gradient(135deg, rgba(80,255,215,.18), rgba(101,183,255,.10));
       box-shadow: var(--neon1);
     }
     .btn.ghost{ background: rgba(0,0,0,.18); }
 
-    /* Views */
-    .view{ display:none; padding: 18px; }
+    .iconBtn{
+      width:44px; height:44px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      color: rgba(244,247,255,.92);
+      cursor:pointer;
+      display:grid; place-items:center;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease;
+      font-weight: 950;
+      line-height:1;
+      user-select:none;
+    }
+    .iconBtn:hover{
+      transform: translateY(-1px);
+      border-color: rgba(101,183,255,.36);
+      background: rgba(255,255,255,.08);
+      box-shadow: var(--neon1);
+    }
+    .iconBtn.danger{
+      border-color: rgba(255,79,216,.30);
+      background: rgba(255,79,216,.08);
+    }
+    .iconBtn.danger:hover{
+      border-color: rgba(255,79,216,.48);
+      background: rgba(255,79,216,.12);
+      box-shadow: var(--neon2);
+    }
+
+    /* ====== MAIN GRID ====== */
+    .gridWrap{
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 14px;
+      display:grid;
+      grid-template-columns: var(--railW) 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+
+    /* Left Rail (icon-only) */
+    .rail{
+      position:sticky;
+      top: calc(var(--headerH) + 14px);
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.22);
+      border-radius: var(--r);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow2);
+      overflow:hidden;
+    }
+    .rail .railInner{
+      display:flex;
+      flex-direction:column;
+      padding: 10px;
+      gap: 10px;
+    }
+    .railBtn{
+      width:100%;
+      border-radius: 18px;
+      padding: 12px 10px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: rgba(244,247,255,.92);
+      cursor:pointer;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease;
+      display:grid;
+      place-items:center;
+      position:relative;
+    }
+    .railBtn:hover{
+      transform: translateY(-1px);
+      border-color: rgba(101,183,255,.28);
+      box-shadow: var(--neon1);
+      background: rgba(255,255,255,.10);
+    }
+    .railBtn.active{
+      border-color: rgba(80,255,215,.34);
+      background: linear-gradient(135deg, rgba(80,255,215,.14), rgba(101,183,255,.08));
+      box-shadow: var(--neon1);
+    }
+    .railBtn .hint{
+      position:absolute;
+      left: calc(100% + 10px);
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.62);
+      backdrop-filter: blur(10px);
+      font-size: 12px;
+      color: rgba(244,247,255,.92);
+      white-space:nowrap;
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .12s ease;
+    }
+    .railBtn:hover .hint{ opacity: 1; }
+
+    /* Main Surface */
+    .surface{
+      border: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.05));
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      overflow:hidden;
+      position:relative;
+      min-height: calc(100vh - var(--headerH) - 28px);
+    }
+
+    .shine{
+      position:absolute;
+      inset:-2px;
+      pointer-events:none;
+      background:
+        radial-gradient(600px 220px at 20% 0%, rgba(80,255,215,.10), transparent 65%),
+        radial-gradient(600px 220px at 80% 0%, rgba(101,183,255,.08), transparent 65%),
+        radial-gradient(600px 260px at 50% 110%, rgba(199,165,255,.08), transparent 65%);
+      opacity:.7;
+      filter: blur(10px);
+    }
+
+    .surfaceTop{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.12);
+      position:relative;
+      z-index:1;
+    }
+
+    .crumb{
+      display:flex;
+      flex-direction:column;
+      gap: 6px;
+      min-width: 0;
+    }
+    .crumb .title{
+      font-weight: 950;
+      letter-spacing:.2px;
+      font-size: 16px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .crumb .hint{
+      font-size: 12px;
+      color: var(--muted2);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .surfaceActions{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .view{ display:none; padding: 18px; position:relative; z-index:1; }
     .view.show{ display:block; }
 
+    /* ====== HOME (marketing + product) ====== */
     .hero{
-      padding: 16px;
       border-radius: var(--r);
       border: 1px solid rgba(255,255,255,.12);
       background:
-        radial-gradient(900px 320px at 18% 0%, rgba(80,255,215,.12), transparent 65%),
-        radial-gradient(900px 320px at 88% 0%, rgba(101,183,255,.10), transparent 62%),
+        radial-gradient(1100px 360px at 16% 0%, rgba(80,255,215,.14), transparent 65%),
+        radial-gradient(1100px 360px at 88% 0%, rgba(101,183,255,.12), transparent 62%),
         rgba(0,0,0,.16);
       box-shadow: var(--shadow2);
-      position:relative;
       overflow:hidden;
+      padding: 18px;
+      position:relative;
     }
     .hero::after{
       content:"";
-      position:absolute; inset:-2px;
-      background: radial-gradient(420px 160px at 30% 0%, rgba(80,255,215,.12), transparent 60%),
-                  radial-gradient(420px 160px at 70% 0%, rgba(101,183,255,.10), transparent 60%);
-      opacity:.55;
+      position:absolute;
+      inset:-2px;
+      background:
+        radial-gradient(520px 220px at 28% 0%, rgba(80,255,215,.12), transparent 60%),
+        radial-gradient(520px 220px at 72% 0%, rgba(101,183,255,.10), transparent 60%),
+        radial-gradient(560px 240px at 50% 120%, rgba(255,79,216,.06), transparent 60%);
+      opacity:.65;
+      filter: blur(12px);
       pointer-events:none;
-      filter: blur(10px);
     }
-    .hero h2{ margin:0; font-size: 22px; letter-spacing:.2px; position:relative; z-index:1; }
-    .hero p{ margin:8px 0 0 0; color: var(--muted); max-width: 980px; line-height:1.55; position:relative; z-index:1; }
+    .heroHead{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 12px;
+      flex-wrap:wrap;
+      position:relative;
+      z-index:1;
+    }
+    .hero h2{
+      margin:0;
+      font-size: 26px;
+      letter-spacing:.2px;
+      line-height:1.15;
+    }
+    .hero p{
+      margin:10px 0 0 0;
+      color: var(--muted);
+      max-width: 980px;
+      line-height:1.55;
+      position:relative;
+      z-index:1;
+      font-size: 14px;
+    }
+    .heroBadges{
+      display:flex;
+      gap: 8px;
+      align-items:center;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
     .quote{
       margin-top: 12px;
       padding: 12px 14px;
-      border-radius: 16px;
+      border-radius: 18px;
       border: 1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.18);
       color: rgba(244,247,255,.92);
       line-height:1.45;
-      position:relative; z-index:1;
+      position:relative;
+      z-index:1;
+    }
+    .heroCTA{
+      margin-top: 14px;
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      flex-wrap:wrap;
+      position:relative;
+      z-index:1;
     }
 
-    .grid{ margin-top: 14px; display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-    @media (max-width: 980px){ .grid{ grid-template-columns: 1fr; } }
+    .split{
+      margin-top: 14px;
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 14px;
+      align-items: start;
+    }
+    @media (max-width: 1060px){
+      .split{ grid-template-columns: 1fr; }
+    }
+
+    .panel{
+      border-radius: var(--r);
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.14);
+      box-shadow: var(--shadow2);
+      overflow:hidden;
+    }
+    .panelHead{
+      padding: 14px 14px 12px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.12);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+    }
+    .panelHead .t{
+      font-weight: 950;
+      letter-spacing:.25px;
+      font-size: 13px;
+      text-transform: uppercase;
+      color: rgba(244,247,255,.82);
+    }
+    .panelBody{ padding: 14px; }
+    .statRow{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    @media (max-width: 600px){
+      .statRow{ grid-template-columns: 1fr; }
+    }
+    .stat{
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      padding: 12px;
+      min-height: 86px;
+      position:relative;
+      overflow:hidden;
+    }
+    .stat::before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background:
+        radial-gradient(220px 120px at 20% 0%, rgba(80,255,215,.10), transparent 60%),
+        radial-gradient(220px 120px at 80% 0%, rgba(101,183,255,.08), transparent 60%);
+      opacity:.7;
+      filter: blur(12px);
+      pointer-events:none;
+    }
+    .stat .k{ position:relative; z-index:1; font-size: 12px; color: var(--muted2); font-weight:900; }
+    .stat .v{ position:relative; z-index:1; margin-top:8px; font-size: 18px; font-weight: 950; }
+    .stat .s{ position:relative; z-index:1; margin-top:6px; font-size: 12px; color: var(--muted2); line-height:1.3; }
+
+    .featureGrid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    @media (max-width: 980px){ .featureGrid{ grid-template-columns: 1fr; } }
 
     .card{
       border-radius: var(--r);
       border: 1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.16);
+      background: rgba(0,0,0,.14);
       box-shadow: var(--shadow2);
       padding: 14px;
-      display:flex; flex-direction:column; gap: 12px;
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
       min-height: 170px;
       transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+      position:relative;
+      overflow:hidden;
+    }
+    .card::before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background:
+        radial-gradient(380px 180px at 10% 0%, rgba(80,255,215,.08), transparent 60%),
+        radial-gradient(380px 180px at 90% 0%, rgba(101,183,255,.06), transparent 60%);
+      opacity:.65;
+      filter: blur(14px);
+      pointer-events:none;
     }
     .card:hover{
       transform: translateY(-2px);
       border-color: rgba(101,183,255,.22);
       box-shadow: var(--shadow2), var(--neon1);
     }
-    .cardhead{ display:flex; align-items:flex-start; justify-content:space-between; gap: 10px; }
+    .cardhead{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 10px;
+      position:relative;
+      z-index:1;
+    }
     .cardtitle{ display:flex; gap: 12px; align-items:flex-start; }
     .icon{
-      width: 42px; height: 42px; border-radius: 14px;
+      width: 44px; height: 44px; border-radius: 16px;
       display:grid; place-items:center;
-      font-weight: 950; letter-spacing:.4px;
+      font-weight: 950;
+      letter-spacing:.4px;
       border: 1px solid rgba(255,255,255,.14);
       background: linear-gradient(135deg, rgba(80,255,215,.14), rgba(101,183,255,.10), rgba(199,165,255,.08));
       box-shadow: var(--neon1);
       user-select:none;
+      flex-shrink:0;
     }
-    .card h4{ margin:0; font-size: 15px; }
-    .card p{ margin:6px 0 0 0; color: var(--muted); line-height:1.5; }
-
+    .card h4{ margin:0; font-size: 15px; position:relative; z-index:1; }
+    .card p{ margin:6px 0 0 0; color: var(--muted); line-height:1.5; position:relative; z-index:1; }
     .pill{
       font-size: 11px;
-      padding: 6px 10px;
+      padding: 7px 10px;
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,.14);
       color: var(--muted);
       background: rgba(255,255,255,.06);
       white-space:nowrap;
       align-self:flex-start;
+      user-select:none;
+      position:relative;
+      z-index:1;
     }
     .pill.live{ border-color: rgba(80,255,215,.38); background: rgba(80,255,215,.10); color: rgba(230,255,240,.92); }
-
-    .cta{ display:flex; align-items:center; justify-content:space-between; gap: 10px; margin-top:auto; flex-wrap:wrap; }
-
-    /* Chat */
-    .chatwrap{
-      display:flex; flex-direction:column; gap: 12px;
-      height: calc(100vh - 190px);
-      min-height: 560px;
+    .cta{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      margin-top:auto;
+      flex-wrap:wrap;
+      position:relative;
+      z-index:1;
     }
+
+    .list{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+    }
+    .li{
+      display:flex;
+      gap: 10px;
+      align-items:flex-start;
+      padding: 10px 12px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+    }
+    .li b{ font-weight: 950; }
+    .li .s{ margin-top:4px; color: var(--muted2); font-size: 12px; line-height:1.35; }
+    .li .badge{
+      margin-left:auto;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      color: rgba(244,247,255,.86);
+      font-size: 11px;
+      white-space:nowrap;
+      user-select:none;
+      flex-shrink:0;
+    }
+
+    /* ====== CHAT (full product feel) ====== */
+    .chatShell{
+      display:grid;
+      grid-template-columns: 1fr 340px;
+      gap: 14px;
+      align-items: start;
+    }
+    @media (max-width: 1100px){
+      .chatShell{ grid-template-columns: 1fr; }
+    }
+
+    .chatwrap{
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+      min-height: 620px;
+      height: calc(100vh - var(--headerH) - 210px);
+    }
+    @media (max-width: 700px){
+      .chatwrap{ height: calc(100vh - var(--headerH) - 240px); }
+    }
+
     .row{ display:flex; gap: 10px; align-items:center; flex-wrap:wrap; }
+
     .toggle{
       display:flex; align-items:center; gap: 8px;
-      padding: 8px 10px; border-radius: 999px;
+      padding: 8px 10px;
+      border-radius: 999px;
       border: 1px solid rgba(255,255,255,.14);
       background: rgba(0,0,0,.18);
       color: var(--muted);
@@ -435,18 +731,23 @@
       user-select:none;
       transition: border-color .15s ease, box-shadow .15s ease;
     }
-    .toggle:hover{ border-color: rgba(101,183,255,.28); box-shadow: 0 0 0 3px rgba(101,183,255,.08); }
+    .toggle:hover{
+      border-color: rgba(101,183,255,.28);
+      box-shadow: 0 0 0 3px rgba(101,183,255,.08);
+    }
     .toggle input{ transform: translateY(1px); }
 
     .chatbox{
-      flex: 1;
+      flex:1;
       border-radius: var(--r);
       border: 1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.14);
       padding: 14px;
       overflow:auto;
       scroll-behavior:smooth;
+      box-shadow: var(--shadow2);
     }
+
     .msg{
       max-width: 78%;
       padding: 12px 12px;
@@ -464,7 +765,9 @@
       border-color: rgba(80,255,215,.30);
       box-shadow: 0 0 14px rgba(80,255,215,.06);
     }
-    .msg.ai{ background: rgba(255,255,255,.06); }
+    .msg.ai{
+      background: rgba(255,255,255,.06);
+    }
 
     .msgTools{
       margin-top: 8px;
@@ -497,7 +800,11 @@
       user-select:none;
     }
     .dots{ display:inline-flex; gap:4px; transform: translateY(1px); }
-    .dot{ width:6px;height:6px;border-radius:999px; background: rgba(244,247,255,.55); animation: bounce 1.1s infinite ease-in-out; }
+    .dot{
+      width:6px;height:6px;border-radius:999px;
+      background: rgba(244,247,255,.55);
+      animation: bounce 1.1s infinite ease-in-out;
+    }
     .dot:nth-child(2){ animation-delay: .12s; }
     .dot:nth-child(3){ animation-delay: .24s; }
     @keyframes bounce{
@@ -505,15 +812,25 @@
       40%{ transform: translateY(-4px); opacity:1; }
     }
 
-    .composer{ display:flex; gap: 10px; align-items:flex-end; }
+    .composer{
+      display:flex;
+      gap: 10px;
+      align-items:flex-end;
+      border-radius: var(--r);
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.14);
+      padding: 12px;
+      box-shadow: var(--shadow2);
+    }
     textarea{
       flex:1;
-      min-height: 46px; max-height: 170px;
+      min-height: 46px;
+      max-height: 170px;
       resize: vertical;
       padding: 12px 12px;
       border-radius: 16px;
       border: 1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.20);
+      background: rgba(0,0,0,.22);
       color: var(--text);
       outline:none;
       line-height:1.45;
@@ -523,9 +840,186 @@
       box-shadow: 0 0 0 3px rgba(101,183,255,.12);
     }
 
-    /* Footer */
+    .kbd{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.06);
+      border-radius: 10px;
+      padding: 2px 8px;
+      color: rgba(244,247,255,.92);
+    }
+
+    /* ====== RIGHT INFO PANEL ====== */
+    .sideInfo{
+      border-radius: var(--r);
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.14);
+      box-shadow: var(--shadow2);
+      overflow:hidden;
+      position:sticky;
+      top: calc(var(--headerH) + 14px);
+    }
+    .sideInfo .head{
+      padding: 14px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.12);
+      display:flex; align-items:center; justify-content:space-between; gap: 10px;
+    }
+    .sideInfo .head .t{
+      font-weight: 950;
+      font-size: 13px;
+      letter-spacing:.25px;
+      text-transform: uppercase;
+      color: rgba(244,247,255,.82);
+    }
+    .sideInfo .body{ padding: 14px; }
+    .muted{ color: var(--muted2); font-size: 12px; line-height:1.45; }
+    .pillRow{ display:flex; gap: 8px; flex-wrap:wrap; margin-top: 10px; }
+
+    /* ====== SAVED CHATS (drawer panel) ====== */
+    .chatlist{
+      display:none;
+      border-radius: var(--r);
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      box-shadow: var(--shadow2);
+      backdrop-filter: blur(10px);
+      overflow:hidden;
+      position:fixed;
+      top: calc(var(--headerH) + 14px);
+      left: calc((100vw - 1400px)/2 + var(--railW) + 14px); /* align with content */
+      width: min(var(--drawerW), calc(100vw - 28px));
+      max-height: calc(100vh - var(--headerH) - 28px);
+      z-index: 50;
+    }
+    /* if viewport narrower than max container, align to left margin */
+    @media (max-width: 1430px){
+      .chatlist{
+        left: calc(14px + var(--railW) + 14px);
+      }
+    }
+    .chatlist.show{ display:block; animation: slideIn .14s ease; }
+    @keyframes slideIn{
+      from{ transform: translateY(8px); opacity:0; }
+      to{ transform: translateY(0); opacity:1; }
+    }
+
+    .chatlistTop{
+      padding: 14px 14px 10px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.12);
+      display:flex; align-items:center; justify-content:space-between; gap: 10px;
+    }
+    .chatlistTop .t{
+      font-weight: 950;
+      font-size: 13px;
+      letter-spacing:.25px;
+      text-transform: uppercase;
+      color: rgba(244,247,255,.84);
+    }
+
+    .chatSearch{ padding: 10px 14px 12px 14px; }
+    .chatSearch input{
+      width:100%;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.20);
+      color: var(--text);
+      outline:none;
+    }
+    .chatSearch input:focus{
+      border-color: rgba(101,183,255,.40);
+      box-shadow: 0 0 0 3px rgba(101,183,255,.12);
+    }
+
+    .chatItemsScroll{
+      padding: 0 14px 14px 14px;
+      overflow:auto;
+      max-height: calc(100vh - var(--headerH) - 28px - 140px);
+    }
+
+    .chatitem{
+      width:100%;
+      text-align:left;
+      padding: 10px 10px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.16);
+      color: var(--text);
+      cursor:pointer;
+      margin-bottom: 10px;
+      transition: border-color .15s ease, transform .15s ease, background .15s ease, box-shadow .15s ease;
+      display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+      position:relative;
+    }
+    .chatitem:hover{
+      transform: translateY(-1px);
+      border-color: rgba(80,255,215,.26);
+      background: rgba(0,0,0,.20);
+      box-shadow: 0 0 18px rgba(80,255,215,.06);
+    }
+    .chatitem.active{
+      border-color: rgba(101,183,255,.34);
+      background: rgba(0,0,0,.22);
+      box-shadow: 0 0 18px rgba(101,183,255,.06);
+    }
+    .chatitem .metaWrap{ min-width:0; flex:1; }
+    .chatitem .t{ font-weight:950; font-size: 13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .chatitem .s{ margin-top:5px; font-size: 11px; color: var(--muted2); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+
+    .chip{
+      font-size: 10px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(244,247,255,.86);
+      user-select:none;
+    }
+
+    /* Dropdown menu */
+    .menu{
+      position:absolute;
+      right:10px;
+      top:44px;
+      min-width: 210px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(10,12,24,.92);
+      box-shadow: var(--shadow2);
+      backdrop-filter: blur(10px);
+      overflow:hidden;
+      display:none;
+      z-index: 60;
+    }
+    .menu.show{ display:block; animation: menuPop .12s ease; }
+    @keyframes menuPop{
+      from{ transform: translateY(-6px); opacity:0; }
+      to{ transform: translateY(0); opacity:1; }
+    }
+    .menu button{
+      width:100%;
+      border:0;
+      background: transparent;
+      color: rgba(244,247,255,.92);
+      padding: 10px 12px;
+      text-align:left;
+      cursor:pointer;
+      font-weight: 900;
+      font-size: 13px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+    }
+    .menu button:hover{ background: rgba(255,255,255,.06); }
+    .menu .sep{ height:1px; background: rgba(255,255,255,.10); }
+
+    /* ====== FOOTER ====== */
     .footer{
-      margin-top: 14px;
+      margin-top: 16px;
       padding: 14px 16px;
       border-top: 1px solid rgba(255,255,255,.10);
       color: var(--muted2);
@@ -536,16 +1030,17 @@
       gap: 10px;
       flex-wrap:wrap;
       background: rgba(0,0,0,.10);
+      border-radius: 18px;
     }
     .copy{ color: rgba(244,247,255,.78); }
 
-    /* Toast */
+    /* ====== TOAST ====== */
     .toast{
       position: fixed;
       left: 50%;
       bottom: 18px;
       transform: translateX(-50%);
-      z-index: 70;
+      z-index: 90;
       padding: 12px 14px;
       border-radius: 16px;
       border: 1px solid rgba(255,255,255,.16);
@@ -577,19 +1072,19 @@
     }
     .toastActions button:hover{ box-shadow: var(--neon1); border-color: rgba(101,183,255,.32); }
 
-    /* Modal */
+    /* ====== MODAL ====== */
     .modalOverlay{
       position:fixed; inset:0;
       display:none;
-      z-index:80;
+      z-index:100;
       background: rgba(0,0,0,.62);
       backdrop-filter: blur(6px);
       padding: 18px;
     }
     .modalOverlay.show{ display:grid; place-items:center; }
     .modal{
-      width: min(940px, 100%);
-      border-radius: 18px;
+      width: min(980px, 100%);
+      border-radius: 20px;
       border: 1px solid rgba(255,255,255,.14);
       background: rgba(10,12,24,.92);
       box-shadow: var(--shadow);
@@ -599,8 +1094,9 @@
     .modal::before{
       content:"";
       position:absolute; inset:-2px;
-      background: radial-gradient(420px 160px at 20% 0%, rgba(80,255,215,.12), transparent 60%),
-                  radial-gradient(420px 160px at 80% 0%, rgba(101,183,255,.10), transparent 60%);
+      background:
+        radial-gradient(520px 200px at 20% 0%, rgba(80,255,215,.12), transparent 60%),
+        radial-gradient(520px 200px at 80% 0%, rgba(101,183,255,.10), transparent 60%);
       filter: blur(12px);
       opacity:.6;
       pointer-events:none;
@@ -631,16 +1127,6 @@
       position:relative; z-index:1;
     }
 
-    .kbd{
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 12px;
-      border: 1px solid rgba(255,255,255,.18);
-      background: rgba(255,255,255,.06);
-      border-radius: 10px;
-      padding: 2px 8px;
-      color: rgba(244,247,255,.92);
-    }
-
     :focus-visible{
       outline: 3px solid rgba(101,183,255,.20);
       outline-offset: 2px;
@@ -663,6 +1149,15 @@
       70%{ transform:scale(1.12); opacity:0; }
       100%{ transform:scale(1.12); opacity:0; }
     }
+
+    /* Mobile tweaks */
+    @media (max-width: 860px){
+      .gridWrap{ grid-template-columns: 1fr; }
+      .rail{ position:relative; top:auto; }
+      .rail .railInner{ flex-direction:row; justify-content:space-between; }
+      .railBtn .hint{ display:none; }
+      .chatlist{ left: 14px; }
+    }
   </style>
 </head>
 
@@ -673,396 +1168,614 @@
     <div class="vignette"></div>
   </div>
 
-  <div class="app">
-    <aside class="side">
-      <div class="glowline"></div>
-
-      <div class="brand">
-        <div class="logoMark" aria-hidden="true">
-          <svg viewBox="0 0 64 64" fill="none">
-            <defs>
-              <linearGradient id="g1" x1="6" y1="10" x2="58" y2="54" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#50FFD7"/>
-                <stop offset="0.55" stop-color="#65B7FF"/>
-                <stop offset="1" stop-color="#C7A5FF"/>
-              </linearGradient>
-              <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
-                <feGaussianBlur stdDeviation="2.4" result="b"/>
-                <feMerge>
-                  <feMergeNode in="b"/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-              </filter>
-            </defs>
-            <path filter="url(#glow)" d="M14 50V14h18c8 0 14 6 14 14 0 6-3 10-8 12l10 10h-10l-9-9H24v9H14Zm10-27h8c3 0 5 2 5 5s-2 5-5 5h-8V23Z" fill="url(#g1)" opacity="0.95"/>
-            <path filter="url(#glow)" d="M48 50l-5-12h8l5 12h-8Z" fill="#FF4FD8" opacity="0.7"/>
-          </svg>
-        </div>
-        <div>
-          <h1><span>Raheem AI</span></h1>
-          <div class="sub">Compliance-first chat and document reasoning</div>
-        </div>
-      </div>
-
-      <div class="nav">
-        <button class="navbtn active" id="navHome" type="button" aria-label="Go to Overview">
-          <div class="left">
-            <span class="tag">Home</span>
-            <div style="min-width:0">
-              <div style="font-weight:900">Overview</div>
-              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Product summary and quick start</div>
-            </div>
+  <div class="shell">
+    <!-- ====== HEADER ====== -->
+    <header>
+      <div class="headerInner">
+        <div class="brandRow">
+          <div class="logoMark" aria-hidden="true">
+            <svg viewBox="0 0 64 64" fill="none">
+              <defs>
+                <linearGradient id="g1" x1="6" y1="10" x2="58" y2="54" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#50FFD7"/>
+                  <stop offset="0.55" stop-color="#65B7FF"/>
+                  <stop offset="1" stop-color="#C7A5FF"/>
+                </linearGradient>
+                <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+                  <feGaussianBlur stdDeviation="2.4" result="b"/>
+                  <feMerge>
+                    <feMergeNode in="b"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+              </defs>
+              <path filter="url(#glow)" d="M14 50V14h18c8 0 14 6 14 14 0 6-3 10-8 12l10 10h-10l-9-9H24v9H14Zm10-27h8c3 0 5 2 5 5s-2 5-5 5h-8V23Z" fill="url(#g1)" opacity="0.95"/>
+              <path filter="url(#glow)" d="M48 50l-5-12h8l5 12h-8Z" fill="#FF4FD8" opacity="0.7"/>
+            </svg>
           </div>
-          <span class="tag">↗</span>
-        </button>
-
-        <button class="navbtn" id="navChat" type="button" aria-label="Go to Chat">
-          <div class="left">
-            <span class="tag live">Live</span>
-            <div style="min-width:0">
-              <div style="font-weight:900">Chat</div>
-              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Saved sessions and continuous context</div>
-            </div>
+          <div class="brandText">
+            <div class="name"><span>Raheem AI</span></div>
+            <div class="sub">Compliance-first chat & document reasoning</div>
           </div>
-          <span class="tag">↗</span>
-        </button>
-
-        <button class="navbtn" id="navTools" type="button" aria-label="Go to Tools">
-          <div class="left">
-            <span class="tag">Tools</span>
-            <div style="min-width:0">
-              <div style="font-weight:900">Generators</div>
-              <div style="font-size:12px;color:var(--muted2);margin-top:2px">Fire, DAC, Specs, BER</div>
-            </div>
-          </div>
-          <span class="tag">↗</span>
-        </button>
-
-        <button class="navbtn" id="navFuture" type="button" aria-label="Go to Roadmap">
-          <div class="left">
-            <span class="tag">Roadmap</span>
-            <div style="min-width:0">
-              <div style="font-weight:900">Future Features</div>
-              <div style="font-size:12px;color:var(--muted2);margin-top:2px">BIM, multi-agent, layout</div>
-            </div>
-          </div>
-          <span class="tag">↗</span>
-        </button>
-      </div>
-
-      <div class="chatlist" id="chatList">
-        <h3>
-          <span>Saved chats</span>
-          <button class="iconBtn danger" id="btnDeleteAllChats" type="button" title="Delete all chats" aria-label="Delete all chats">🗑</button>
-        </h3>
-
-        <div class="chatSearch">
-          <input id="chatFilter" type="text" placeholder="Search chats..." autocomplete="off" />
         </div>
 
-        <div id="chatItems"></div>
-
-        <button class="btn" id="btnNewChat" type="button" style="width:100%; margin-top:6px;">New chat</button>
-      </div>
-
-      <div class="sideFoot" style="padding: 12px 16px 14px 16px; border-top: 1px solid rgba(255,255,255,.10); color: var(--muted2); font-size: 12px; line-height:1.35;">
-        <div style="font-weight:900;color:rgba(244,247,255,.86)">Usage tip</div>
-        <div style="margin-top:6px">
-          Use <b>Evidence mode</b> for stricter answers and citations where available.
-          Press <span class="kbd">/</span> to focus the message box.
+        <!-- Center: premium pill nav -->
+        <div class="headerCenter">
+          <div class="navPills" aria-label="Primary navigation">
+            <!-- Keep these IDs for JS -->
+            <button class="navpill active" id="navHome" type="button" aria-label="Go to Overview">
+              <span class="dot" aria-hidden="true"></span> Overview
+            </button>
+            <button class="navpill" id="navChat" type="button" aria-label="Go to Chat">
+              <span class="dot" aria-hidden="true"></span> Chat
+            </button>
+            <button class="navpill" id="navTools" type="button" aria-label="Go to Tools">
+              <span class="dot" aria-hidden="true"></span> Tools
+            </button>
+            <button class="navpill" id="navFuture" type="button" aria-label="Go to Roadmap">
+              <span class="dot" aria-hidden="true"></span> Roadmap
+            </button>
+          </div>
         </div>
-      </div>
-    </aside>
 
-    <main class="main">
-      <div class="glowline"></div>
-
-      <div class="topbar">
-        <div class="crumb">
-          <div class="title" id="viewTitle">Overview</div>
-          <div class="hint" id="viewHint">Product summary and quick start</div>
-        </div>
-        <div class="actions">
+        <div class="headerRight">
           <span class="tag warn" id="apiPill">Checking…</span>
           <button class="btn" id="btnStatus" type="button" title="Backend status details">Status</button>
           <button class="btn ghost" id="btnShortcuts" type="button" title="Keyboard shortcuts">Shortcuts</button>
         </div>
       </div>
+    </header>
 
-      <!-- HOME -->
-      <section class="view show" id="viewHome">
-        <div class="hero">
-          <h2>AI for compliance, specifications and technical workflows</h2>
-          <p>Ask questions in plain language. Use Evidence mode for stricter answers with citations and traceable logic.</p>
-          <div class="quote">Built for practical building workflows: clear outputs, consistent structure, and faster review cycles.</div>
+    <!-- ====== CONTENT GRID ====== -->
+    <div class="gridWrap">
+      <!-- Icon Rail (secondary feel, super premium) -->
+      <aside class="rail" aria-label="Quick actions rail">
+        <div class="railInner">
+          <!-- We keep the same nav IDs already in header; rail buttons just call showView via JS by clicking those -->
+          <button class="railBtn active" type="button" onclick="document.getElementById('navHome').click()">
+            ✦ <span class="hint">Overview</span>
+          </button>
+          <button class="railBtn" type="button" onclick="document.getElementById('navChat').click()">
+            💬 <span class="hint">Chat</span>
+          </button>
+          <button class="railBtn" type="button" onclick="document.getElementById('navTools').click()">
+            🧰 <span class="hint">Tools</span>
+          </button>
+          <button class="railBtn" type="button" onclick="document.getElementById('navFuture').click()">
+            🚀 <span class="hint">Roadmap</span>
+          </button>
         </div>
+      </aside>
 
-        <div class="grid">
-          <article class="card">
-            <div class="cardhead">
-              <div class="cardtitle">
-                <div class="icon">AI</div>
-                <div>
-                  <h4>Chat</h4>
-                  <p>TGD & Planning Copilot. Saved sessions, continuous context.</p>
-                </div>
-              </div>
-              <span class="pill live">Live</span>
-            </div>
-            <div class="cta">
-              <span class="pill">Session memory</span>
-              <button class="btn primary" id="btnStartChat" type="button">Open chat</button>
-            </div>
-          </article>
+      <!-- Main Surface -->
+      <main class="surface">
+        <div class="shine"></div>
 
-          <article class="card">
-            <div class="cardhead">
-              <div class="cardtitle">
-                <div class="icon">🧰</div>
-                <div>
-                  <h4>Generators</h4>
-                  <p>Fire Cert, DAC, NBS Spec, BER/DEAP (guided tools).</p>
-                </div>
-              </div>
-              <span class="pill">Starter</span>
-            </div>
-            <div class="cta">
-              <span class="pill">Questionnaires</span>
-              <button class="btn" id="btnOpenTools" type="button">Open</button>
-            </div>
-          </article>
-        </div>
-
-        <div class="footer">
-          <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
-          <div>Built by Abdulraheem Hayder Ahmed</div>
-        </div>
-      </section>
-
-      <!-- CHAT -->
-      <section class="view" id="viewChat">
-        <div class="hero">
-          <h2>Chat</h2>
-          <p>Continue a saved chat on the left, or start a new one to keep topics clean.</p>
-          <div class="quote" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
-            <div style="max-width:780px">
-              Tip: Evidence mode is best for regulations and reports. Ask one question per message.
-            </div>
-            <button class="btn" id="btnExportChat" type="button" title="Export current chat as a text file">Export</button>
+        <div class="surfaceTop">
+          <div class="crumb">
+            <div class="title" id="viewTitle">Overview</div>
+            <div class="hint" id="viewHint">Product summary and quick start</div>
           </div>
-          <div style="margin-top:10px;font-size:12px;color:var(--muted2);line-height:1.45; position:relative; z-index:1;">
-            Keyboard: <span class="kbd">Enter</span> send • <span class="kbd">Shift</span>+<span class="kbd">Enter</span> newline •
-            <span class="kbd">Ctrl</span>+<span class="kbd">K</span> clear • <span class="kbd">/</span> focus input.
+          <div class="surfaceActions">
+            <button class="btn primary" id="btnStartChat" type="button">Open Chat</button>
+            <button class="btn" id="btnOpenTools" type="button">Open Tools</button>
           </div>
         </div>
 
-        <div class="chatwrap">
-          <div class="row" style="justify-content:space-between;">
-            <div class="row">
-              <label class="toggle" title="Prefer stricter, evidence-oriented responses">
-                <input type="checkbox" id="forceDocs" />
-                Evidence mode
-              </label>
-              <label class="toggle" title="Enable streaming typewriter effect (cosmetic)">
-                <input type="checkbox" id="typewriter" />
-                Typewriter
-              </label>
-              <label class="toggle" title="Stop responses quickly if needed">
-                <input type="checkbox" id="fastMode" />
-                Fast mode
-              </label>
-              <label class="toggle" title="Keep backend warm (helpful for Render free-tier)">
-                <input type="checkbox" id="keepWarm" />
-                Keep warm
-              </label>
+        <!-- ====== HOME ====== -->
+        <section class="view show" id="viewHome">
+          <div class="hero">
+            <div class="heroHead">
+              <div>
+                <h2>Build faster. Stay compliant. Ship cleaner submissions.</h2>
+                <p>
+                  Raheem AI is a compliance-first assistant built for real building workflows: Irish TGDs, Planning logic, Fire/DAC reporting,
+                  specs, and energy performance—without the messy outputs.
+                </p>
+              </div>
+              <div class="heroBadges">
+                <span class="tag live">Compliance-first</span>
+                <span class="tag">Citations-ready</span>
+                <span class="tag">Workflow tools</span>
+              </div>
             </div>
-            <div class="row">
-              <button class="btn" id="btnClear" type="button">Clear chat</button>
+
+            <div class="quote">
+              <b>What makes it sellable:</b> consistent structure, traceable evidence (when needed), and purpose-built tools (Fire, DAC, Specs, BER).
+            </div>
+
+            <div class="heroCTA">
+              <button class="btn primary" type="button" onclick="document.getElementById('navChat').click()">Start a chat</button>
+              <button class="btn" type="button" onclick="document.getElementById('navTools').click()">Explore tools</button>
+              <span class="muted">Tip: press <span class="kbd">/</span> to jump into Chat.</span>
             </div>
           </div>
 
-          <div class="chatbox" id="chatBox" aria-live="polite"></div>
+          <div class="split">
+            <!-- Left: Core modules (sellable) -->
+            <div class="panel">
+              <div class="panelHead">
+                <div class="t">Core modules</div>
+                <span class="tag">Product suite</span>
+              </div>
+              <div class="panelBody">
+                <div class="featureGrid">
+                  <article class="card">
+                    <div class="cardhead">
+                      <div class="cardtitle">
+                        <div class="icon">AI</div>
+                        <div>
+                          <h4>TGD & Planning Copilot</h4>
+                          <p>Ask project-specific questions in plain language. Evidence mode for stricter answers and clause references.</p>
+                        </div>
+                      </div>
+                      <span class="pill live">Live</span>
+                    </div>
+                    <div class="cta">
+                      <span class="pill">Saved sessions</span>
+                      <button class="btn primary" type="button" onclick="document.getElementById('navChat').click()">Open chat</button>
+                    </div>
+                  </article>
 
-          <div class="composer">
-            <textarea id="msg" placeholder="Type your message… (Shift + Enter for a new line)"></textarea>
-            <button class="btn primary" id="send" type="button">Send</button>
+                  <article class="card">
+                    <div class="cardhead">
+                      <div class="cardtitle">
+                        <div class="icon">🧰</div>
+                        <div>
+                          <h4>Generators</h4>
+                          <p>Fire Cert, DAC, Specs, BER workflows — guided inputs → structured outputs ready for review.</p>
+                        </div>
+                      </div>
+                      <span class="pill">Starter</span>
+                    </div>
+                    <div class="cta">
+                      <span class="pill">Questionnaires</span>
+                      <button class="btn" type="button" onclick="document.getElementById('navTools').click()">Open</button>
+                    </div>
+                  </article>
+                </div>
+
+                <div style="margin-top:12px" class="statRow">
+                  <div class="stat">
+                    <div class="k">Output style</div>
+                    <div class="v">Structured</div>
+                    <div class="s">Report-ready, consistent formatting.</div>
+                  </div>
+                  <div class="stat">
+                    <div class="k">Evidence mode</div>
+                    <div class="v">On-demand</div>
+                    <div class="s">Use when you need traceability.</div>
+                  </div>
+                  <div class="stat">
+                    <div class="k">Design feedback</div>
+                    <div class="v">Practical</div>
+                    <div class="s">Red flags + fix suggestions.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: “What you’re building next” (your list, productized) -->
+            <div class="panel">
+              <div class="panelHead">
+                <div class="t">Next integrations</div>
+                <span class="tag">Roadmap</span>
+              </div>
+              <div class="panelBody">
+                <div class="list">
+                  <div class="li">
+                    <div>
+                      <b>TGD Smart Checker</b>
+                      <div class="s">Upload a plan or describe a scheme → instant red flags, mapped to correct TGD parts.</div>
+                    </div>
+                    <span class="badge">Core</span>
+                  </div>
+                  <div class="li">
+                    <div>
+                      <b>Submission Pack Builder</b>
+                      <div class="s">Fire + DAC outputs → combined bundle with drawing index + cover letter templates.</div>
+                    </div>
+                    <span class="badge">Core</span>
+                  </div>
+                  <div class="li">
+                    <div>
+                      <b>Design Debate Room</b>
+                      <div class="s">Two AIs argue for/against (sprinklers vs passive etc.) and converge on best choice.</div>
+                    </div>
+                    <span class="badge">Decision</span>
+                  </div>
+                  <div class="li">
+                    <div>
+                      <b>Revit-first Layout Generator</b>
+                      <div class="s">Areas + adjacencies → native rooms/walls/doors + reg-aware hints in-model.</div>
+                    </div>
+                    <span class="badge">BIM</span>
+                  </div>
+                </div>
+
+                <div class="footer" style="margin-top:14px;">
+                  <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
+                  <div>Built by Abdulraheem Hayder Ahmed</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ====== CHAT ====== -->
+        <section class="view" id="viewChat">
+          <div class="hero">
+            <div class="heroHead">
+              <div>
+                <h2>Chat</h2>
+                <p>
+                  Keep conversations clean with saved sessions. Use Evidence mode for stricter, citation-ready answers (ideal for regs / reports).
+                </p>
+              </div>
+              <div class="heroBadges">
+                <button class="btn" id="btnExportChat" type="button" title="Export current chat as a text file">Export</button>
+                <span class="tag">Keyboard: <span class="kbd">Enter</span> send • <span class="kbd">Shift</span>+<span class="kbd">Enter</span> newline</span>
+              </div>
+            </div>
+            <div class="quote">
+              Tip: click <b>Chat</b> again to pop open your <b>Saved chats</b> drawer.
+              Press <span class="kbd">/</span> to focus input.
+            </div>
+          </div>
+
+          <div class="chatShell">
+            <!-- Main chat column -->
+            <div>
+              <div class="row" style="justify-content:space-between; margin-top: 12px;">
+                <div class="row">
+                  <label class="toggle" title="Prefer stricter, evidence-oriented responses">
+                    <input type="checkbox" id="forceDocs" />
+                    Evidence mode
+                  </label>
+                  <label class="toggle" title="Enable streaming typewriter effect (cosmetic)">
+                    <input type="checkbox" id="typewriter" />
+                    Typewriter
+                  </label>
+                  <label class="toggle" title="Stop responses quickly if needed">
+                    <input type="checkbox" id="fastMode" />
+                    Fast mode
+                  </label>
+                  <label class="toggle" title="Keep backend warm (helpful for Render free-tier)">
+                    <input type="checkbox" id="keepWarm" />
+                    Keep warm
+                  </label>
+                </div>
+                <div class="row">
+                  <button class="btn" id="btnClear" type="button">Clear chat</button>
+                </div>
+              </div>
+
+              <div class="chatwrap">
+                <div class="chatbox" id="chatBox" aria-live="polite"></div>
+
+                <div class="composer">
+                  <textarea id="msg" placeholder="Ask about TGDs, planning, specs, Fire/DAC, BER… (Shift + Enter for a new line)"></textarea>
+                  <button class="btn primary" id="send" type="button">Send</button>
+                </div>
+              </div>
+
+              <div class="footer">
+                <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
+                <div>Tip: Evidence mode is best for technical checks.</div>
+              </div>
+            </div>
+
+            <!-- Right info panel (sellable “assist” feel) -->
+            <aside class="sideInfo">
+              <div class="head">
+                <div class="t">How to use</div>
+                <span class="tag">Pro tips</span>
+              </div>
+              <div class="body">
+                <div class="muted">
+                  <b>Best practice:</b> ask one question per message, include building type + occupancy + whether it’s new build or existing.
+                </div>
+                <div class="pillRow">
+                  <span class="pill">Fire (TGD B)</span>
+                  <span class="pill">DAC (TGD M)</span>
+                  <span class="pill">Planning</span>
+                  <span class="pill">Specs</span>
+                  <span class="pill">BER</span>
+                </div>
+
+                <div style="margin-top:14px" class="muted">
+                  <b>Shortcuts:</b><br/>
+                  <span class="kbd">/</span> focus chat • <span class="kbd">Ctrl</span>+<span class="kbd">K</span> clear • <span class="kbd">Esc</span> close dialogs
+                </div>
+
+                <div style="margin-top:14px" class="muted">
+                  <b>Upcoming modes:</b> Learning Mode (students) + Client Explain Mode (plain English for reports/emails).
+                </div>
+
+                <div style="margin-top:14px">
+                  <button class="btn" type="button" onclick="document.getElementById('navFuture').click()">See roadmap</button>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- ====== TOOLS ====== -->
+        <section class="view" id="viewTools">
+          <div class="hero">
+            <div class="heroHead">
+              <div>
+                <h2>Tools</h2>
+                <p>Guided workflows: you answer questions; Raheem AI produces structured outputs ready for review and submission packs.</p>
+              </div>
+              <div class="heroBadges">
+                <span class="tag">Questionnaires</span>
+                <span class="tag">Report-ready</span>
+              </div>
+            </div>
+            <div class="quote">
+              Start next: <b>NBS-style Spec Generator</b> + <b>Fire (TGD B) & DAC (TGD M)</b> questionnaires.
+            </div>
+          </div>
+
+          <div style="margin-top:14px" class="featureGrid">
+            <article class="card">
+              <div class="cardhead">
+                <div class="cardtitle">
+                  <div class="icon">FCS</div>
+                  <div>
+                    <h4>Fire Safety Certificate Generator (Non-dwellings)</h4>
+                    <p>Guided questionnaire based on TGD B → structured Fire Safety report + submission checklist.</p>
+                  </div>
+                </div>
+                <span class="pill">Next</span>
+              </div>
+              <div class="cta">
+                <span class="pill">Non-dwellings</span>
+                <button class="btn" data-soon="Fire Safety Questionnaire" type="button">Preview</button>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="cardhead">
+                <div class="cardtitle">
+                  <div class="icon">DAC</div>
+                  <div>
+                    <h4>Disability Access Certificate (DAC) Generator</h4>
+                    <p>TGD M questionnaire → DAC report draft with non-compliance risks highlighted.</p>
+                  </div>
+                </div>
+                <span class="pill">Next</span>
+              </div>
+              <div class="cta">
+                <span class="pill">Access & use</span>
+                <button class="btn" data-soon="DAC Questionnaire" type="button">Preview</button>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="cardhead">
+                <div class="cardtitle">
+                  <div class="icon">NBS</div>
+                  <div>
+                    <h4>NBS-Style Specification Generator</h4>
+                    <p>Brief → structured spec clauses with performance requirements + placeholders for products.</p>
+                  </div>
+                </div>
+                <span class="pill live">Start here</span>
+              </div>
+              <div class="cta">
+                <span class="pill">Specs</span>
+                <button class="btn" data-soon="NBS Spec Generator" type="button">Preview</button>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="cardhead">
+                <div class="cardtitle">
+                  <div class="icon">BER</div>
+                  <div>
+                    <h4>BER / DEAP Copilot</h4>
+                    <p>Upload BIM export later (IFC/gbXML). Extract areas/systems → guide remaining inputs and outputs key results.</p>
+                  </div>
+                </div>
+                <span class="pill">Roadmap</span>
+              </div>
+              <div class="cta">
+                <span class="pill">Energy</span>
+                <button class="btn" data-soon="BER / DEAP Copilot" type="button">Preview</button>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="cardhead">
+                <div class="cardtitle">
+                  <div class="icon">RS</div>
+                  <div>
+                    <h4>Reverse Spec from Datasheet</h4>
+                    <p>Paste a datasheet/link → draft spec clause + missing performance data called out.</p>
+                  </div>
+                </div>
+                <span class="pill">Roadmap</span>
+              </div>
+              <div class="cta">
+                <span class="pill">Spec Assist</span>
+                <button class="btn" data-soon="Reverse Spec from Datasheet" type="button">Preview</button>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="cardhead">
+                <div class="cardtitle">
+                  <div class="icon">PK</div>
+                  <div>
+                    <h4>Submission Pack Builder</h4>
+                    <p>Combine Fire + DAC outputs into a submission bundle with cover letters and indices.</p>
+                  </div>
+                </div>
+                <span class="pill">Roadmap</span>
+              </div>
+              <div class="cta">
+                <span class="pill">Docs</span>
+                <button class="btn" data-soon="Submission Pack Builder" type="button">Preview</button>
+              </div>
+            </article>
+          </div>
+
+          <div class="footer">
+            <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
+            <div>Generators preview</div>
+          </div>
+        </section>
+
+        <!-- ====== ROADMAP ====== -->
+        <section class="view" id="viewFuture">
+          <div class="hero">
+            <div class="heroHead">
+              <div>
+                <h2>Roadmap</h2>
+                <p>Multi-agent decision tools, BIM layout, reg-aware hints, energy comparisons, and client/student modes.</p>
+              </div>
+              <div class="heroBadges">
+                <span class="tag">Preview</span>
+                <span class="tag">Testing-first</span>
+              </div>
+            </div>
+            <div class="quote">
+              Roadmap items are previews. Availability depends on testing, performance, and data coverage.
+            </div>
+          </div>
+
+          <div style="margin-top:14px" class="featureGrid">
+            <article class="card">
+              <div class="cardhead">
+                <div class="cardtitle">
+                  <div class="icon">DB</div>
+                  <div>
+                    <h4>Design Debate Room</h4>
+                    <p>Two AIs argue for/against an option (sprinklers vs passive, timber vs block) then converge on a recommendation.</p>
+                  </div>
+                </div>
+                <span class="pill">Decision</span>
+              </div>
+              <div class="cta">
+                <span class="pill">Multi-agent</span>
+                <button class="btn" data-soon="Design Debate Room" type="button">Preview</button>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="cardhead">
+                <div class="cardtitle">
+                  <div class="icon">SIM</div>
+                  <div>
+                    <h4>“What-If” Reg Simulator</h4>
+                    <p>Change height/area/occupancy and see Fire, DAC, Planning and energy implications shift instantly.</p>
+                  </div>
+                </div>
+                <span class="pill">Decision</span>
+              </div>
+              <div class="cta">
+                <span class="pill">Simulator</span>
+                <button class="btn" data-soon="What-If Reg Simulator" type="button">Preview</button>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="cardhead">
+                <div class="cardtitle">
+                  <div class="icon">LAY</div>
+                  <div>
+                    <h4>AI Layout Generator (Revit-first)</h4>
+                    <p>Send areas/adjacencies/constraints → generate native Revit rooms/walls/doors + reg-aware hints.</p>
+                  </div>
+                </div>
+                <span class="pill">BIM</span>
+              </div>
+              <div class="cta">
+                <span class="pill">Revit plugin</span>
+                <button class="btn" data-soon="AI Layout Generator" type="button">Preview</button>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="cardhead">
+                <div class="cardtitle">
+                  <div class="icon">RH</div>
+                  <div>
+                    <h4>Reg-Aware Layout Hints</h4>
+                    <p>In-model warnings for escape distances, corridor widths, turning circles, and other TGD issues.</p>
+                  </div>
+                </div>
+                <span class="pill">BIM</span>
+              </div>
+              <div class="cta">
+                <span class="pill">Compliance overlays</span>
+                <button class="btn" data-soon="Reg-Aware Layout Hints" type="button">Preview</button>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="cardhead">
+                <div class="cardtitle">
+                  <div class="icon">ED</div>
+                  <div>
+                    <h4>Learning Mode for Students</h4>
+                    <p>Hints, clause breakdowns, quizzes — learn TGDs, spec logic and energy rules while using the tool.</p>
+                  </div>
+                </div>
+                <span class="pill">Education</span>
+              </div>
+              <div class="cta">
+                <span class="pill">Study mode</span>
+                <button class="btn" data-soon="Learning Mode for Students" type="button">Preview</button>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="cardhead">
+                <div class="cardtitle">
+                  <div class="icon">CL</div>
+                  <div>
+                    <h4>Client Explain Mode</h4>
+                    <p>Convert technical outputs (Fire, DAC, BER, planning issues) into simple client-friendly text for reports/emails.</p>
+                  </div>
+                </div>
+                <span class="pill">Client</span>
+              </div>
+              <div class="cta">
+                <span class="pill">Plain English</span>
+                <button class="btn" data-soon="Client Explain Mode" type="button">Preview</button>
+              </div>
+            </article>
+          </div>
+
+          <div class="footer">
+            <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
+            <div>Roadmap preview</div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Saved chats drawer -->
+      <div class="chatlist" id="chatList" aria-label="Saved chats drawer">
+        <div class="chatlistTop">
+          <div class="t">Saved chats</div>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <button class="btn" id="btnNewChat" type="button" style="padding:8px 10px; border-radius:14px;">New</button>
+            <button class="iconBtn danger" id="btnDeleteAllChats" type="button" title="Delete all chats" aria-label="Delete all chats">🗑</button>
           </div>
         </div>
 
-        <div class="footer">
-          <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
-          <div>Tip: Evidence mode is best for technical checks.</div>
-        </div>
-      </section>
-
-      <!-- TOOLS -->
-      <section class="view" id="viewTools">
-        <div class="hero">
-          <h2>Generators</h2>
-          <p>These are guided workflows. You answer questions; Raheem AI produces structured outputs ready for review.</p>
-          <div class="quote">Start next: <b>NBS-style Spec Generator</b> + <b>Fire (TGD B) & DAC (TGD M) questionnaires</b>.</div>
+        <div class="chatSearch">
+          <input id="chatFilter" type="text" placeholder="Search chats..." autocomplete="off" />
         </div>
 
-        <div class="grid">
-          <article class="card">
-            <div class="cardhead">
-              <div class="cardtitle">
-                <div class="icon">FCS</div>
-                <div>
-                  <h4>Fire Safety (TGD B) – Questionnaire</h4>
-                  <p>Step-by-step yes/no + project inputs. Outputs a structured report draft + submission checklist.</p>
-                </div>
-              </div>
-              <span class="pill">Next</span>
-            </div>
-            <div class="cta">
-              <span class="pill">Non-dwellings</span>
-              <button class="btn" data-soon="Fire Safety Questionnaire" type="button">Preview</button>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="cardhead">
-              <div class="cardtitle">
-                <div class="icon">DAC</div>
-                <div>
-                  <h4>DAC (TGD M) – Questionnaire</h4>
-                  <p>Captures access strategy details and outputs a DAC report with highlighted non-compliance risks.</p>
-                </div>
-              </div>
-              <span class="pill">Next</span>
-            </div>
-            <div class="cta">
-              <span class="pill">Access & use</span>
-              <button class="btn" data-soon="DAC Questionnaire" type="button">Preview</button>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="cardhead">
-              <div class="cardtitle">
-                <div class="icon">NBS</div>
-                <div>
-                  <h4>NBS-Style Specification Generator</h4>
-                  <p>Turn a brief into structured spec clauses with placeholders and performance requirements.</p>
-                </div>
-              </div>
-              <span class="pill live">Start here</span>
-            </div>
-            <div class="cta">
-              <span class="pill">Specs</span>
-              <button class="btn" data-soon="NBS Spec Generator" type="button">Preview</button>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="cardhead">
-              <div class="cardtitle">
-                <div class="icon">BER</div>
-                <div>
-                  <h4>BER / DEAP Copilot</h4>
-                  <p>Import IFC/gbXML later. Extract areas, pre-fill DEAP style inputs, and guide remaining data.</p>
-                </div>
-              </div>
-              <span class="pill">Roadmap</span>
-            </div>
-            <div class="cta">
-              <span class="pill">Energy</span>
-              <button class="btn" data-soon="BER / DEAP Copilot" type="button">Preview</button>
-            </div>
-          </article>
+        <div class="chatItemsScroll">
+          <div id="chatItems"></div>
         </div>
-
-        <div class="footer">
-          <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
-          <div>Generators preview</div>
-        </div>
-      </section>
-
-      <!-- ROADMAP -->
-      <section class="view" id="viewFuture">
-        <div class="hero">
-          <h2>Future Features</h2>
-          <p>Planned modules: multi-agent debate, BIM layout generation, reg-aware hints, and submission pack building.</p>
-          <div class="quote">Roadmap items are previews. Availability depends on testing, performance, and data coverage.</div>
-        </div>
-
-        <div class="grid">
-          <article class="card">
-            <div class="cardhead">
-              <div class="cardtitle">
-                <div class="icon">DB</div>
-                <div>
-                  <h4>Design Debate Room</h4>
-                  <p>Two AIs argue for/against an option and converge on the best recommendation with clear reasoning.</p>
-                </div>
-              </div>
-              <span class="pill">Roadmap</span>
-            </div>
-            <div class="cta">
-              <span class="pill">Decisions</span>
-              <button class="btn" data-soon="Design Debate Room" type="button">Preview</button>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="cardhead">
-              <div class="cardtitle">
-                <div class="icon">LAY</div>
-                <div>
-                  <h4>AI Layout Generator (Revit-first)</h4>
-                  <p>Send areas/adjacencies/constraints → generate native Revit rooms/walls/doors + reg-aware hints.</p>
-                </div>
-              </div>
-              <span class="pill">Roadmap</span>
-            </div>
-            <div class="cta">
-              <span class="pill">BIM</span>
-              <button class="btn" data-soon="AI Layout Generator" type="button">Preview</button>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="cardhead">
-              <div class="cardtitle">
-                <div class="icon">SIM</div>
-                <div>
-                  <h4>“What-If” Reg Simulator</h4>
-                  <p>Change height/area/occupancy and see implications across Fire, DAC, Planning, and energy.</p>
-                </div>
-              </div>
-              <span class="pill">Roadmap</span>
-            </div>
-            <div class="cta">
-              <span class="pill">Sim</span>
-              <button class="btn" data-soon="What-If Reg Simulator" type="button">Preview</button>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="cardhead">
-              <div class="cardtitle">
-                <div class="icon">PK</div>
-                <div>
-                  <h4>Submission Pack Builder</h4>
-                  <p>Combine Fire + DAC outputs into a ready-to-use submission bundle with cover letters and indices.</p>
-                </div>
-              </div>
-              <span class="pill">Roadmap</span>
-            </div>
-            <div class="cta">
-              <span class="pill">Docs</span>
-              <button class="btn" data-soon="Submission Pack Builder" type="button">Preview</button>
-            </div>
-          </article>
-        </div>
-
-        <div class="footer">
-          <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
-          <div>Roadmap preview</div>
-        </div>
-      </section>
-    </main>
+      </div>
+    </div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -1086,11 +1799,11 @@
     // =========================================================
     const CONFIG = {
       API_BASE_DEFAULT: "https://complyr.onrender.com",   // <-- your backend
-      HEALTH_PATH: "/health",                              // keep fast server-side
+      HEALTH_PATH: "/health",
       CHAT_PATH: "/chat",
-      HEALTH_TIMEOUT_MS: 9000,                             // never hang forever
+      HEALTH_TIMEOUT_MS: 9000,
       STATUS_POLL_MS: 20000,
-      WARM_PING_MS: 240000,                                // 4 minutes
+      WARM_PING_MS: 240000,
       CHAT_TIMEOUT_MS: 75000,
       CHAT_RETRY_ONCE: true
     };
@@ -1176,7 +1889,7 @@
     document.addEventListener("keydown", (e)=>{ if(e.key === "Escape" && modalOverlay.classList.contains("show")) closeModal(); });
 
     // =========================================================
-    // Navigation
+    // Navigation (keeps your IDs + localStorage behavior)
     // =========================================================
     const viewTitleEl = document.getElementById("viewTitle");
     const viewHintEl  = document.getElementById("viewHint");
@@ -1192,51 +1905,73 @@
     const navFuture = document.getElementById("navFuture");
 
     function setNavActive(which){
+      // header pills
       [navHome, navChat, navTools, navFuture].forEach(b=>b.classList.remove("active"));
       if(which==="home") navHome.classList.add("active");
       if(which==="chat") navChat.classList.add("active");
       if(which==="tools") navTools.classList.add("active");
       if(which==="future") navFuture.classList.add("active");
+
+      // rail buttons
+      const railBtns = document.querySelectorAll(".railBtn");
+      railBtns.forEach(b=>b.classList.remove("active"));
+      if(which==="home") railBtns[0]?.classList.add("active");
+      if(which==="chat") railBtns[1]?.classList.add("active");
+      if(which==="tools") railBtns[2]?.classList.add("active");
+      if(which==="future") railBtns[3]?.classList.add("active");
     }
 
     function showView(which){
       [viewHome, viewChat, viewTools, viewFuture].forEach(v=>v.classList.remove("show"));
-      chatList.classList.remove("show");
 
       if(which==="home"){
         viewHome.classList.add("show");
         viewTitleEl.textContent = "Overview";
         viewHintEl.textContent  = "Product summary and quick start";
+        chatList.classList.remove("show");
       }
       if(which==="chat"){
         viewChat.classList.add("show");
         viewTitleEl.textContent = "Chat";
         viewHintEl.textContent  = "Saved sessions and continuous context";
-        chatList.classList.add("show");
         ensureActiveChat();
         renderChatList();
         renderChat();
         setTimeout(()=> msgEl.focus(), 50);
+
+        // Open drawer when entering chat
+        chatList.classList.add("show");
       }
       if(which==="tools"){
         viewTools.classList.add("show");
-        viewTitleEl.textContent = "Generators";
-        viewHintEl.textContent  = "Fire, DAC, Specs, BER";
+        viewTitleEl.textContent = "Tools";
+        viewHintEl.textContent  = "Generators, specs, compliance workflows";
+        chatList.classList.remove("show");
       }
       if(which==="future"){
         viewFuture.classList.add("show");
-        viewTitleEl.textContent = "Future Features";
-        viewHintEl.textContent  = "Roadmap preview";
+        viewTitleEl.textContent = "Roadmap";
+        viewHintEl.textContent  = "Future features & integrations preview";
+        chatList.classList.remove("show");
       }
 
       setNavActive(which);
       localStorage.setItem("RAHEEM_VIEW", which);
     }
 
+    // Toggle drawer when clicking Chat pill repeatedly
+    navChat.onclick = ()=>{
+      const saved = (localStorage.getItem("RAHEEM_VIEW") || "home").toLowerCase();
+      if(saved === "chat" && viewChat.classList.contains("show")){
+        chatList.classList.toggle("show");
+      } else {
+        showView("chat");
+      }
+    };
     navHome.onclick = ()=>showView("home");
-    navChat.onclick = ()=>showView("chat");
     navTools.onclick = ()=>showView("tools");
     navFuture.onclick = ()=>showView("future");
+
     document.getElementById("btnStartChat").onclick = ()=>showView("chat");
     document.getElementById("btnOpenTools").onclick = ()=>showView("tools");
 
@@ -1246,7 +1981,7 @@
     });
 
     // =========================================================
-    // NICE "Future" previews: modal instead of cringe black box
+    // Future previews: modal
     // =========================================================
     document.querySelectorAll("[data-soon]").forEach(btn=>{
       btn.addEventListener("click", ()=>{
@@ -1275,7 +2010,7 @@
     });
 
     // =========================================================
-    // Particles (same vibe, stable)
+    // Particles
     // =========================================================
     const canvas = document.getElementById("particles");
     const ctx = canvas.getContext("2d");
@@ -1315,9 +2050,7 @@
     if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches){ tick(); }
 
     // =========================================================
-    // 2) REAL FIX: Status monitor that NEVER hangs + supports cold start.
-    //    - "Checking..." cannot sit forever
-    //    - "Offline" becomes "Waking…" while retrying
+    // Status monitor (cold-start friendly)
     // =========================================================
     const apiPill = document.getElementById("apiPill");
     const btnStatus = document.getElementById("btnStatus");
@@ -1382,7 +2115,6 @@
       clearInterval(STATUS.wakingTimer);
       STATUS.wakingTimer = setInterval(async ()=>{
         if(STATUS.state !== "waking") return;
-        const backoff = Math.min(6, STATUS.attempts);
         const dots = ".".repeat((STATUS.attempts % 3) + 1);
         setPill("waking", "Waking server" + dots);
 
@@ -1396,9 +2128,7 @@
           showToast("Backend is online.");
           clearInterval(STATUS.wakingTimer);
         } else {
-          // keep trying. Do NOT spam "Offline".
           if(STATUS.attempts > 8){
-            // after enough tries, show offline but keep passive polling
             STATUS.state = "offline";
             setPill("offline", "Offline");
             clearInterval(STATUS.wakingTimer);
@@ -1416,7 +2146,6 @@
         setPill("online", "Online");
         return;
       }
-      // If it fails, go into waking loop first (cold start friendly)
       STATUS.state = "waking";
       STATUS.attempts = 0;
       setPill("waking", "Waking server…");
@@ -1464,7 +2193,6 @@
     // Start status polling
     refreshStatusPill();
     STATUS.pollTimer = setInterval(() => {
-      // If online, quick confirm. If offline, try waking again (but not too spammy).
       if(STATUS.state === "online") refreshStatusPill();
       if(STATUS.state === "offline") {
         STATUS.state = "waking";
@@ -1473,9 +2201,7 @@
       }
     }, CONFIG.STATUS_POLL_MS);
 
-    // =========================================================
     // Shortcuts modal
-    // =========================================================
     document.getElementById("btnShortcuts").onclick = ()=>{
       openModal(
         "Keyboard shortcuts",
@@ -1491,7 +2217,7 @@
     };
 
     // =========================================================
-    // 3) Chat state + PROFESSIONAL delete UX (modal confirm + Undo)
+    // Chat state + delete UX (same behavior)
     // =========================================================
     const chatBox = document.getElementById("chatBox");
     const msgEl = document.getElementById("msg");
@@ -1552,7 +2278,7 @@
     }
 
     // Undo buffer
-    let lastDeleted = null; // { chatId, chatObj, allBefore? }
+    let lastDeleted = null; // { chatId, chatObj }
     function offerUndoToast(){
       if(!lastDeleted) return;
       showToast("Chat deleted.", [
@@ -1568,7 +2294,6 @@
           showToast("Restored.");
         }}
       ]);
-      // Clear undo after 6s
       setTimeout(()=>{ lastDeleted = null; }, 6000);
     }
 
@@ -1585,7 +2310,6 @@
       document.querySelectorAll(".menu.show").forEach(m=>m.classList.remove("show"));
     }
     document.addEventListener("click", (e)=>{
-      // clicking outside menus closes them
       const inMenu = e.target && (e.target.closest && e.target.closest(".menu"));
       const inMenuBtn = e.target && (e.target.closest && e.target.closest("[data-menubtn]"));
       if(!inMenu && !inMenuBtn) closeAllMenus();
@@ -1609,13 +2333,11 @@
           { label:"Cancel", onClick: closeModal },
           { label:"Delete", primary:true, onClick: ()=>{
             closeModal();
-            // do deletion
             const all2 = loadAllChats();
             const chatObj = all2[chatId];
             if(!chatObj) return;
 
             lastDeleted = { chatId, chatObj };
-
             delete all2[chatId];
 
             if(chatId === activeChatId){
@@ -1646,7 +2368,6 @@
       const c = all[chatId];
       if(!c) return;
 
-      // quick small modal with instructions (rename happens via prompt in textarea style)
       openModal(
         "Rename chat",
         "Enter a new chat title in the box below:",
@@ -1670,7 +2391,6 @@
         ]
       );
 
-      // inject input into modal body (after openModal wrote text)
       modalBody.innerHTML = `
         <div style="color: rgba(244,247,255,.88); margin-bottom:10px; line-height:1.5;">
           Enter a new chat title:
@@ -1746,11 +2466,10 @@
             </div>
           </div>
           <div style="display:flex; gap:8px; align-items:center; flex-shrink:0;">
-            <button class="iconBtn" data-menubtn="1" type="button" aria-label="Chat menu" title="More">⋯</button>
+            <button class="iconBtn" data-menubtn="1" type="button" aria-label="Chat menu" title="More" style="width:38px;height:38px;border-radius:14px;">⋯</button>
           </div>
         `;
 
-        // Menu
         const menu = document.createElement("div");
         menu.className = "menu";
         menu.innerHTML = `
@@ -1761,7 +2480,6 @@
           <button type="button" data-act="delete" style="color: rgba(255,215,242,.95);">Delete <span style="opacity:.65">🗑</span></button>
         `;
 
-        // open on main click (not the menu button)
         btn.addEventListener("click", (ev)=>{
           const menuBtn = ev.target && ev.target.closest && ev.target.closest("[data-menubtn]");
           if(menuBtn) return;
@@ -1771,7 +2489,6 @@
           renderChat();
         });
 
-        // menu toggle
         const menuBtn = btn.querySelector("[data-menubtn]");
         menuBtn.addEventListener("click", (ev)=>{
           ev.preventDefault();
@@ -1887,9 +2604,9 @@
       renderChatList();
       showToast("Chat cleared.");
     }
-    btnClear.onclick = clearChat;
+    document.getElementById("btnClear").onclick = clearChat;
 
-    btnNewChat.onclick = ()=>{
+    document.getElementById("btnNewChat").onclick = ()=>{
       const all = loadAllChats();
       activeChatId = newChatId();
       all[activeChatId] = {
@@ -1904,7 +2621,7 @@
       showToast("New chat created.");
     };
 
-    btnDeleteAllChats.onclick = ()=>{
+    document.getElementById("btnDeleteAllChats").onclick = ()=>{
       openModal(
         "Delete ALL chats?",
         [
@@ -1929,7 +2646,6 @@
     };
 
     chatFilterEl.addEventListener("input", ()=> renderChatList());
-
     btnExportChat.onclick = ()=> exportChat(activeChatId);
 
     // Init chat state once
@@ -1971,7 +2687,6 @@
     }
 
     async function fetchChat(url, body){
-      // Hard timeout + optional retry once
       try{
         return await fetchWithTimeout(url, {
           method: "POST",
@@ -1992,14 +2707,13 @@
     }
 
     // =========================================================
-    // 4) Send chat: no more infinite "thinking"
+    // Send chat: no infinite "thinking"
     // =========================================================
     async function send(){
       const text = (msgEl.value || "").trim();
       if(!text) return;
       msgEl.value = "";
 
-      // If offline-ish, wake first (prevents wasted sends)
       if(STATUS.state === "offline" || STATUS.state === "waking"){
         setPill("waking", "Waking server…");
         const r = await pingHealth();
@@ -2033,7 +2747,6 @@
       let full = "";
       let gotAnyToken = false;
 
-      // watchdog (never stuck)
       const watchdog = setTimeout(() => {
         try{
           if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
@@ -2169,7 +2882,6 @@
       if(!on) return;
 
       STATUS.warmTimer = setInterval(async ()=>{
-        // Only ping when not actively chatting, just keep server from sleeping
         try{
           await fetchWithTimeout(apiUrl(CONFIG.HEALTH_PATH), { method:"GET" }, 8000);
         }catch(e){ /* ignore */ }
@@ -2177,7 +2889,7 @@
     }
     keepWarmEl.checked = (localStorage.getItem("RAHEEM_KEEP_WARM") === "1");
     setKeepWarm(keepWarmEl.checked);
-    keepWarmEl.addEventListener("change", ()=> {
+    keepWarmEl.addEventListener("change", ()=>{
       setKeepWarm(keepWarmEl.checked);
       showToast(keepWarmEl.checked ? "Keep warm enabled." : "Keep warm disabled.");
     });
@@ -2202,7 +2914,6 @@
 
     // Make sure first render happens if user lands in Chat
     window.addEventListener("DOMContentLoaded", ()=>{
-      // render list if chat view is restored
       const saved = (localStorage.getItem("RAHEEM_VIEW") || "home").toLowerCase();
       if(saved === "chat"){
         renderChatList();
@@ -2212,5 +2923,3 @@
   </script>
 </body>
 </html>
-
-
