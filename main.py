@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime
 from collections import Counter, defaultdict
+from app.app_factory import app
 
 import httpx
 import fitz  # PyMuPDF
@@ -3002,6 +3003,7 @@ async def _stream_answer_async(
         yield f"data: [ERROR] {msg}\n\n"
         yield "event: done\ndata: ok\n\n"
         return
+
 
 
 
