@@ -2687,6 +2687,19 @@
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
+    function showModule(moduleId){
+      const target = document.getElementById(`module-${moduleId}`);
+      if(!target) return;
+      hideAllViews();
+      target.classList.add("show");
+      viewTitleEl.textContent = target.dataset.title || "Module";
+      viewHintEl.textContent = target.dataset.hint || "Module overview";
+      chatList.classList.remove("show");
+      setNavActive(null);
+      localStorage.setItem("RAHEEM_VIEW", `module:${moduleId}`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
     // Toggle drawer when clicking Chat pill repeatedly
     navChat.onclick = ()=>{
       const saved = (localStorage.getItem("RAHEEM_VIEW") || "home").toLowerCase();
@@ -3003,6 +3016,34 @@
       saveAllChats(all);
       persistActiveChatId();
       return all;
+    }
+
+    async function refreshPdfs(){
+      try{
+        const res = await fetchWithTimeout(apiUrl(CONFIG.PDFS_PATH), { method:"GET" }, 8000);
+        if(!res.ok) return;
+        const data = await res.json().catch(()=> null);
+        const pdfs = Array.isArray(data && data.pdfs) ? data.pdfs : [];
+        if(!pdfs.length) return;
+        if(activePdf && pdfs.includes(activePdf)) return;
+        setActivePdf(pdfs[0]);
+      }catch(e){
+        /* ignore */
+      }
+    }
+
+    async function refreshPdfs(){
+      try{
+        const res = await fetchWithTimeout(apiUrl(CONFIG.PDFS_PATH), { method:"GET" }, 8000);
+        if(!res.ok) return;
+        const data = await res.json().catch(()=> null);
+        const pdfs = Array.isArray(data && data.pdfs) ? data.pdfs : [];
+        if(!pdfs.length) return;
+        if(activePdf && pdfs.includes(activePdf)) return;
+        setActivePdf(pdfs[0]);
+      }catch(e){
+        /* ignore */
+      }
     }
 
     async function refreshPdfs(){
@@ -3643,3 +3684,4 @@
   </script>
 </body>
 </html>
+
