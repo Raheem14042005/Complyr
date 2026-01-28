@@ -1072,6 +1072,116 @@
     }
     .toastActions button:hover{ box-shadow: var(--neon1); border-color: rgba(101,183,255,.32); }
 
+    /* ====== NBS BUILD-UP WIZARD ====== */
+    .wizardLayout{
+      display:grid;
+      grid-template-columns: minmax(240px, 320px) 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    @media (max-width: 980px){
+      .wizardLayout{ grid-template-columns: 1fr; }
+    }
+    .wizardPanel{
+      border-radius: var(--r);
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      box-shadow: var(--shadow2);
+      padding: 14px;
+    }
+    .wizardPanel h3{
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+    .wizardList{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .wizardList .item{
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+    }
+    .wizardMain h3{
+      margin-top:0;
+      font-size: 16px;
+    }
+    .wizardField{
+      display:flex;
+      flex-direction:column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .wizardField label{
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .wizardField input,
+    .wizardField select,
+    .wizardField textarea{
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.2);
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 13px;
+      font-family: var(--font);
+    }
+    .wizardField textarea{ min-height: 90px; resize: vertical; }
+    .wizardRow{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    @media (max-width: 700px){
+      .wizardRow{ grid-template-columns: 1fr; }
+    }
+    .wizardActions{
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .layerCard{
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .layerCard header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-size: 12px;
+      color: var(--muted2);
+      margin-bottom: 8px;
+    }
+    .layerControls{
+      display:flex;
+      gap: 6px;
+    }
+    .layerControls button{
+      padding: 6px 8px;
+      font-size: 11px;
+    }
+    .reviewCard{
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.2);
+      padding: 12px;
+      font-size: 12px;
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
+
     /* ====== MODAL ====== */
     .modalOverlay{
       position:fixed; inset:0;
@@ -1547,8 +1657,8 @@
                     <div class="cardtitle">
                       <div class="icon">NBS</div>
                       <div>
-                        <h4>NBS-Style Specification Generator</h4>
-                        <p>Turn a brief into structured, classification-aware specification clauses with performance requirements.</p>
+                    <h4>NBS Build-up Wizard</h4>
+                    <p>Guided build-up wizard for specification-ready element data and structured export outputs.</p>
                       </div>
                     </div>
                     <span class="pill live">Available</span>
@@ -1557,7 +1667,7 @@
                     <span class="pill">Specs</span>
                     <button
                       class="btn primary"
-                      data-module="nbs-spec"
+                      data-module="nbs-buildup"
                       type="button"
                     >
                       Open
@@ -1898,8 +2008,8 @@
                 <div class="cardtitle">
                   <div class="icon">NBS</div>
                   <div>
-                    <h4>NBS-Style Specification Generator</h4>
-                    <p>Brief → structured spec clauses with performance requirements + placeholders for products.</p>
+                  <h4>NBS Build-up Wizard</h4>
+                  <p>Guided build-up wizard → spec-ready data + structured export outputs.</p>
                   </div>
                 </div>
                 <span class="pill live">Available</span>
@@ -1908,7 +2018,7 @@
                 <span class="pill">Specs</span>
                 <button
                   class="btn primary"
-                  data-module="nbs-spec"
+                  data-module="nbs-buildup"
                   type="button"
                 >
                   Open
@@ -2197,37 +2307,36 @@
           </div>
         </section>
 
-        <section class="view moduleView" id="module-nbs-spec" data-title="NBS-Style Specification Generator" data-hint="Structured spec clauses from a brief">
+        <section class="view moduleView" id="module-nbs-buildup" data-title="NBS Build-up Wizard" data-hint="Guided element build-up with spec-ready export">
           <div class="hero">
             <div class="heroHead">
               <div>
-                <h2>NBS-Style Specification Generator</h2>
-                <p>Turn a brief or element description into structured, classification-aware specification text with performance requirements.</p>
+                <h2>NBS Build-up Wizard</h2>
+                <p>Build element specifications with a guided wizard, validate required inputs, and export spec-ready JSON plus an original clause-style specification document.</p>
               </div>
               <div class="heroBadges">
                 <span class="tag live">Available</span>
                 <span class="tag">Specs</span>
               </div>
             </div>
-            <div class="quote">Keeps specification language consistent and ready for technical review.</div>
+            <div class="quote">No proprietary clause libraries used — all output is generated from your inputs in original language.</div>
             <div class="heroCTA">
               <button class="btn primary" type="button" onclick="showView('chat')">Open Chat</button>
               <button class="btn" type="button" onclick="showView('home')">Back to Overview</button>
             </div>
           </div>
 
-          <div class="panel" style="margin-top:14px;">
-            <div class="panelHead">
-              <div class="t">Spec outputs</div>
-              <span class="tag">Draft-ready</span>
-            </div>
-            <div class="panelBody">
-              <div class="list">
-                <div class="li"><div><b>Inputs</b><div class="s">Element description, performance criteria, and project standards.</div></div></div>
-                <div class="li"><div><b>Outputs</b><div class="s">Clause-based spec with placeholders for products and compliance notes.</div></div></div>
-                <div class="li"><div><b>Use case</b><div class="s">Early-stage specs, tender packs, or internal QA.</div></div></div>
-              </div>
-            </div>
+          <div class="wizardLayout" id="nbsWizard">
+            <aside class="wizardPanel" aria-label="Progress and missing items">
+              <h3>Progress</h3>
+              <div class="wizardList" id="nbsProgressList"></div>
+              <h3 style="margin-top:16px;">Missing items</h3>
+              <div class="wizardList" id="nbsMissingList"></div>
+              <h3 style="margin-top:16px;">Warnings</h3>
+              <div class="wizardList" id="nbsWarningList"></div>
+            </aside>
+
+            <div class="wizardPanel wizardMain" id="nbsWizardMain"></div>
           </div>
         </section>
 
@@ -2685,6 +2794,22 @@
       setNavActive(null);
       localStorage.setItem("RAHEEM_VIEW", `module:${moduleId}`);
       window.scrollTo({ top: 0, behavior: "smooth" });
+      if(moduleId === "nbs-buildup"){
+        renderNbsWizard();
+      }
+    }
+
+    function showModule(moduleId){
+      const target = document.getElementById(`module-${moduleId}`);
+      if(!target) return;
+      hideAllViews();
+      target.classList.add("show");
+      viewTitleEl.textContent = target.dataset.title || "Module";
+      viewHintEl.textContent = target.dataset.hint || "Module overview";
+      chatList.classList.remove("show");
+      setNavActive(null);
+      localStorage.setItem("RAHEEM_VIEW", `module:${moduleId}`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     function showModule(moduleId){
@@ -2726,6 +2851,652 @@
       }
       showView(["home","chat","tools"].includes(saved) ? saved : "home");
     });
+
+    // =========================================================
+    // NBS Build-up Wizard
+    // =========================================================
+    const nbsWizardState = {
+      stepIndex: 0,
+      project: {
+        projectName: "",
+        projectType: "",
+        location: "",
+        stage: "",
+        performanceTargets: ""
+      },
+      elementsSelected: [],
+      externalWall: {
+        summary: {
+          wallSystemType: "",
+          totalThicknessMm: "",
+          externalFinish: "",
+          internalFinish: ""
+        },
+        layers: [],
+        performance: {
+          targetUValue: "",
+          fireRating: "None/Unknown",
+          acousticRequirement: "",
+          airtightnessNotes: "",
+          moistureStrategy: "Unknown"
+        },
+        standards: {
+          standardsNotes: ""
+        },
+        attachments: []
+      }
+    };
+
+    const nbsSteps = [
+      { key: "project", title: "Project basics" },
+      { key: "elements", title: "Choose elements" },
+      { key: "externalWall", title: "External wall module" },
+      { key: "review", title: "Review & export" }
+    ];
+
+    function renderNbsWizard(){
+      const progressList = document.getElementById("nbsProgressList");
+      const missingList = document.getElementById("nbsMissingList");
+      const warningList = document.getElementById("nbsWarningList");
+      const main = document.getElementById("nbsWizardMain");
+      if(!progressList || !missingList || !warningList || !main) return;
+
+      progressList.innerHTML = "";
+      nbsSteps.forEach((step, idx) => {
+        const item = document.createElement("div");
+        item.className = "item";
+        item.textContent = `${idx + 1}. ${step.title}`;
+        if(idx === nbsWizardState.stepIndex){
+          item.style.borderColor = "rgba(80,255,215,.4)";
+          item.style.color = "rgba(244,247,255,.95)";
+        }
+        progressList.appendChild(item);
+      });
+
+      const { blocking, warnings } = getNbsIssues();
+      missingList.innerHTML = blocking.length
+        ? blocking.map(text => `<div class="item">${text}</div>`).join("")
+        : `<div class="item">All required items complete.</div>`;
+      warningList.innerHTML = warnings.length
+        ? warnings.map(text => `<div class="item">${text}</div>`).join("")
+        : `<div class="item">No warnings.</div>`;
+
+      const stepKey = nbsSteps[nbsWizardState.stepIndex]?.key;
+      if(stepKey === "project") renderNbsProjectStep(main);
+      if(stepKey === "elements") renderNbsElementsStep(main);
+      if(stepKey === "externalWall") renderNbsExternalWallStep(main);
+      if(stepKey === "review") renderNbsReviewStep(main);
+    }
+
+    function renderNbsProjectStep(main){
+      main.innerHTML = `
+        <h3>Step 1: Project basics</h3>
+        <div class="wizardRow">
+          <div class="wizardField">
+            <label>Project name (required)</label>
+            <input data-field="projectName" value="${escapeHtml(nbsWizardState.project.projectName)}" />
+          </div>
+          <div class="wizardField">
+            <label>Project type (required)</label>
+            <select data-field="projectType">
+              ${renderOptions(["", "House", "Apartments", "Office", "School", "Other"], nbsWizardState.project.projectType)}
+            </select>
+          </div>
+        </div>
+        <div class="wizardRow">
+          <div class="wizardField">
+            <label>Location (required)</label>
+            <input data-field="location" value="${escapeHtml(nbsWizardState.project.location)}" />
+          </div>
+          <div class="wizardField">
+            <label>Stage (required)</label>
+            <select data-field="stage">
+              ${renderOptions(["", "Concept", "Planning", "Tender", "Construction"], nbsWizardState.project.stage)}
+            </select>
+          </div>
+        </div>
+        <div class="wizardField">
+          <label>Performance targets (optional)</label>
+          <textarea data-field="performanceTargets">${escapeHtml(nbsWizardState.project.performanceTargets)}</textarea>
+        </div>
+        <div class="wizardActions">
+          <button class="btn primary" id="nbsNextProject">Next</button>
+        </div>
+      `;
+      main.querySelectorAll("[data-field]").forEach(el => {
+        el.addEventListener("input", () => {
+          const key = el.getAttribute("data-field");
+          nbsWizardState.project[key] = el.value;
+          renderNbsWizard();
+        });
+      });
+      const nextBtn = document.getElementById("nbsNextProject");
+      nextBtn.disabled = !isProjectValid();
+      nextBtn.onclick = () => {
+        nbsWizardState.stepIndex = 1;
+        renderNbsWizard();
+      };
+    }
+
+    function renderNbsElementsStep(main){
+      const elementOptions = [
+        "External Wall",
+        "Internal Partition",
+        "Ground Floor",
+        "Upper Floor",
+        "Roof",
+        "Windows",
+        "Doors"
+      ];
+      main.innerHTML = `
+        <h3>Step 2: Choose elements</h3>
+        <div class="wizardField">
+          <label>Select at least one element</label>
+          <div class="wizardList">
+            ${elementOptions.map(opt => `
+              <label class="item" style="display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" value="${opt}" ${nbsWizardState.elementsSelected.includes(opt) ? "checked" : ""}/>
+                <span>${opt}</span>
+              </label>
+            `).join("")}
+          </div>
+        </div>
+        <div class="wizardActions">
+          <button class="btn" id="nbsPrevElements">Back</button>
+          <button class="btn primary" id="nbsNextElements">Next</button>
+        </div>
+      `;
+      main.querySelectorAll("input[type='checkbox']").forEach(el => {
+        el.addEventListener("change", () => {
+          const value = el.value;
+          if(el.checked){
+            if(!nbsWizardState.elementsSelected.includes(value)) nbsWizardState.elementsSelected.push(value);
+          } else {
+            nbsWizardState.elementsSelected = nbsWizardState.elementsSelected.filter(item => item !== value);
+          }
+          renderNbsWizard();
+        });
+      });
+      document.getElementById("nbsPrevElements").onclick = () => {
+        nbsWizardState.stepIndex = 0;
+        renderNbsWizard();
+      };
+      const nextBtn = document.getElementById("nbsNextElements");
+      nextBtn.disabled = nbsWizardState.elementsSelected.length === 0;
+      nextBtn.onclick = () => {
+        nbsWizardState.stepIndex = 2;
+        renderNbsWizard();
+      };
+    }
+
+    function renderNbsExternalWallStep(main){
+      if(!nbsWizardState.elementsSelected.includes("External Wall")){
+        const nextElement = nbsWizardState.elementsSelected[0] || "Element";
+        main.innerHTML = `
+          <h3>Step 3: ${escapeHtml(nextElement)} module</h3>
+          <p class="muted">This module is coming next. The data structure is reserved in the export.</p>
+          <div class="wizardActions">
+            <button class="btn" id="nbsPrevWall">Back</button>
+            <button class="btn primary" id="nbsNextWall">Next</button>
+          </div>
+        `;
+        document.getElementById("nbsPrevWall").onclick = () => {
+          nbsWizardState.stepIndex = 1;
+          renderNbsWizard();
+        };
+        document.getElementById("nbsNextWall").onclick = () => {
+          nbsWizardState.stepIndex = 3;
+          renderNbsWizard();
+        };
+        return;
+      }
+      const summary = nbsWizardState.externalWall.summary;
+      const performance = nbsWizardState.externalWall.performance;
+      const standards = nbsWizardState.externalWall.standards;
+      const layers = nbsWizardState.externalWall.layers;
+      main.innerHTML = `
+        <h3>Step 3: External wall module</h3>
+        <p class="muted">Other element modules are coming next, but their data structure will follow this pattern.</p>
+        <div class="wizardPanel" style="margin-bottom:12px;">
+          <h3>Element summary</h3>
+          <div class="wizardRow">
+            <div class="wizardField">
+              <label>Wall system type (required)</label>
+              <select data-summary="wallSystemType">
+                ${renderOptions(["", "Cavity Masonry", "Timber Frame", "SFS", "Solid Masonry", "Rainscreen over Backup Wall", "Other"], summary.wallSystemType)}
+              </select>
+            </div>
+            <div class="wizardField">
+              <label>Total thickness (mm) (required)</label>
+              <input type="number" data-summary="totalThicknessMm" value="${escapeHtml(summary.totalThicknessMm)}" />
+            </div>
+          </div>
+          <div class="wizardRow">
+            <div class="wizardField">
+              <label>External finish (required)</label>
+              <select data-summary="externalFinish">
+                ${renderOptions(["", "Brick", "Render", "Rainscreen", "Stone", "Other"], summary.externalFinish)}
+              </select>
+            </div>
+            <div class="wizardField">
+              <label>Internal finish (required)</label>
+              <select data-summary="internalFinish">
+                ${renderOptions(["", "Plasterboard", "Plaster", "Exposed", "Other"], summary.internalFinish)}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="wizardPanel" style="margin-bottom:12px;">
+          <h3>Build-up layers</h3>
+          ${layers.length ? layers.map((layer, idx) => `
+            <div class="layerCard">
+              <header>
+                <span>Layer ${idx + 1}</span>
+                <div class="layerControls">
+                  <button class="btn" data-layer-action="up" data-layer-index="${idx}">↑</button>
+                  <button class="btn" data-layer-action="down" data-layer-index="${idx}">↓</button>
+                  <button class="btn" data-layer-action="remove" data-layer-index="${idx}">Remove</button>
+                </div>
+              </header>
+              <div class="wizardRow">
+                <div class="wizardField">
+                  <label>Layer name (required)</label>
+                  <input data-layer-field="layerName" data-layer-index="${idx}" value="${escapeHtml(layer.layerName)}" />
+                </div>
+                <div class="wizardField">
+                  <label>Material (required)</label>
+                  <input data-layer-field="material" data-layer-index="${idx}" value="${escapeHtml(layer.material)}" />
+                </div>
+              </div>
+              <div class="wizardRow">
+                <div class="wizardField">
+                  <label>Thickness (mm) (required)</label>
+                  <input type="number" data-layer-field="thicknessMm" data-layer-index="${idx}" value="${escapeHtml(layer.thicknessMm)}" />
+                </div>
+                <div class="wizardField">
+                  <label>Function (required)</label>
+                  <select data-layer-field="function" data-layer-index="${idx}">
+                    ${renderOptions(["", "Structural", "Insulation", "Vapour Control", "Air Barrier", "Sheathing", "Cavity", "Finish", "Other"], layer.function)}
+                  </select>
+                </div>
+              </div>
+              <div class="wizardRow">
+                <div class="wizardField">
+                  <label>Manufacturer (optional)</label>
+                  <input data-layer-field="manufacturer" data-layer-index="${idx}" value="${escapeHtml(layer.manufacturer || "")}" />
+                </div>
+                <div class="wizardField">
+                  <label>Product reference (optional)</label>
+                  <input data-layer-field="productRef" data-layer-index="${idx}" value="${escapeHtml(layer.productRef || "")}" />
+                </div>
+              </div>
+            </div>
+          `).join("") : `<div class="item">No layers added yet.</div>`}
+          <div class="wizardActions">
+            <button class="btn" id="nbsAddLayer">Add layer</button>
+          </div>
+        </div>
+
+        <div class="wizardPanel" style="margin-bottom:12px;">
+          <h3>Performance</h3>
+          <div class="wizardRow">
+            <div class="wizardField">
+              <label>Target U-value (optional)</label>
+              <input type="number" data-performance="targetUValue" value="${escapeHtml(performance.targetUValue)}" />
+            </div>
+            <div class="wizardField">
+              <label>Fire rating (required)</label>
+              <select data-performance="fireRating">
+                ${renderOptions(["None/Unknown", "30", "60", "90", "120"], performance.fireRating)}
+              </select>
+            </div>
+          </div>
+          <div class="wizardRow">
+            <div class="wizardField">
+              <label>Acoustic requirement (optional)</label>
+              <input data-performance="acousticRequirement" value="${escapeHtml(performance.acousticRequirement)}" placeholder="e.g. 45 dB Rw" />
+            </div>
+            <div class="wizardField">
+              <label>Moisture strategy (optional)</label>
+              <select data-performance="moistureStrategy">
+                ${renderOptions(["Unknown", "VCL internal", "VCL external", "Breathable", "Other"], performance.moistureStrategy)}
+              </select>
+            </div>
+          </div>
+          <div class="wizardField">
+            <label>Airtightness notes (optional)</label>
+            <textarea data-performance="airtightnessNotes">${escapeHtml(performance.airtightnessNotes)}</textarea>
+          </div>
+        </div>
+
+        <div class="wizardPanel" style="margin-bottom:12px;">
+          <h3>Compliance & standards</h3>
+          <div class="wizardField">
+            <label>Standards notes (optional)</label>
+            <textarea data-standards="standardsNotes">${escapeHtml(standards.standardsNotes)}</textarea>
+          </div>
+        </div>
+
+        <div class="wizardPanel">
+          <h3>Attachments</h3>
+          <div class="wizardField">
+            <label>Add note (optional)</label>
+            <textarea id="nbsAttachmentNote" placeholder="Paste notes or references here..."></textarea>
+          </div>
+          <div class="wizardActions">
+            <button class="btn" id="nbsAddNote">Add note</button>
+          </div>
+          ${renderAttachmentsList()}
+        </div>
+
+        <div class="wizardActions">
+          <button class="btn" id="nbsPrevWall">Back</button>
+          <button class="btn primary" id="nbsNextWall">Next</button>
+        </div>
+      `;
+
+      main.querySelectorAll("[data-summary]").forEach(el => {
+        el.addEventListener("input", () => {
+          summary[el.getAttribute("data-summary")] = el.value;
+          renderNbsWizard();
+        });
+      });
+      main.querySelectorAll("[data-layer-field]").forEach(el => {
+        el.addEventListener("input", () => {
+          const idx = Number(el.getAttribute("data-layer-index"));
+          const key = el.getAttribute("data-layer-field");
+          layers[idx][key] = el.value;
+          renderNbsWizard();
+        });
+      });
+      main.querySelectorAll("[data-layer-action]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const idx = Number(btn.getAttribute("data-layer-index"));
+          const action = btn.getAttribute("data-layer-action");
+          if(action === "remove") layers.splice(idx, 1);
+          if(action === "up" && idx > 0) layers.splice(idx - 1, 0, layers.splice(idx, 1)[0]);
+          if(action === "down" && idx < layers.length - 1) layers.splice(idx + 1, 0, layers.splice(idx, 1)[0]);
+          renderNbsWizard();
+        });
+      });
+      main.querySelectorAll("[data-performance]").forEach(el => {
+        el.addEventListener("input", () => {
+          performance[el.getAttribute("data-performance")] = el.value;
+          renderNbsWizard();
+        });
+      });
+      main.querySelectorAll("[data-standards]").forEach(el => {
+        el.addEventListener("input", () => {
+          standards[el.getAttribute("data-standards")] = el.value;
+          renderNbsWizard();
+        });
+      });
+      document.getElementById("nbsAddLayer").onclick = () => {
+        layers.push({
+          layerName: "",
+          material: "",
+          thicknessMm: "",
+          function: "",
+          manufacturer: "",
+          productRef: ""
+        });
+        renderNbsWizard();
+      };
+      document.getElementById("nbsAddNote").onclick = () => {
+        const note = document.getElementById("nbsAttachmentNote").value.trim();
+        if(!note) return;
+        nbsWizardState.externalWall.attachments.push({
+          type: "note",
+          name: `Note ${nbsWizardState.externalWall.attachments.length + 1}`,
+          contentOrUrl: note
+        });
+        renderNbsWizard();
+      };
+      document.getElementById("nbsPrevWall").onclick = () => {
+        nbsWizardState.stepIndex = 1;
+        renderNbsWizard();
+      };
+      const nextBtn = document.getElementById("nbsNextWall");
+      nextBtn.disabled = !isExternalWallValid();
+      nextBtn.onclick = () => {
+        nbsWizardState.stepIndex = 3;
+        renderNbsWizard();
+      };
+    }
+
+    function renderNbsReviewStep(main){
+      const payload = buildNbsPayload();
+      const specMarkdown = buildNbsSpecMarkdown(payload);
+      main.innerHTML = `
+        <h3>Step 4: Review & export</h3>
+        <div class="reviewCard">${escapeHtml(JSON.stringify(payload, null, 2))}</div>
+        <div class="wizardActions">
+          <button class="btn" id="nbsCopyJson">Copy JSON</button>
+          <button class="btn" id="nbsDownloadJson">Download JSON</button>
+        </div>
+        <h3 style="margin-top:16px;">Specification document (preview)</h3>
+        <div class="reviewCard">${escapeHtml(specMarkdown)}</div>
+        <div class="wizardActions">
+          <button class="btn" id="nbsCopySpec">Copy Spec (Markdown)</button>
+          <button class="btn" id="nbsDownloadSpecHtml">Download Spec (HTML)</button>
+          <button class="btn" id="nbsDownloadSpecPdf">Download Spec (PDF)</button>
+        </div>
+        <div class="wizardActions">
+          <button class="btn" id="nbsPrevReview">Back</button>
+        </div>
+      `;
+      document.getElementById("nbsCopyJson").onclick = () => copyToClipboard(JSON.stringify(payload, null, 2));
+      document.getElementById("nbsDownloadJson").onclick = () => downloadBlob(JSON.stringify(payload, null, 2), "nbs-spec.json", "application/json");
+      document.getElementById("nbsCopySpec").onclick = () => copyToClipboard(specMarkdown);
+      document.getElementById("nbsDownloadSpecHtml").onclick = () => {
+        const html = buildNbsSpecHtml(payload);
+        downloadBlob(html, "nbs-spec.html", "text/html");
+      };
+      document.getElementById("nbsDownloadSpecPdf").onclick = () => {
+        const html = buildNbsSpecHtml(payload);
+        const printWindow = window.open("", "_blank");
+        if(!printWindow) return;
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+      };
+      document.getElementById("nbsPrevReview").onclick = () => {
+        nbsWizardState.stepIndex = 2;
+        renderNbsWizard();
+      };
+    }
+
+    function renderAttachmentsList(){
+      const attachments = nbsWizardState.externalWall.attachments;
+      if(!attachments.length) return `<div class="item">No attachments added.</div>`;
+      return `
+        <div class="wizardList">
+          ${attachments.map((att, idx) => `
+            <div class="item">
+              <div><b>${escapeHtml(att.name || `Attachment ${idx + 1}`)}</b></div>
+              <div class="muted">${escapeHtml(att.type)} - ${escapeHtml(att.contentOrUrl || "")}</div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function renderOptions(options, selected){
+      return options.map(opt => {
+        const value = opt;
+        const label = opt || "Select…";
+        return `<option value="${escapeHtml(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(label)}</option>`;
+      }).join("");
+    }
+
+    function isProjectValid(){
+      const p = nbsWizardState.project;
+      return p.projectName.trim() && p.projectType.trim() && p.location.trim() && p.stage.trim();
+    }
+
+    function isExternalWallValid(){
+      const summary = nbsWizardState.externalWall.summary;
+      const requiredSummary = summary.wallSystemType && summary.totalThicknessMm && summary.externalFinish && summary.internalFinish;
+      const layersOk = nbsWizardState.externalWall.layers.length > 0 && nbsWizardState.externalWall.layers.every(layer =>
+        layer.layerName && layer.material && layer.thicknessMm && layer.function
+      );
+      return requiredSummary && layersOk && nbsWizardState.externalWall.performance.fireRating;
+    }
+
+    function getNbsIssues(){
+      const blocking = [];
+      const warnings = [];
+      if(!isProjectValid()){
+        if(!nbsWizardState.project.projectName.trim()) blocking.push("Project name is required.");
+        if(!nbsWizardState.project.projectType.trim()) blocking.push("Project type is required.");
+        if(!nbsWizardState.project.location.trim()) blocking.push("Location is required.");
+        if(!nbsWizardState.project.stage.trim()) blocking.push("Stage is required.");
+      }
+      if(nbsWizardState.elementsSelected.length === 0){
+        blocking.push("Select at least one element.");
+      }
+      const summary = nbsWizardState.externalWall.summary;
+      if(nbsWizardState.elementsSelected.includes("External Wall")){
+        if(!summary.wallSystemType) blocking.push("External wall system type is required.");
+        if(!summary.totalThicknessMm) blocking.push("External wall total thickness is required.");
+        if(!summary.externalFinish) blocking.push("External wall external finish is required.");
+        if(!summary.internalFinish) blocking.push("External wall internal finish is required.");
+        if(nbsWizardState.externalWall.layers.length === 0){
+          blocking.push("Add at least one build-up layer.");
+        }
+      }
+      if(nbsWizardState.externalWall.performance.fireRating === "None/Unknown"){
+        warnings.push("Fire rating is set to None/Unknown.");
+      }
+      const thicknessMismatch = getThicknessMismatch();
+      if(thicknessMismatch > 5){
+        warnings.push(`Total thickness differs from sum of layers by ${thicknessMismatch} mm.`);
+      }
+      return { blocking, warnings };
+    }
+
+    function getThicknessMismatch(){
+      const total = Number(nbsWizardState.externalWall.summary.totalThicknessMm || 0);
+      const sum = nbsWizardState.externalWall.layers.reduce((acc, layer) => acc + Number(layer.thicknessMm || 0), 0);
+      return Math.abs(total - sum);
+    }
+
+    function buildNbsPayload(){
+      const elements = [];
+      if(nbsWizardState.elementsSelected.includes("External Wall")){
+        elements.push({
+          elementType: "ExternalWall",
+          summary: { ...nbsWizardState.externalWall.summary },
+          layers: nbsWizardState.externalWall.layers.map(layer => ({ ...layer })),
+          performance: { ...nbsWizardState.externalWall.performance },
+          standards: { ...nbsWizardState.externalWall.standards },
+          attachments: nbsWizardState.externalWall.attachments.map(att => ({ ...att }))
+        });
+      }
+      nbsWizardState.elementsSelected.forEach(element => {
+        if(element !== "External Wall"){
+          elements.push({
+            elementType: element.replace(/\s+/g, ""),
+            summary: {},
+            layers: [],
+            performance: {},
+            standards: {},
+            attachments: []
+          });
+        }
+      });
+      return {
+        project: { ...nbsWizardState.project },
+        elements
+      };
+    }
+
+    function buildNbsSpecMarkdown(payload){
+      const lines = [];
+      lines.push(`# Specification Document`);
+      lines.push(`Project: ${payload.project.projectName}`);
+      lines.push(`Location: ${payload.project.location}`);
+      lines.push(`Stage: ${payload.project.stage}`);
+      if(payload.project.performanceTargets){
+        lines.push(`Performance targets: ${payload.project.performanceTargets}`);
+      }
+      lines.push("");
+      payload.elements.forEach(element => {
+        if(element.elementType === "ExternalWall"){
+          lines.push(`## External walls`);
+          lines.push(`- System type: ${element.summary.wallSystemType || "Not specified"}`);
+          lines.push(`- Total thickness: ${element.summary.totalThicknessMm || "Not specified"} mm`);
+          lines.push(`- External finish: ${element.summary.externalFinish || "Not specified"}`);
+          lines.push(`- Internal finish: ${element.summary.internalFinish || "Not specified"}`);
+          lines.push(`- Fire rating: ${element.performance.fireRating || "None/Unknown"} minutes`);
+          if(element.performance.targetUValue) lines.push(`- Target U-value: ${element.performance.targetUValue} W/m²K`);
+          if(element.performance.acousticRequirement) lines.push(`- Acoustic requirement: ${element.performance.acousticRequirement}`);
+          if(element.performance.moistureStrategy) lines.push(`- Moisture strategy: ${element.performance.moistureStrategy}`);
+          if(element.performance.airtightnessNotes) lines.push(`- Airtightness notes: ${element.performance.airtightnessNotes}`);
+          lines.push(`- Build-up layers:`);
+          element.layers.forEach((layer, idx) => {
+            lines.push(`  - Layer ${idx + 1}: ${layer.layerName} | ${layer.material} | ${layer.thicknessMm} mm | ${layer.function}`);
+          });
+          if(element.standards.standardsNotes){
+            lines.push(`- Standards notes: ${element.standards.standardsNotes}`);
+          }
+          lines.push("");
+          return;
+        }
+        const heading = element.elementType
+          .replace(/([A-Z])/g, " $1")
+          .replace(/\s+/g, " ")
+          .trim();
+        lines.push(`## ${heading}`);
+        lines.push(`- Module stub: details to be completed.`);
+        lines.push("");
+      });
+      return lines.join("\n");
+    }
+
+    function buildNbsSpecHtml(payload){
+      const markdown = buildNbsSpecMarkdown(payload);
+      const htmlLines = markdown.split("\n").map(line => {
+        if(line.startsWith("## ")){ return `<h2>${escapeHtml(line.replace("## ", ""))}</h2>`; }
+        if(line.startsWith("# ")){ return `<h1>${escapeHtml(line.replace("# ", ""))}</h1>`; }
+        if(line.startsWith("- ")){ return `<li>${escapeHtml(line.replace("- ", ""))}</li>`; }
+        if(line.trim() === "") return "<br/>";
+        return `<p>${escapeHtml(line)}</p>`;
+      }).join("\n");
+      return `
+        <html>
+          <head>
+            <meta charset="utf-8"/>
+            <title>Specification Document</title>
+            <style>
+              body{ font-family: Arial, sans-serif; padding: 24px; line-height: 1.6; }
+              h1{ margin-bottom: 8px; }
+              h2{ margin-top: 18px; }
+              ul{ margin-left: 18px; }
+            </style>
+          </head>
+          <body>${htmlLines}</body>
+        </html>
+      `;
+    }
+
+    function copyToClipboard(text){
+      navigator.clipboard.writeText(text).then(() => showToast("Copied to clipboard."), () => showToast("Copy failed."));
+    }
+
+    function downloadBlob(content, filename, type){
+      const blob = new Blob([content], { type: type || "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
 
 
     // =========================================================
@@ -3016,6 +3787,20 @@
       saveAllChats(all);
       persistActiveChatId();
       return all;
+    }
+
+    async function refreshPdfs(){
+      try{
+        const res = await fetchWithTimeout(apiUrl(CONFIG.PDFS_PATH), { method:"GET" }, 8000);
+        if(!res.ok) return;
+        const data = await res.json().catch(()=> null);
+        const pdfs = Array.isArray(data && data.pdfs) ? data.pdfs : [];
+        if(!pdfs.length) return;
+        if(activePdf && pdfs.includes(activePdf)) return;
+        setActivePdf(pdfs[0]);
+      }catch(e){
+        /* ignore */
+      }
     }
 
     async function refreshPdfs(){
