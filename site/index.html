@@ -1878,13 +1878,13 @@
 
   <script>
     // =========================================================
-    // 1) HARD FIX: Always call backend with an explicit API_BASE
-    //    - No more fetch("/health") on Pages.
+    // 1) API CONFIG
     // =========================================================
     const CONFIG = {
-      API_BASE_DEFAULT: "https://complyr.onrender.com",   // <-- your backend
+      API_BASE: "http://127.0.0.1:8001",
       HEALTH_PATH: "/health",
       CHAT_PATH: "/chat",
+      PDFS_PATH: "/pdfs",
       HEALTH_TIMEOUT_MS: 9000,
       STATUS_POLL_MS: 20000,
       WARM_PING_MS: 240000,
@@ -1892,12 +1892,7 @@
       CHAT_RETRY_ONCE: true
     };
 
-    // Allow override ONLY if it matches expected host (prevents random injection)
-    let API_BASE = (localStorage.getItem("RAHEEM_API_BASE") || CONFIG.API_BASE_DEFAULT).replace(/\/+$/, "");
-    if (!API_BASE.startsWith(CONFIG.API_BASE_DEFAULT)) {
-      localStorage.removeItem("RAHEEM_API_BASE");
-      API_BASE = CONFIG.API_BASE_DEFAULT;
-    }
+    const API_BASE = CONFIG.API_BASE.replace(/\/+$/, "");
     function apiUrl(path){
       if(!path) path = "/";
       if(!path.startsWith("/")) path = "/" + path;
@@ -2306,6 +2301,27 @@
 
     const STORAGE_KEY = "raheem_ai_chats_v6";
     const ACTIVE_CHAT_KEY = "raheem_active_chat_id";
+    const CHAT_ID_KEY = "complyr_chat_id";
+    const ACTIVE_PDF_KEY = "complyr_active_pdf";
+
+    function getChatId(){
+      let chatId = (localStorage.getItem(CHAT_ID_KEY) || "").trim();
+      if(!chatId){
+        chatId = "chat_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+        localStorage.setItem(CHAT_ID_KEY, chatId);
+      }
+      return chatId;
+    }
+
+    let activePdf = (localStorage.getItem(ACTIVE_PDF_KEY) || "").trim();
+    function setActivePdf(pdfName){
+      activePdf = (pdfName || "").trim();
+      if(activePdf){
+        localStorage.setItem(ACTIVE_PDF_KEY, activePdf);
+      } else {
+        localStorage.removeItem(ACTIVE_PDF_KEY);
+      }
+    }
 
     function loadAllChats(){
       try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
@@ -2336,6 +2352,20 @@
       saveAllChats(all);
       persistActiveChatId();
       return all;
+    }
+
+    async function refreshPdfs(){
+      try{
+        const res = await fetchWithTimeout(apiUrl(CONFIG.PDFS_PATH), { method:"GET" }, 8000);
+        if(!res.ok) return;
+        const data = await res.json().catch(()=> null);
+        const pdfs = Array.isArray(data && data.pdfs) ? data.pdfs : [];
+        if(!pdfs.length) return;
+        if(activePdf && pdfs.includes(activePdf)) return;
+        setActivePdf(pdfs[0]);
+      }catch(e){
+        /* ignore */
+      }
     }
 
     function setChatTitleFromFirstUser(all, chatId){
@@ -2720,31 +2750,12 @@
 
     // Init chat state once
     ensureActiveChat();
+    refreshPdfs();
+    setInterval(refreshPdfs, 30000);
 
     // =========================================================
     // SSE parsing + streaming
     // =========================================================
-    function parseSSETextToAnswer(sseText){
-      let out = "";
-      const frames = (sseText || "").split(/\n\n/);
-      for(const frame of frames){
-        const f = frame.trim();
-        if(!f) continue;
-        if(f.includes("event: error")){
-          const line = f.split("\n").find(x => x.startsWith("data:"));
-          const msg = line ? line.replace(/^data:\s?/, "") : "Error";
-          return msg.replaceAll("\\n","\n").trim();
-        }
-        const lines = f.split("\n");
-        for(const line of lines){
-          if(line.startsWith("data:")){
-            out += line.replace(/^data:\s?/, "").replaceAll("\\n","\n");
-          }
-        }
-      }
-      return out.trim();
-    }
-
     function typewriterSet(el, text){
       el.textContent = "";
       let i = 0;
@@ -2806,13 +2817,13 @@
       const aiDiv = addMsg("ai", "");
       const typing = addTypingIndicator(aiDiv);
 
+      const chatId = getChatId();
       const url =
         apiUrl(CONFIG.CHAT_PATH)
-        + "?chat_id=" + encodeURIComponent(activeChatId)
-        + "&force_docs=" + (forceDocsEl.checked ? "1" : "0")
-        + "&fast=" + (fastModeEl && fastModeEl.checked ? "1" : "0");
+        + "?pdf=" + encodeURIComponent(activePdf || "")
+        + "&chat_id=" + encodeURIComponent(chatId);
 
-      const body = JSON.stringify({ message: text, messages: c.messages });
+      const body = JSON.stringify({ message: text });
 
       let full = "";
       let gotAnyToken = false;
@@ -2840,63 +2851,51 @@
           return;
         }
 
-        if(!res.body || !res.body.getReader){
-          const raw = await res.text().catch(()=> "");
-          const reply = parseSSETextToAnswer(raw) || " ";
-          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-          if(typewriterEl.checked) typewriterSet(aiDiv, reply);
-          else aiDiv.textContent = reply;
-          attachMsgTools(aiDiv, reply);
-
-          const all2 = ensureActiveChat();
-          const c2 = all2[activeChatId];
-          c2.messages.push({ role:"assistant", content: reply });
-          c2.updated = Date.now();
-          saveAllChats(all2);
-          renderChatList();
-          return;
-        }
-
-        const reader = res.body.getReader();
+        const reader = res.body && res.body.getReader ? res.body.getReader() : null;
         const decoder = new TextDecoder("utf-8");
         let buffer = "";
+        let doneSeen = false;
 
-        while(true){
-          const { value, done } = await reader.read();
-          if(done) break;
+        const applyDelta = (delta)=>{
+          if(!delta) return;
+          gotAnyToken = true;
+          if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
+          full += delta;
+          aiDiv.textContent = full;
+          chatBox.scrollTop = chatBox.scrollHeight;
+        };
 
-          buffer += decoder.decode(value, { stream:true });
-          const parts = buffer.split(/\n\n/);
-          buffer = parts.pop() || "";
+        const handleLine = (line)=>{
+          const trimmed = (line || "").trim();
+          if(!trimmed) return;
+          if(trimmed.includes("event: done")){
+            doneSeen = true;
+            return;
+          }
+          if(trimmed.startsWith("data:")){
+            const delta = trimmed.replace(/^data:\s?/, "").replaceAll("\\n","\n");
+            applyDelta(delta);
+          }
+        };
 
-          for(const chunk of parts){
-            const cframe = (chunk || "").trim();
-            if(!cframe) continue;
-
-            if(cframe.includes("event: error")){
-              const line = cframe.split("\n").find(x=>x.startsWith("data:"));
-              const msg = line ? line.replace(/^data:\s?/, "") : "Error";
-              if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-              const err = msg.replaceAll("\\n","\n").trim();
-              aiDiv.textContent = err;
-              attachMsgTools(aiDiv, err);
-              continue;
-            }
-            if(cframe.includes("event: done")) continue;
-
-            const lines = cframe.split("\n");
+        if(!reader){
+          const raw = await res.text().catch(()=> "");
+          raw.split(/\r?\n/).forEach(handleLine);
+        } else {
+          while(true){
+            const { value, done } = await reader.read();
+            if(done) break;
+            buffer += decoder.decode(value, { stream:true });
+            const lines = buffer.split(/\r?\n/);
+            buffer = lines.pop() || "";
             for(const line of lines){
-              if(line.startsWith("data:")){
-                const delta = line.replace(/^data:\s?/, "").replaceAll("\\n","\n");
-                if(delta){
-                  gotAnyToken = true;
-                  if(typing && typing.parentNode) typing.parentNode.removeChild(typing);
-                  full += delta;
-                  aiDiv.textContent = full;
-                  chatBox.scrollTop = chatBox.scrollHeight;
-                }
-              }
+              handleLine(line);
+              if(doneSeen) break;
             }
+            if(doneSeen) break;
+          }
+          if(buffer && !doneSeen){
+            handleLine(buffer);
           }
         }
 
