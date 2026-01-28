@@ -1212,9 +1212,7 @@
             <button class="navpill" id="navTools" type="button" aria-label="Go to Tools">
               <span class="dot" aria-hidden="true"></span> Tools
             </button>
-            <button class="navpill" id="navFuture" type="button" aria-label="Go to All Features">
-              <span class="dot" aria-hidden="true"></span> All Features
-            </button>
+            <!-- All features now live on the main page -->
           </div>
         </div>
 
@@ -1241,9 +1239,7 @@
           <button class="railBtn" type="button" onclick="document.getElementById('navTools').click()">
             🧰 <span class="hint">Tools</span>
           </button>
-          <button class="railBtn" type="button" onclick="document.getElementById('navFuture').click()">
-            🚀 <span class="hint">All Features</span>
-          </button>
+          <!-- All features now live on the main page -->
         </div>
       </aside>
 
@@ -1400,6 +1396,352 @@
               </div>
             </div>
           </div>
+
+          <div class="panel" style="margin-top:14px;">
+            <div class="panelHead">
+              <div class="t">Platform modules</div>
+              <span class="tag live">Main suite</span>
+            </div>
+            <div class="panelBody">
+              <div class="featureGrid">
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">SC</div>
+                      <div>
+                        <h4>TGD Smart Checker</h4>
+                        <p>Upload a plan or describe a scheme. Get red flags, likely non-compliances, and fix suggestions mapped to TGDs.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Compliance</span>
+                    <button
+                      class="btn primary"
+                      data-launch="TGD Smart Checker"
+                      data-prompt="Start a TGD Smart Checker workflow. Ask me for the plan summary and key constraints."
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">FCS</div>
+                      <div>
+                        <h4>Fire Safety Certificate Generator (Non-dwellings)</h4>
+                        <p>TGD B questionnaire that produces a structured Fire Safety Certificate report and submission checklist.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Fire</span>
+                    <button
+                      class="btn primary"
+                      data-launch="Fire Safety Certificate Generator"
+                      data-prompt="Start a Fire Safety Certificate workflow. Ask me the first required input."
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">DAC</div>
+                      <div>
+                        <h4>Disability Access Certificate (DAC) Generator</h4>
+                        <p>TGD M questionnaire capturing access strategy details with risk highlights and a DAC report draft.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Access</span>
+                    <button
+                      class="btn primary"
+                      data-launch="DAC Generator"
+                      data-prompt="Start a DAC workflow. Ask me the first required input."
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">PK</div>
+                      <div>
+                        <h4>Submission Pack Builder</h4>
+                        <p>Combine Fire + DAC outputs into a ready-to-submit bundle with report, drawing index, and cover letters.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Docs</span>
+                    <button
+                      class="btn primary"
+                      data-launch="Submission Pack Builder"
+                      data-prompt="Start a submission pack workflow. Ask me for the Fire/DAC inputs."
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">DB</div>
+                      <div>
+                        <h4>Design Debate Room</h4>
+                        <p>Two AIs argue for/against design options, then converge on a recommended choice with reasoning.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Decision</span>
+                    <button
+                      class="btn primary"
+                      data-launch="Design Debate Room"
+                      data-prompt="Start a Design Debate Room session. Ask me for the options to compare."
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">SIM</div>
+                      <div>
+                        <h4>“What-If” Reg Simulator</h4>
+                        <p>Change height, area, occupancy, or use and see Fire, DAC, Planning, and energy impacts shift.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Simulator</span>
+                    <button
+                      class="btn primary"
+                      data-launch="What-If Reg Simulator"
+                      data-prompt="Start a What-If Reg Simulator session. Ask me for the parameter to change."
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">NBS</div>
+                      <div>
+                        <h4>NBS-Style Specification Generator</h4>
+                        <p>Turn a brief into structured, classification-aware specification clauses with performance requirements.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Specs</span>
+                    <button
+                      class="btn primary"
+                      data-launch="NBS Spec Generator"
+                      data-prompt="Start an NBS-style specification workflow. Ask me the first required input."
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">RS</div>
+                      <div>
+                        <h4>Reverse Spec from Datasheet</h4>
+                        <p>Paste a datasheet or link and get a draft spec clause with missing performance data flagged.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Spec Assist</span>
+                    <button
+                      class="btn primary"
+                      data-launch="Reverse Spec from Datasheet"
+                      data-prompt="Start a reverse spec workflow from a datasheet. Ask me what to paste."
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">LAY</div>
+                      <div>
+                        <h4>AI Layout Generator (Revit-first)</h4>
+                        <p>Send building type, areas, adjacencies, constraints — generate native layout options in Revit.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">BIM</span>
+                    <button
+                      class="btn primary"
+                      data-launch="AI Layout Generator"
+                      data-prompt="Start an AI Layout Generator session. Ask me for building type, areas, and adjacencies."
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">RH</div>
+                      <div>
+                        <h4>Reg-Aware Layout Hints</h4>
+                        <p>In-model warnings for escape distances, corridor widths, turning circles, and other TGD issues.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Compliance</span>
+                    <button
+                      class="btn primary"
+                      data-launch="Reg-Aware Layout Hints"
+                      data-prompt="Start a reg-aware layout hints session. Ask me for model context or constraints."
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">BER</div>
+                      <div>
+                        <h4>BER / DEAP Copilot</h4>
+                        <p>Upload BIM exports later. Extract systems and areas, pre-fill DEAP inputs, and guide the rest.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Energy</span>
+                    <button
+                      class="btn primary"
+                      data-launch="BER / DEAP Copilot"
+                      data-prompt="Start a BER/DEAP copilot workflow. Ask me the first required input."
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">CMP</div>
+                      <div>
+                        <h4>Option-to-Option BER Comparison</h4>
+                        <p>Compare design variants and see how geometry and fabric changes impact BER and energy outputs.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Comparison</span>
+                    <button
+                      class="btn primary"
+                      data-launch="Option-to-Option BER Comparison"
+                      data-prompt="Start a BER comparison workflow. Ask me for the two options to compare."
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">ED</div>
+                      <div>
+                        <h4>Learning Mode for Students</h4>
+                        <p>Hints, clause breakdowns, and quizzes to learn TGDs, spec logic, and energy rules.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Education</span>
+                    <button
+                      class="btn primary"
+                      data-launch="Learning Mode"
+                      data-prompt="Start Learning Mode. Ask me what topic or TGD part to study."
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardhead">
+                    <div class="cardtitle">
+                      <div class="icon">CL</div>
+                      <div>
+                        <h4>Client Explain Mode</h4>
+                        <p>Convert technical outputs into plain English for client-facing reports and emails.</p>
+                      </div>
+                    </div>
+                    <span class="pill live">Available</span>
+                  </div>
+                  <div class="cta">
+                    <span class="pill">Client</span>
+                    <button
+                      class="btn primary"
+                      data-launch="Client Explain Mode"
+                      data-prompt="Start Client Explain Mode. Ask me what output to simplify for the client."
+                      type="button"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- ====== CHAT ====== -->
@@ -1493,7 +1835,7 @@
                 </div>
 
                 <div style="margin-top:14px">
-                  <button class="btn" type="button" onclick="document.getElementById('navFuture').click()">See all features</button>
+                  <button class="btn" type="button" onclick="document.getElementById('navHome').click()">Browse modules</button>
                 </div>
               </div>
             </aside>
@@ -1670,175 +2012,6 @@
           </div>
         </section>
 
-        <!-- ====== ROADMAP ====== -->
-        <section class="view" id="viewFuture">
-          <div class="hero">
-            <div class="heroHead">
-              <div>
-                <h2>All Features</h2>
-                <p>Every platform module is available in preview right now—decision tools, BIM layout, energy comparisons, and client/student modes.</p>
-              </div>
-              <div class="heroBadges">
-                <span class="tag live">Available now</span>
-                <span class="tag">Preview mode</span>
-              </div>
-            </div>
-            <div class="quote">
-              Everything listed here is live in preview today. Production depth and data coverage will keep improving.
-            </div>
-          </div>
-
-          <div style="margin-top:14px" class="featureGrid">
-            <article class="card">
-              <div class="cardhead">
-                <div class="cardtitle">
-                  <div class="icon">DB</div>
-                  <div>
-                    <h4>Design Debate Room</h4>
-                    <p>Two AIs argue for/against an option (sprinklers vs passive, timber vs block) then converge on a recommendation.</p>
-                  </div>
-                </div>
-                <span class="pill">Decision</span>
-              </div>
-              <div class="cta">
-                <span class="pill">Multi-agent</span>
-                <button
-                  class="btn primary"
-                  data-launch="Design Debate Room"
-                  data-prompt="Start a Design Debate Room session. Ask me for the options to compare."
-                  type="button"
-                >
-                  Open
-                </button>
-              </div>
-            </article>
-
-            <article class="card">
-              <div class="cardhead">
-                <div class="cardtitle">
-                  <div class="icon">SIM</div>
-                  <div>
-                    <h4>“What-If” Reg Simulator</h4>
-                    <p>Change height/area/occupancy and see Fire, DAC, Planning and energy implications shift instantly.</p>
-                  </div>
-                </div>
-                <span class="pill">Decision</span>
-              </div>
-              <div class="cta">
-                <span class="pill">Simulator</span>
-                <button
-                  class="btn primary"
-                  data-launch="What-If Reg Simulator"
-                  data-prompt="Start a What-If Reg Simulator session. Ask me for the parameter to change."
-                  type="button"
-                >
-                  Open
-                </button>
-              </div>
-            </article>
-
-            <article class="card">
-              <div class="cardhead">
-                <div class="cardtitle">
-                  <div class="icon">LAY</div>
-                  <div>
-                    <h4>AI Layout Generator (Revit-first)</h4>
-                    <p>Send areas/adjacencies/constraints → generate native Revit rooms/walls/doors + reg-aware hints.</p>
-                  </div>
-                </div>
-                <span class="pill">BIM</span>
-              </div>
-              <div class="cta">
-                <span class="pill">Revit plugin</span>
-                <button
-                  class="btn primary"
-                  data-launch="AI Layout Generator"
-                  data-prompt="Start an AI Layout Generator session. Ask me for building type, areas, and adjacencies."
-                  type="button"
-                >
-                  Open
-                </button>
-              </div>
-            </article>
-
-            <article class="card">
-              <div class="cardhead">
-                <div class="cardtitle">
-                  <div class="icon">RH</div>
-                  <div>
-                    <h4>Reg-Aware Layout Hints</h4>
-                    <p>In-model warnings for escape distances, corridor widths, turning circles, and other TGD issues.</p>
-                  </div>
-                </div>
-                <span class="pill">BIM</span>
-              </div>
-              <div class="cta">
-                <span class="pill">Compliance overlays</span>
-                <button
-                  class="btn primary"
-                  data-launch="Reg-Aware Layout Hints"
-                  data-prompt="Start a reg-aware layout hints session. Ask me for model context or constraints."
-                  type="button"
-                >
-                  Open
-                </button>
-              </div>
-            </article>
-
-            <article class="card">
-              <div class="cardhead">
-                <div class="cardtitle">
-                  <div class="icon">ED</div>
-                  <div>
-                    <h4>Learning Mode for Students</h4>
-                    <p>Hints, clause breakdowns, quizzes — learn TGDs, spec logic and energy rules while using the tool.</p>
-                  </div>
-                </div>
-                <span class="pill">Education</span>
-              </div>
-              <div class="cta">
-                <span class="pill">Study mode</span>
-                <button
-                  class="btn primary"
-                  data-launch="Learning Mode"
-                  data-prompt="Start Learning Mode. Ask me what topic or TGD part to study."
-                  type="button"
-                >
-                  Open
-                </button>
-              </div>
-            </article>
-
-            <article class="card">
-              <div class="cardhead">
-                <div class="cardtitle">
-                  <div class="icon">CL</div>
-                  <div>
-                    <h4>Client Explain Mode</h4>
-                    <p>Convert technical outputs (Fire, DAC, BER, planning issues) into simple client-friendly text for reports/emails.</p>
-                  </div>
-                </div>
-                <span class="pill">Client</span>
-              </div>
-              <div class="cta">
-                <span class="pill">Plain English</span>
-                <button
-                  class="btn primary"
-                  data-launch="Client Explain Mode"
-                  data-prompt="Start Client Explain Mode. Ask me what output to simplify for the client."
-                  type="button"
-                >
-                  Open
-                </button>
-              </div>
-            </article>
-          </div>
-
-          <div class="footer">
-            <div class="copy">© 2026 Raheem AI. All rights reserved.</div>
-            <div>Platform preview</div>
-          </div>
-        </section>
       </main>
 
       <!-- Saved chats drawer -->
@@ -1881,7 +2054,7 @@
     // 1) API CONFIG
     // =========================================================
     const CONFIG = {
-      API_BASE: "http://127.0.0.1:8001",
+      API_BASE_DEFAULT: "http://127.0.0.1:8001",
       HEALTH_PATH: "/health",
       CHAT_PATH: "/chat",
       PDFS_PATH: "/pdfs",
@@ -1892,7 +2065,7 @@
       CHAT_RETRY_ONCE: true
     };
 
-    const API_BASE = CONFIG.API_BASE.replace(/\/+$/, "");
+    const API_BASE = (localStorage.getItem("RAHEEM_API_BASE") || CONFIG.API_BASE_DEFAULT).replace(/\/+$/, "");
     function apiUrl(path){
       if(!path) path = "/";
       if(!path.startsWith("/")) path = "/" + path;
@@ -1975,21 +2148,19 @@
     const viewHome    = document.getElementById("viewHome");
     const viewChat    = document.getElementById("viewChat");
     const viewTools   = document.getElementById("viewTools");
-    const viewFuture  = document.getElementById("viewFuture");
     const chatList    = document.getElementById("chatList");
 
     const navHome   = document.getElementById("navHome");
     const navChat   = document.getElementById("navChat");
     const navTools  = document.getElementById("navTools");
-    const navFuture = document.getElementById("navFuture");
+    const navFuture = null;
 
     function setNavActive(which){
       // header pills
-      [navHome, navChat, navTools, navFuture].forEach(b=>b.classList.remove("active"));
+      [navHome, navChat, navTools].forEach(b=>b.classList.remove("active"));
       if(which==="home") navHome.classList.add("active");
       if(which==="chat") navChat.classList.add("active");
       if(which==="tools") navTools.classList.add("active");
-      if(which==="future") navFuture.classList.add("active");
 
       // rail buttons
       const railBtns = document.querySelectorAll(".railBtn");
@@ -1997,11 +2168,10 @@
       if(which==="home") railBtns[0]?.classList.add("active");
       if(which==="chat") railBtns[1]?.classList.add("active");
       if(which==="tools") railBtns[2]?.classList.add("active");
-      if(which==="future") railBtns[3]?.classList.add("active");
     }
 
     function showView(which){
-      [viewHome, viewChat, viewTools, viewFuture].forEach(v=>v.classList.remove("show"));
+      [viewHome, viewChat, viewTools].forEach(v=>v.classList.remove("show"));
 
       if(which==="home"){
         viewHome.classList.add("show");
@@ -2027,12 +2197,6 @@
         viewHintEl.textContent  = "Generators, specs, compliance workflows";
         chatList.classList.remove("show");
       }
-      if(which==="future"){
-        viewFuture.classList.add("show");
-        viewTitleEl.textContent = "All Features";
-        viewHintEl.textContent  = "Full platform preview and upcoming depth";
-        chatList.classList.remove("show");
-      }
 
       setNavActive(which);
       localStorage.setItem("RAHEEM_VIEW", which);
@@ -2049,14 +2213,13 @@
     };
     navHome.onclick = ()=>showView("home");
     navTools.onclick = ()=>showView("tools");
-    navFuture.onclick = ()=>showView("future");
 
     document.getElementById("btnStartChat").onclick = ()=>showView("chat");
     document.getElementById("btnOpenTools").onclick = ()=>showView("tools");
 
     window.addEventListener("DOMContentLoaded", () => {
       const saved = (localStorage.getItem("RAHEEM_VIEW") || "home").toLowerCase();
-      showView(["home","chat","tools","future"].includes(saved) ? saved : "home");
+      showView(["home","chat","tools"].includes(saved) ? saved : "home");
     });
 
 
@@ -2799,11 +2962,11 @@
         setPill("waking", "Waking server…");
         const r = await pingHealth();
         if(!r.ok){
-          showToast("Backend is still waking. Try again in a moment.");
-          return;
+          showToast("Backend status check failed. Attempting chat anyway.");
+        } else {
+          STATUS.state = "online";
+          setPill("online", "Online");
         }
-        STATUS.state = "online";
-        setPill("online", "Online");
       }
 
       const all = ensureActiveChat();
