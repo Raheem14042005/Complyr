@@ -1182,6 +1182,116 @@
       white-space: pre-wrap;
     }
 
+    /* ====== NBS BUILD-UP WIZARD ====== */
+    .wizardLayout{
+      display:grid;
+      grid-template-columns: minmax(240px, 320px) 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    @media (max-width: 980px){
+      .wizardLayout{ grid-template-columns: 1fr; }
+    }
+    .wizardPanel{
+      border-radius: var(--r);
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      box-shadow: var(--shadow2);
+      padding: 14px;
+    }
+    .wizardPanel h3{
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+    .wizardList{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .wizardList .item{
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+    }
+    .wizardMain h3{
+      margin-top:0;
+      font-size: 16px;
+    }
+    .wizardField{
+      display:flex;
+      flex-direction:column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .wizardField label{
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .wizardField input,
+    .wizardField select,
+    .wizardField textarea{
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.2);
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 13px;
+      font-family: var(--font);
+    }
+    .wizardField textarea{ min-height: 90px; resize: vertical; }
+    .wizardRow{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    @media (max-width: 700px){
+      .wizardRow{ grid-template-columns: 1fr; }
+    }
+    .wizardActions{
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .layerCard{
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .layerCard header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-size: 12px;
+      color: var(--muted2);
+      margin-bottom: 8px;
+    }
+    .layerControls{
+      display:flex;
+      gap: 6px;
+    }
+    .layerControls button{
+      padding: 6px 8px;
+      font-size: 11px;
+    }
+    .reviewCard{
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.2);
+      padding: 12px;
+      font-size: 12px;
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
+
     /* ====== MODAL ====== */
     .modalOverlay{
       position:fixed; inset:0;
@@ -2631,9 +2741,17 @@
       CHAT_RETRY_ONCE: true
     };
 
-    const apiBaseOverride = (localStorage.getItem("RAHEEM_API_BASE") || "").trim();
+    const API_BASE_STORAGE_KEY = "RAHEEM_API_BASE";
+    const API_BASE_LAST_OK_KEY = "RAHEEM_API_BASE_LAST_OK";
+    const apiParam = new URLSearchParams(window.location.search).get("api") || new URLSearchParams(window.location.search).get("api_base");
+    if(apiParam){
+      localStorage.setItem(API_BASE_STORAGE_KEY, apiParam);
+    }
+    const apiBaseOverride = (localStorage.getItem(API_BASE_STORAGE_KEY) || "").trim();
+    const lastKnownGoodBase = (localStorage.getItem(API_BASE_LAST_OK_KEY) || "").trim();
     const inferredApiBase = (() => {
       if(apiBaseOverride) return apiBaseOverride;
+      if(lastKnownGoodBase) return lastKnownGoodBase;
       const host = window.location.hostname;
       const isLocal = host === "127.0.0.1" || host === "localhost";
       if(!isLocal && window.location.origin){
@@ -2642,6 +2760,12 @@
       return CONFIG.API_BASE_DEFAULT;
     })();
     const API_BASE = inferredApiBase.replace(/\/+$/, "");
+    function setApiBase(nextBase){
+      const trimmed = (nextBase || "").trim();
+      if(!trimmed) return;
+      localStorage.setItem(API_BASE_STORAGE_KEY, trimmed);
+      window.location.reload();
+    }
     function apiUrl(path){
       if(!path) path = "/";
       if(!path.startsWith("/")) path = "/" + path;
@@ -2781,6 +2905,22 @@
 
       setNavActive(which);
       localStorage.setItem("RAHEEM_VIEW", which);
+    }
+
+    function showModule(moduleId){
+      const target = document.getElementById(`module-${moduleId}`);
+      if(!target) return;
+      hideAllViews();
+      target.classList.add("show");
+      viewTitleEl.textContent = target.dataset.title || "Module";
+      viewHintEl.textContent = target.dataset.hint || "Module overview";
+      chatList.classList.remove("show");
+      setNavActive(null);
+      localStorage.setItem("RAHEEM_VIEW", `module:${moduleId}`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      if(moduleId === "nbs-buildup"){
+        renderNbsWizard();
+      }
     }
 
     function showModule(moduleId){
@@ -3590,6 +3730,7 @@
           STATUS.lastOkTs = Date.now();
           STATUS.lastErr = "";
           STATUS.lastJson = json;
+          localStorage.setItem(API_BASE_LAST_OK_KEY, API_BASE);
           return { ok:true, json };
         }
         STATUS.lastErr = "HTTP " + res.status + " " + txt.slice(0,300);
@@ -3659,26 +3800,57 @@
         );
         showToast("Online.");
       } else {
-        openModal(
-          "Backend status",
-          [
-            "API Base: " + API_BASE,
-            "State: " + STATUS.state,
-            "",
-            "Error:",
-            STATUS.lastErr || "Unknown error",
-            "",
-            "Tip:",
-            "If you're on Render free-tier, cold starts are normal.",
-            "Turn on 'Keep warm' in Chat to reduce cold starts."
-          ].join("\n"),
-          [
-            { label:"Close", onClick: closeModal },
-            { label:"Retry now", primary:true, onClick: async ()=>{ closeModal(); await refreshStatusPill(); } }
-          ]
-        );
+        openApiBaseSettings([
+          `API Base: ${API_BASE}`,
+          `State: ${STATUS.state}`,
+          "",
+          "Error:",
+          STATUS.lastErr || "Unknown error",
+          "",
+          "Tip:",
+          "If you're on Render free-tier, cold starts are normal.",
+          "Turn on 'Keep warm' in Chat to reduce cold starts."
+        ].join("\n"));
       }
     };
+
+    function openApiBaseSettings(statusText){
+      modalTitle.textContent = "API base settings";
+      modalFoot.innerHTML = "";
+      modalFoot.style.display = "flex";
+      modalBody.innerHTML = `
+        <div style="white-space:pre-wrap; font-size:12px; color: rgba(244,247,255,.7); margin-bottom:12px;">
+          ${escapeHtml(statusText || "")}
+        </div>
+        <div style="margin-bottom:10px; color: rgba(244,247,255,.8);">
+          Chat requests must reach your FastAPI backend. Set the API base to the backend origin (e.g. https://your-backend.onrender.com).
+        </div>
+        <input id="__apiBaseInput" type="text" value="${escapeHtml(apiBaseOverride || API_BASE)}"
+          style="width:100%; padding: 12px 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,.14);
+          background: rgba(0,0,0,.20); color: rgba(244,247,255,.95); outline:none;"
+        />
+        <div style="margin-top:8px; font-size:12px; color: rgba(244,247,255,.6);">
+          Tip: you can also pass ?api=https://your-backend.onrender.com in the URL to set this automatically.
+        </div>
+      `;
+      const saveBtn = document.createElement("button");
+      saveBtn.type = "button";
+      saveBtn.className = "btn primary";
+      saveBtn.textContent = "Save API base";
+      saveBtn.onclick = () => {
+        const value = document.getElementById("__apiBaseInput")?.value || "";
+        setApiBase(value);
+      };
+      const closeBtn = document.createElement("button");
+      closeBtn.type = "button";
+      closeBtn.className = "btn";
+      closeBtn.textContent = "Close";
+      closeBtn.onclick = closeModal;
+      modalFoot.appendChild(closeBtn);
+      modalFoot.appendChild(saveBtn);
+      modalOverlay.classList.add("show");
+      setTimeout(()=> document.getElementById("__apiBaseInput")?.focus(), 50);
+    }
 
     // Start status polling
     refreshStatusPill();
@@ -3787,6 +3959,20 @@
       saveAllChats(all);
       persistActiveChatId();
       return all;
+    }
+
+    async function refreshPdfs(){
+      try{
+        const res = await fetchWithTimeout(apiUrl(CONFIG.PDFS_PATH), { method:"GET" }, 8000);
+        if(!res.ok) return;
+        const data = await res.json().catch(()=> null);
+        const pdfs = Array.isArray(data && data.pdfs) ? data.pdfs : [];
+        if(!pdfs.length) return;
+        if(activePdf && pdfs.includes(activePdf)) return;
+        setActivePdf(pdfs[0]);
+      }catch(e){
+        /* ignore */
+      }
     }
 
     async function refreshPdfs(){
@@ -4323,6 +4509,14 @@
           const msg = "Server error " + res.status + ": " + (errText || "").slice(0, 1600);
           aiDiv.textContent = msg;
           attachMsgTools(aiDiv, msg);
+          if(res.status === 405){
+            openApiBaseSettings([
+              "Chat returned 405 Method Not Allowed.",
+              "This usually means the API base points at the frontend host instead of the FastAPI backend.",
+              "",
+              `Current API base: ${API_BASE}`
+            ].join("\n"));
+          }
           STATUS.state = "offline";
           setPill("offline", "Offline");
           return;
